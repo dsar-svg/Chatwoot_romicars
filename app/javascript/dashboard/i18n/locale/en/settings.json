@@ -367,6 +367,7 @@
     "SMS": "SMS",
     "WHATSAPP": "WhatsApp",
     "CAMPAIGNS": "Campaigns",
+    "WHATSAPP_CAMPAIGNS": "WhatsApp Campaigns",
     "ONGOING": "Ongoing",
     "ONE_OFF": "One off",
     "REPORTS_SLA": "SLA",

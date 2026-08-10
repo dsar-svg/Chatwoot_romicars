@@ -703,6 +703,20 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Campaigns',
+      label: t('SIDEBAR.CAMPAIGNS'),
+      icon: 'i-lucide-megaphone',
+      children: [
+        {
+          name: 'WhatsApp Campaigns',
+          label: t('SIDEBAR.WHATSAPP_CAMPAIGNS'),
+          icon: 'i-lucide-message-circle',
+          to: accountScopedRoute('campaigns_whatsapp_index'),
+          activeOn: ['campaigns_whatsapp_index'],
+        },
+      ],
+    },
+    {
       name: 'Settings',
       label: t('SIDEBAR.SETTINGS'),
       icon: 'i-lucide-bolt',
