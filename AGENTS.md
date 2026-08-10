@@ -1,127 +1,153 @@
-# Chatwoot Development Guidelines
+# RomiCards - Chatwoot Custom Deployment
 
-## Deployment Context
+## Que es este proyecto
 
-This is a **customized Chatwoot v4.16.2** deployment on a VPS using **EasyPanel** with Docker Compose.
+Personalización completa de **Chatwoot v4.16.2** para la marca **RomiCards**. El sistema de atención al cliente está desplegado en un VPS usando EasyPanel con Docker Compose.
 
-### Key Deployment Files
-- `docker-compose.easypanel.yml` — Production compose for EasyPanel (uses `chatwoot/chatwoot:latest`)
-- `docker-compose.yaml` — Local development compose (builds from source)
-- `.github/workflows/publish_custom_docker.yml` — Builds and pushes custom Docker image on push to `claude/init-tvh2q7` branch
+## Marca: RomiCards
 
-### Docker Image Build
-- Workflow pushes to `ghcr.io` (GitHub Container Registry)
-- Image tags: `latest` and `sha-<commit>`
-- Uses `docker/Dockerfile` with multi-stage build (Ruby 3.4.4, Node 24.13.0, pnpm 10.2.0)
+- **Nombre**: RomiCards
+- **Color primario**: Navy Blue `#1A365D` (light) / `#3B82F6` (dark)
+- **Color secundario**: Red `#E53E3E`
+- **URL**: romicars.com
 
-### EasyPanel Environment Variables
-Production uses these critical env vars (set in EasyPanel):
-- `POSTGRES_HOST=postgres`, `REDIS_URL`, `SECRET_KEY_BASE`
+## Arquitectura de Despliegue
+
+```
+VPS (169.254.0.1)
+├── EasyPanel (panel de control)
+│   ├── asta_chatwoot-rails-1      → Servidor Rails (puerto 3000)
+│   ├── asta_chatwoot-sidekiq-1    → Procesador de jobs
+│   ├── asta_chatwoot-postgres-1   → PostgreSQL 16
+│   └── asta_chatwoot-redis-1      → Redis
+└── Docker Compose (docker-compose.easypanel.yml)
+```
+
+### Flujo de Despliegue
+
+1. **Hacer cambios** en el repo local
+2. **Commit y push** a la rama `claude/init-tvh2q7`
+3. **GitHub Actions** construye y sube la imagen a `ghcr.io/chatgptsupricom-sudo/chatwoot:latest`
+4. **En el VPS**: detener contenedores → borrar imagen vieja → pull imagen nueva
+5. **Redesplegar** desde EasyPanel
+6. **Actualizar base de datos** si es necesario (solo cambios de config)
+
+### Comandos del VPS (ejecutar por SSH)
+
+```bash
+# Ver contenedores activos
+docker ps --format "table {{.Names}}\t{{.Status}}" | grep chatwoot
+
+# Detener todos los contenedores chatwoot
+docker stop $(docker ps -q --filter "name=chatwoot")
+
+# Borrar imagen vieja y pull la nueva
+docker rmi ghcr.io/chatgptsupricom-sudo/chatwoot:latest
+docker pull ghcr.io/chatgptsupricom-sudo/chatwoot:latest
+
+# Actualizar base de datos (cuando sea necesario)
+docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.find_or_create_by(name: 'KEY').update(value: 'VALUE'); GlobalConfig.clear_cache"
+```
+
+## Archivos Clave de Branding
+
+### Logos (en `public/brand-assets/`)
+| Archivo | Uso | Dimensiones |
+|---------|-----|-------------|
+| `logo.png` | Favicon y sidebar dashboard | 512x512 px |
+| `logotipo.png` | Login y sidebar Super Admin | 400x120 px |
+
+### Configuración de Branding
+- `config/installation_config.yml` — Rutas de logos y nombre de instalación
+- `config/app.yml` — Versión de la app
+- `theme/colors.js` — Colores Tailwind (línea 229: `brand`)
+- `app/javascript/dashboard/assets/scss/_next-colors.scss` — Variables CSS
+- `app/javascript/widget/assets/scss/woot.scss` — Variables CSS del widget
+
+### Branding en la UI
+- `app/javascript/shared/composables/useBranding.js` — Reemplaza "Chatwoot" por nombre de instalación
+- `app/views/layouts/vueapp.html.erb` — Favicon y meta tags
+- `app/views/super_admin/application/_navigation.html.erb` — Sidebar Super Admin
+- `app/views/super_admin/devise/sessions/new.html.erb` — Login Super Admin
+- `app/javascript/dashboard/components-next/icon/Logo.vue` — Componente logo
+- `app/javascript/dashboard/components-next/sidebar/Sidebar.vue` — Sidebar dashboard
+- `public/manifest.json` — PWA manifest
+
+### Variables de Entorno Críticas (en EasyPanel)
+- `POSTGRES_HOST=postgres`
+- `POSTGRES_PORT=5432` (requerido para el entrypoint)
+- `REDIS_URL`, `SECRET_KEY_BASE`
 - `FRONTEND_URL`, `INSTALLATION_NAME`, `BRAND_NAME`
-- `DISABLE_ENTERPRISE=true` (Enterprise overlay disabled)
-- `ENABLE_ACCOUNT_SIGNUP=false` (signup disabled by default)
+- `DISABLE_ENTERPRISE=true`
+- `ENABLE_ACCOUNT_SIGNUP=false`
 - `RAILS_LOG_TO_STDOUT=true`
 
-### Services Architecture
-- **rails** — Main Rails server (port 3000)
-- **sidekiq** — Background job processor
-- **postgres** — PostgreSQL 16 with pgvector
-- **redis** — Redis for caching/queues
+## Bugs Corregidos
 
-## Development Setup
+### 1. Permisos de entrypoint scripts
+- **Problema**: `docker/entrypoints/rails.sh` tenía permisos `100644` en vez de `100755`
+- **Causa**: Windows no preserva permisos de ejecución al clonar
+- **Fix**: `git update-index --chmod=+x docker/entrypoints/rails.sh`
 
-### Quick Start
-```bash
-# Install dependencies
-bundle install && pnpm install
+### 2. POSTGRES_PORT no definido
+- **Problema**: `pg_isready -h postgres -p -U postgres` fallaba con "too many arguments"
+- **Causa**: EasyPanel no define `POSTGRES_PORT` automáticamente
+- **Fix**: Modificar `docker/entrypoints/rails.sh` para omitir `-p` si el puerto está vacío
 
-# Start development (requires rbenv, pnpm, overmind)
-eval "$(rbenv init -)"
-overmind start -f Procfile.dev
-```
+### 3. Super Admin decía "Chatwoot"
+- **Problema**: `_navigation.html.erb` tenía "Chatwoot" hardcodeado
+- **Fix**: Cambiar a "RomiCards" y actualizar rutas de logo
 
-### Ruby/Node Versions
-- Ruby: 3.4.4 (managed via rbenv)
-- Node: 24.13.0 (managed via nvm)
-- pnpm: 10.2.0
+## Estilo de Código
 
-### Essential Commands
-```bash
-# Linting
-pnpm eslint          # JavaScript/Vue
-bundle exec rubocop -a  # Ruby
-
-# Testing
-pnpm test            # JavaScript tests (vitest)
-bundle exec rspec spec/path/to/file_spec.rb  # Ruby tests
-
-# Database
-bundle exec rails db:seed          # Seed test data
-bundle exec rails db:migrate       # Run migrations
-bundle exec rails search:setup_test_data  # Bulk test fixtures
-```
-
-## Architecture Notes
-
-### Backend (Rails API)
-- **Entry**: `ApplicationController` → `Api::BaseController` → `Api::V1::Accounts::BaseController`
-- **Auth**: DeviseTokenAuth
-- **Authorization**: Pundit policies in `app/policies/`
-- **Events**: Wisper pub/sub via `app/dispatchers/` → `app/listeners/`
-- **Jobs**: Sidekiq (`app/jobs/`)
-- **Services**: `app/services/` — prefer these over controller logic
-
-### Frontend (Vue 3 SPA)
-- **Entry**: `app/javascript/entrypoints/dashboard`
-- **State**: Vuex (legacy) + Pinia (new stores)
-- **Components**: `dashboard/components-next/` for new UI work
-- **Real-time**: ActionCable via `BaseActionCableConnector`
-
-### Key Models
-- `Account` — multi-tenant root
-- `Inbox` — polymorphic channel (web, email, Facebook, WhatsApp, etc.)
-- `Conversation` → `Contact` + `ContactInbox` → `Message`
-
-## Customization Points
-
-### Branding / Logo
-- **Logo files replaced** (all with custom PNG from `C:\Users\AUTOMATIZACION\Downloads\loguito.png`):
-  - `public/brand-assets/logo.svg` (main logo)
-  - `public/brand-assets/logo_dark.svg` (dark mode)
-  - `public/brand-assets/logo_thumbnail.svg` (thumbnail)
-  - `app/javascript/design-system/images/logo.png`
-  - `app/javascript/design-system/images/logo-dark.png`
-  - `app/javascript/design-system/images/logo-thumbnail.svg`
-  - `app/javascript/widget/assets/images/logo.svg`
-  - `app/javascript/dashboard/assets/images/bubble-logo.svg`
-  - `public/assets/images/dashboard/captain/logo.svg`
-- Use `replaceInstallationName` from `shared/composables/useBranding` for user-facing strings
-- Edit `config/locales/en.yml` (backend) and `app/javascript/dashboard/i18n/en.json` (frontend)
-
-### Enterprise Edition
-- Enterprise overlay lives in `enterprise/` directory
-- Currently disabled in this deployment (`DISABLE_ENTERPRISE=true`)
-- When modifying core logic, check `enterprise/` for overrides
-
-## Code Style
-
-- **Ruby**: RuboCop (150 char max line length)
+- **Ruby**: RuboCop (150 chars max)
 - **Vue/JS**: ESLint (Airbnb + Vue 3)
-- **Vue**: Always use Composition API with `<script setup>`
-- **Styling**: Tailwind only — no custom CSS, no scoped CSS, no inline styles
-- **I18n**: No bare strings in templates
-
-## Common Pitfalls
-
-1. **Database connections**: Production uses `POSTGRES_HOST=postgres` (Docker service name)
-2. **Redis auth**: Requires `REDIS_PASSWORD` env var
-3. **Asset compilation**: Production Docker image precompiles assets during build
-4. **Enterprise code**: Always check `enterprise/` before modifying core models/controllers
-5. **Translations**: Only edit `en.yml` and `en.json` — other languages via Crowdin
-6. **Components**: Use `components-next/` for new message bubbles and UI work
+- **Vue**: Siempre Composition API con `<script setup>`
+- **Estilos**: Solo Tailwind — sin CSS custom, sin scoped CSS, sin inline styles
+- **I18n**: Sin strings bare en templates
 
 ## Git Workflow
 
-- Branch: `claude/init-tvh2q7` triggers Docker image build
-- Commits: Use Conventional Commits format (`type(scope): subject`)
-- PRs: Start with user-facing description, add `Closes` section for issues
+- **Rama**: `claude/init-tvh2q7` (trigger para GitHub Actions)
+- **Commits**: Conventional Commits (`type(scope): subject`)
+- **Image tag**: `ghcr.io/chatgptsupricom-sudo/chatwoot:latest`
+
+## Log de Cambios
+
+### 2026-08-10
+
+#### Cambios iniciales
+- Creado `AGENTS.md` con contexto del proyecto
+- Reemplazados archivos de logo en repo
+- Fix permisos entrypoint scripts (`100644` → `100755`)
+- Agregado fix para `POSTGRES_PORT` vacío
+
+#### Personalización de marca
+- Colores brand aplicados a `_next-colors.scss`, `woot.scss`, `theme/colors.js`
+- Variable CSS `--brand-color` agregada para light/dark mode
+- `n.brand` en `colors.js` actualizado para usar variable CSS
+
+#### Logos y nombre
+- Logo files copiados a `public/brand-assets/`
+- `installation_config.yml` actualizado con rutas PNG y nombre RomiCards
+- `BRAND_URL` y `WIDGET_BRAND_URL` actualizados a romicars.com
+- Meta tags en `vueapp.html.erb` actualizados con color brand
+- Versión cambiada de `4.16.2` a `1.0.0` en `config/app.yml`
+
+#### Super Admin
+- `_navigation.html.erb` actualizado con nombre RomiCards y logo PNG
+- Login Super Admin (`sessions/new.html.erb`) actualizado con logo PNG
+- Onboarding page actualizado con RomiCards
+
+#### Favicons
+- Todos los favicons reemplazados con `logo.png`
+- `manifest.json` actualizado con nombre y colores RomiCards
+
+#### Sidebar
+- Logo size aumentado de `size-4` (16px) a `size-5` (20px)
+
+## Pendiente
+
+- [ ] Verificar que los favicons se muestran correctamente después del deploy
+- [ ] Confirmar que el sidebar del Super Admin muestra "RomiCards 1.0.0"
+- [ ] probar el flujo completo de login → dashboard → configuración
