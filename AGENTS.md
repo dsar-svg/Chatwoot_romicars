@@ -1,12 +1,12 @@
-# RomiCards - Chatwoot Custom Deployment
+# RomiCars - Chatwoot Custom Deployment
 
 ## Que es este proyecto
 
-Personalización completa de **Chatwoot v4.16.2** para la marca **RomiCards**. El sistema de atención al cliente está desplegado en un VPS usando EasyPanel con Docker Compose.
+Personalización completa de **Chatwoot v4.16.2** para la marca **RomiCars**. El sistema de atención al cliente está desplegado en un VPS usando EasyPanel con Docker Compose.
 
-## Marca: RomiCards
+## Marca: RomiCars
 
-- **Nombre**: RomiCards
+- **Nombre**: RomiCars
 - **Color primario**: Navy Blue `#1A365D` (light) / `#3B82F6` (dark)
 - **Color secundario**: Red `#E53E3E`
 - **URL**: romicars.com
@@ -96,7 +96,7 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.f
 
 ### 3. Super Admin decía "Chatwoot"
 - **Problema**: `_navigation.html.erb` tenía "Chatwoot" hardcodeado
-- **Fix**: Cambiar a "RomiCards" y actualizar rutas de logo
+- **Fix**: Cambiar a "RomiCars" y actualizar rutas de logo
 
 ## Estilo de Código
 
@@ -129,19 +129,19 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.f
 
 #### Logos y nombre
 - Logo files copiados a `public/brand-assets/`
-- `installation_config.yml` actualizado con rutas PNG y nombre RomiCards
+- `installation_config.yml` actualizado con rutas PNG y nombre RomiCars
 - `BRAND_URL` y `WIDGET_BRAND_URL` actualizados a romicars.com
 - Meta tags en `vueapp.html.erb` actualizados con color brand
 - Versión cambiada de `4.16.2` a `1.0.0` en `config/app.yml`
 
 #### Super Admin
-- `_navigation.html.erb` actualizado con nombre RomiCards y logo PNG
+- `_navigation.html.erb` actualizado con nombre RomiCars y logo PNG
 - Login Super Admin (`sessions/new.html.erb`) actualizado con logo PNG
-- Onboarding page actualizado con RomiCards
+- Onboarding page actualizado con RomiCars
 
 #### Favicons
 - Todos los favicons reemplazados con `logo.png`
-- `manifest.json` actualizado con nombre y colores RomiCards
+- `manifest.json` actualizado con nombre y colores RomiCars
 
 #### Sidebar
 - Logo size aumentado de `size-4` (16px) a `size-5` (20px)
@@ -149,5 +149,5 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.f
 ## Pendiente
 
 - [ ] Verificar que los favicons se muestran correctamente después del deploy
-- [ ] Confirmar que el sidebar del Super Admin muestra "RomiCards 1.0.0"
+- [ ] Confirmar que el sidebar del Super Admin muestra "RomiCars 1.0.0"
 - [ ] probar el flujo completo de login → dashboard → configuración
