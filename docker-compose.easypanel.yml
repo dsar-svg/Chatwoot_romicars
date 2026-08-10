@@ -1,0 +1,113 @@
+services:
+  rails:
+    image: chatwoot/chatwoot:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-chatwoot}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - FORCE_SSL=${FORCE_SSL:-true}
+      - INSTALLATION_NAME=${INSTALLATION_NAME}
+      - BRAND_NAME=${BRAND_NAME}
+      - BRAND_URL=${BRAND_URL}
+      - WIDGET_BRAND_URL=${WIDGET_BRAND_URL}
+      - DISABLE_ENTERPRISE=${DISABLE_ENTERPRISE:-true}
+      - ENABLE_ACCOUNT_SIGNUP=${ENABLE_ACCOUNT_SIGNUP:-false}
+      - RAILS_LOG_TO_STDOUT=true
+      - RAILS_MAX_THREADS=${RAILS_MAX_THREADS:-5}
+      - MAILER_SENDER_EMAIL=${MAILER_SENDER_EMAIL}
+      - SMTP_ADDRESS=${SMTP_ADDRESS}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_AUTHENTICATION=${SMTP_AUTHENTICATION}
+      - SMTP_ENABLE_STARTTLS_AUTO=${SMTP_ENABLE_STARTTLS_AUTO}
+      - SMTP_TLS=${SMTP_TLS}
+      - SMTP_DOMAIN=${SMTP_DOMAIN}
+    entrypoint: docker/entrypoints/rails.sh
+    command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
+    volumes:
+      - storage_data:/app/storage
+    networks:
+      - default
+      - easypanel
+    restart: always
+
+  sidekiq:
+    image: chatwoot/chatwoot:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=production
+      - RAILS_ENV=production
+      - INSTALLATION_ENV=docker
+      - POSTGRES_HOST=postgres
+      - POSTGRES_USERNAME=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE:-chatwoot}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECRET_KEY_BASE=${SECRET_KEY_BASE}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - DISABLE_ENTERPRISE=${DISABLE_ENTERPRISE:-true}
+      - RAILS_LOG_TO_STDOUT=true
+      - MAILER_SENDER_EMAIL=${MAILER_SENDER_EMAIL}
+      - SMTP_ADDRESS=${SMTP_ADDRESS}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_AUTHENTICATION=${SMTP_AUTHENTICATION}
+      - SMTP_ENABLE_STARTTLS_AUTO=${SMTP_ENABLE_STARTTLS_AUTO}
+      - SMTP_TLS=${SMTP_TLS}
+      - SMTP_DOMAIN=${SMTP_DOMAIN}
+    command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
+    volumes:
+      - storage_data:/app/storage
+    networks:
+      - default
+    restart: always
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=${POSTGRES_DATABASE:-chatwoot}
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - default
+
+  redis:
+    image: redis:alpine
+    restart: always
+    command: ["sh", "-c", "redis-server --requirepass \"$REDIS_PASSWORD\""]
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - default
+
+volumes:
+  storage_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  default: {}
+  easypanel:
+    external: true
+    name: easypanel
