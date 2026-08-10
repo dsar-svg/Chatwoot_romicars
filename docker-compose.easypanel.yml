@@ -1,6 +1,6 @@
 services:
   rails:
-    image: chatwoot/chatwoot:latest
+    image: ghcr.io/chatgptsupricom-sudo/chatwoot:latest
     depends_on:
       - postgres
       - redis
@@ -44,7 +44,7 @@ services:
     restart: always
 
   sidekiq:
-    image: chatwoot/chatwoot:latest
+    image: ghcr.io/chatgptsupricom-sudo/chatwoot:latest
     depends_on:
       - postgres
       - redis
