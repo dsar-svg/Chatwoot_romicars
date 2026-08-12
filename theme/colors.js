@@ -1,6 +1,4 @@
 const {
-  blue,
-  blueDark,
   green,
   greenDark,
   yellow,
@@ -14,19 +12,20 @@ const {
 } = require('@radix-ui/colors');
 
 export const colors = {
+  // RomiCars brand blue palette anchored at #1A365D
   woot: {
-    25: blue.blue2,
-    50: blue.blue3,
-    75: blue.blue4,
-    100: blue.blue5,
-    200: blue.blue7,
-    300: blue.blue8,
-    400: blueDark.blue11,
-    500: blueDark.blue10,
-    600: blueDark.blue9,
-    700: blueDark.blue8,
-    800: blueDark.blue6,
-    900: blueDark.blue2,
+    25:  '#FAFCFF',
+    50:  '#F3F7FE',
+    75:  '#E5EDFA',
+    100: '#D5E2F5',
+    200: '#B0C7E7',
+    300: '#96AFD8',
+    400: '#728ABA',
+    500: '#1A365D',
+    600: '#162E50',
+    700: '#112441',
+    800: '#0B192D',
+    900: '#06111F',
   },
   green: {
     50: greenDark.green12,
