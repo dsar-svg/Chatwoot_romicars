@@ -960,7 +960,12 @@ const menuItems = computed(() => {
     >
       <ul
         class="flex flex-col gap-1 m-0 list-none min-w-0"
-        :class="{ 'items-center': isEffectivelyCollapsed }"
+        :class="[
+          { 'items-center': isEffectivelyCollapsed },
+          !isEffectivelyCollapsed
+            ? '[&>li+li]:border-t [&>li+li]:border-n-weak [&>li+li]:pt-2 [&>li+li]:mt-1'
+            : '',
+        ]"
       >
         <SidebarGroup
           v-for="item in menuItems"

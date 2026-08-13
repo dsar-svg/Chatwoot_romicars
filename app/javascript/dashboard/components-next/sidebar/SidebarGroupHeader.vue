@@ -32,8 +32,8 @@ const count = computed(() =>
     :to="to"
     :title="label"
     :class="{
-      'text-n-slate-12 bg-[#361E2C]/20 font-medium': isActive && !hasActiveChild,
-      'text-n-slate-12 font-medium': hasActiveChild,
+      'text-n-slate-12 bg-[#361E2C]/20 font-semibold': isActive && !hasActiveChild,
+      'text-n-slate-12 font-semibold': hasActiveChild,
       'text-n-slate-11 hover:bg-n-alpha-2': !isActive && !hasActiveChild,
     }"
     @click.stop="emit('toggle')"
@@ -43,12 +43,22 @@ const count = computed(() =>
       class="absolute left-0 top-1 bottom-1 w-0.5 bg-[#361E2C] rounded-r-sm"
     />
     <div v-if="icon" class="relative flex items-center gap-2">
-      <Icon
-        v-if="icon"
-        :icon="icon"
-        class="size-4"
-        :class="{ 'text-blue-11': isActive || hasActiveChild }"
-      />
+      <span
+        class="flex items-center justify-center size-5 rounded-md transition-all duration-200"
+        :class="{ 'bg-[#1A365D]/20': isActive || hasActiveChild }"
+      >
+        <Icon
+          v-if="icon"
+          :icon="icon"
+          class="size-4"
+          :class="{ 'text-blue-11': isActive || hasActiveChild }"
+          :style="
+            isActive || hasActiveChild
+              ? 'filter: drop-shadow(0 0 5px rgba(26,54,93,0.5))'
+              : ''
+          "
+        />
+      </span>
       <span
         v-if="showBadge"
         class="size-2 -top-px ltr:-right-px rtl:-left-px bg-n-brand absolute rounded-full border border-n-solid-2"
@@ -60,8 +70,8 @@ const count = computed(() =>
       <span
         class="truncate"
         :class="{
-          'text-body-main': !isActive,
-          'font-medium text-sm': isActive || hasActiveChild,
+          'text-body-main font-normal': !isActive && !hasActiveChild,
+          'font-semibold text-sm': isActive || hasActiveChild,
         }"
       >
         {{ label }}
