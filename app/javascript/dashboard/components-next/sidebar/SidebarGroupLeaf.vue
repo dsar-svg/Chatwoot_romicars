@@ -60,7 +60,11 @@ const TREE_CONNECTOR =
       />
       <template v-else>
         <span v-if="icon" class="size-4 grid place-content-center rounded-full">
-          <Icon :icon="icon" class="size-4 inline-block" />
+          <Icon
+            :icon="icon"
+            class="size-4 inline-block"
+            :class="{ 'text-blue-11': active }"
+          />
         </span>
         <div class="flex-1 truncate min-w-0 text-sm">{{ label }}</div>
         <SidebarUnreadBadge :count="badgeCount" />

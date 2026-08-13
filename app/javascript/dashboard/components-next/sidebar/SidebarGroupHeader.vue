@@ -43,7 +43,12 @@ const count = computed(() =>
       class="absolute left-0 top-1 bottom-1 w-0.5 bg-[#361E2C] rounded-r-sm"
     />
     <div v-if="icon" class="relative flex items-center gap-2">
-      <Icon v-if="icon" :icon="icon" class="size-4" />
+      <Icon
+        v-if="icon"
+        :icon="icon"
+        class="size-4"
+        :class="{ 'text-blue-11': isActive || hasActiveChild }"
+      />
       <span
         v-if="showBadge"
         class="size-2 -top-px ltr:-right-px rtl:-left-px bg-n-brand absolute rounded-full border border-n-solid-2"
