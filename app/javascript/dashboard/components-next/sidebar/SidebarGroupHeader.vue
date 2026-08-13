@@ -32,7 +32,7 @@ const count = computed(() =>
     :to="to"
     :title="label"
     :class="{
-      'text-n-ruby-11 bg-n-ruby-9/10 font-medium': isActive && !hasActiveChild,
+      'text-n-slate-12 bg-[#361E2C]/20 font-medium': isActive && !hasActiveChild,
       'text-n-slate-12 font-medium': hasActiveChild,
       'text-n-slate-11 hover:bg-n-alpha-2': !isActive && !hasActiveChild,
     }"
@@ -40,7 +40,7 @@ const count = computed(() =>
   >
     <span
       v-if="isActive && !hasActiveChild"
-      class="absolute left-0 top-1 bottom-1 w-0.5 bg-n-ruby-9 rounded-r-sm"
+      class="absolute left-0 top-1 bottom-1 w-0.5 bg-[#361E2C] rounded-r-sm"
     />
     <div v-if="icon" class="relative flex items-center gap-2">
       <Icon v-if="icon" :icon="icon" class="size-4" />
