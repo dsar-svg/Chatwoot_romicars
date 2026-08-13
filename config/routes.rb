@@ -541,6 +541,15 @@ Rails.application.routes.draw do
               get :grouped_conversation_metrics
             end
           end
+          resources :romicars_analytics, only: [] do
+            collection do
+              get :overview
+              get :agents
+              get :demand
+              get :ai_insights
+              get :profit
+            end
+          end
         end
       end
     end

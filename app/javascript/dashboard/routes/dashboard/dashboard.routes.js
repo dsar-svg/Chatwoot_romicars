@@ -1,4 +1,5 @@
 import settings from './settings/settings.routes';
+import analyticsRoutes from './analytics/analytics.routes';
 import conversation from './conversation/conversation.routes';
 import { routes as searchRoutes } from '../../modules/search/search.routes';
 import { routes as callRoutes } from './calls/routes';
@@ -23,6 +24,7 @@ export default {
       component: AppContainer,
       children: [
         ...captainRoutes,
+        ...analyticsRoutes.routes,
         ...inboxRoutes,
         ...conversation.routes,
         ...settings.routes,

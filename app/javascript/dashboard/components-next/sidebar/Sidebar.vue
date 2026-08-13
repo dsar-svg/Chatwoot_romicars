@@ -362,6 +362,13 @@ const reportRoutes = computed(() => newReportRoutes());
 const menuItems = computed(() => {
   return [
     {
+      name: 'Analytics',
+      label: t('SIDEBAR.ANALYTICS'),
+      icon: 'i-lucide-layout-dashboard',
+      to: accountScopedRoute('romicars_analytics'),
+      activeOn: ['romicars_analytics'],
+    },
+    {
       name: 'Inbox',
       label: t('SIDEBAR.INBOX'),
       icon: 'i-lucide-inbox',
