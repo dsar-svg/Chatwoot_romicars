@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Api::V2::Accounts::RomicarsDashboardController < Api::V1::Accounts::BaseController
+class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
   def overview
