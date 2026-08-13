@@ -17,7 +17,6 @@ import FormInput from '../../components/Form/Input.vue';
 import GoogleOAuthButton from '../../components/GoogleOauth/Button.vue';
 import Spinner from 'shared/components/Spinner.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
-import NextButton from 'dashboard/components-next/button/Button.vue';
 import MfaVerification from 'dashboard/components/auth/MfaVerification.vue';
 import SessionLimitOverlay from 'dashboard/components/auth/SessionLimitOverlay.vue';
 
@@ -36,7 +35,6 @@ export default {
     FormInput,
     GoogleOAuthButton,
     Spinner,
-    NextButton,
     SimpleDivider,
     MfaVerification,
     SessionLimitOverlay,
@@ -58,8 +56,6 @@ export default {
   },
   data() {
     return {
-      // We need to initialize the component with any
-      // properties that will be used in it
       credentials: {
         email: '',
         password: '',
@@ -79,13 +75,8 @@ export default {
   validations() {
     return {
       credentials: {
-        password: {
-          required,
-        },
-        email: {
-          required,
-          email,
-        },
+        password: { required },
+        email: { required, email },
       },
     };
   },
@@ -113,12 +104,9 @@ export default {
     }
     if (this.authError) {
       const messageKey = ERROR_MESSAGES[this.authError] ?? 'LOGIN.API.UNAUTH';
-      // Use a method to get the translated text to avoid dynamic key warning
       const translatedMessage = this.getTranslatedMessage(messageKey);
       useAlert(translatedMessage);
-      // wait for idle state
       this.requestIdleCallbackPolyfill(() => {
-        // Remove the error query param from the url
         const { query } = this.$route;
         this.$router.replace({ query: { ...query, error: undefined } });
       });
@@ -126,7 +114,6 @@ export default {
   },
   methods: {
     getTranslatedMessage(key) {
-      // Avoid dynamic key warning by handling each case explicitly
       switch (key) {
         case 'LOGIN.OAUTH.NO_ACCOUNT_FOUND':
           return this.$t('LOGIN.OAUTH.NO_ACCOUNT_FOUND');
@@ -137,27 +124,19 @@ export default {
           return this.$t('LOGIN.API.UNAUTH');
       }
     },
-    // TODO: Remove this when Safari gets wider support
-    // Ref: https://caniuse.com/requestidlecallback
-    //
     requestIdleCallbackPolyfill(callback) {
       if (window.requestIdleCallback) {
         window.requestIdleCallback(callback);
       } else {
-        // Fallback for safari
-        // Using a delay of 0 allows the callback to be executed asynchronously
-        // in the next available event loop iteration, similar to requestIdleCallback
         setTimeout(callback, 0);
       }
     },
     showAlertMessage(message) {
-      // Reset loading, current selected agent
       this.loginApi.showLoading = false;
       this.loginApi.message = message;
       useAlert(this.loginApi.message);
     },
     handleImpersonation() {
-      // Detects impersonation mode via URL and sets a session flag to prevent user settings changes during impersonation.
       const urlParams = new URLSearchParams(window.location.search);
       const impersonation = urlParams.get(IMPERSONATION_URL_SEARCH_KEY);
       if (impersonation) {
@@ -180,15 +159,12 @@ export default {
 
       login(credentials)
         .then(result => {
-          // Check if MFA is required
           if (result?.mfaRequired) {
             this.loginApi.showLoading = false;
             this.mfaRequired = true;
             this.mfaToken = result.mfaToken;
             return;
           }
-
-          // Check if sessions limit reached
           if (result?.sessionsLimitReached) {
             this.loginApi.showLoading = false;
             this.sessionsLimitReached = true;
@@ -196,7 +172,6 @@ export default {
             AnalyticsHelper.track(SESSION_EVENTS.LIMIT_HIT);
             return;
           }
-
           this.handleImpersonation();
           this.showAlertMessage(this.$t('LOGIN.API.SUCCESS_MESSAGE'));
         })
@@ -209,8 +184,6 @@ export default {
             });
             return;
           }
-
-          // Reset URL Params if the authentication is invalid
           if (this.email) {
             window.location = '/app/login';
           }
@@ -225,16 +198,13 @@ export default {
         this.showAlertMessage(this.$t('LOGIN.EMAIL.ERROR'));
         return;
       }
-
       this.submitLogin();
     },
     handleMfaVerified() {
-      // MFA verification successful, continue with login
       this.handleImpersonation();
       window.location = '/app';
     },
     handleMfaCancel() {
-      // User cancelled MFA, reset state
       this.mfaRequired = false;
       this.mfaToken = null;
       this.credentials.password = '';
@@ -250,7 +220,6 @@ export default {
         ssoConversationId: this.ssoConversationId,
         ...extraParams,
       };
-
       this.sessionsLimitReached = false;
       this.limitedSessions = [];
       this.loginApi.showLoading = true;
@@ -289,40 +258,28 @@ export default {
 </script>
 
 <template>
-  <main
-    class="relative flex flex-col w-full min-h-screen py-20 overflow-hidden bg-n-brand/5 dark:bg-[#0D1117] sm:px-6 lg:px-8"
-  >
-    <!-- Animated orbs — visible in dark mode only via CSS -->
-    <div class="romicars-login-orbs" aria-hidden="true">
-      <div class="romicars-login-orb romicars-orb-1" />
-      <div class="romicars-login-orb romicars-orb-2" />
-      <div class="romicars-login-orb romicars-orb-3" />
+  <main class="romicars-login-root">
+    <!-- Animated background -->
+    <div class="romicars-bg" aria-hidden="true">
+      <div class="romicars-orb orb-1" />
+      <div class="romicars-orb orb-2" />
+      <div class="romicars-orb orb-3" />
+      <div class="romicars-orb orb-4" />
+      <!-- Floating particles -->
+      <div class="romicars-p p-1" />
+      <div class="romicars-p p-2" />
+      <div class="romicars-p p-3" />
+      <div class="romicars-p p-4" />
+      <div class="romicars-p p-5" />
+      <div class="romicars-p p-6" />
+      <div class="romicars-p p-7" />
+      <div class="romicars-p p-8" />
+      <div class="romicars-p p-9" />
+      <div class="romicars-p p-10" />
     </div>
-    <section class="relative z-10 max-w-5xl mx-auto">
-      <img
-        :src="globalConfig.logo"
-        :alt="globalConfig.installationName"
-        class="block mx-auto max-w-xs w-full h-auto dark:hidden"
-      />
-      <img
-        v-if="globalConfig.logoDark"
-        :src="globalConfig.logoDark"
-        :alt="globalConfig.installationName"
-        class="hidden mx-auto max-w-xs w-full h-auto dark:block"
-      />
-      <h2 class="mt-6 text-3xl font-medium text-center text-n-slate-12">
-        {{ replaceInstallationName($t('LOGIN.TITLE')) }}
-      </h2>
-      <p v-if="showSignupLink" class="mt-3 text-sm text-center text-n-slate-11">
-        {{ $t('COMMON.OR') }}
-        <router-link to="auth/signup" class="lowercase text-link text-blue-11">
-          {{ $t('LOGIN.CREATE_NEW_ACCOUNT') }}
-        </router-link>
-      </p>
-    </section>
 
     <!-- Session Limit Section -->
-    <section v-if="sessionsLimitReached" class="relative z-10 mt-11">
+    <section v-if="sessionsLimitReached" class="romicars-overlay-section">
       <SessionLimitOverlay
         :sessions="limitedSessions"
         @revoke="handleSessionRevoke"
@@ -332,7 +289,7 @@ export default {
     </section>
 
     <!-- MFA Verification Section -->
-    <section v-else-if="mfaRequired" class="relative z-10 mt-11">
+    <section v-else-if="mfaRequired" class="romicars-overlay-section">
       <MfaVerification
         :mfa-token="mfaToken"
         @verified="handleMfaVerified"
@@ -340,38 +297,43 @@ export default {
       />
     </section>
 
-    <!-- Regular Login Section -->
+    <!-- Login Card -->
     <section
       v-else
-      class="relative z-10 bg-white shadow sm:mx-auto mt-11 sm:w-full sm:max-w-lg dark:bg-n-solid-2 p-11 sm:shadow-lg sm:rounded-lg"
-      :class="{
-        'mb-8 mt-15': !showGoogleOAuth,
-        'animate-wiggle': loginApi.hasErrored,
-      }"
+      class="romicars-card"
+      :class="{ 'animate-wiggle': loginApi.hasErrored }"
     >
+      <!-- Logo -->
+      <div class="flex justify-center mb-8">
+        <img
+          :src="globalConfig.logo"
+          :alt="globalConfig.installationName"
+          class="h-10 w-auto max-w-[180px]"
+        />
+      </div>
+
+      <!-- Title & subtitle -->
+      <h1 class="romicars-title">Romicars Flow</h1>
+      <p class="romicars-subtitle">Accede al panel de gestión</p>
+
+      <!-- Form -->
       <div v-if="!email">
-        <div class="flex flex-col gap-4">
+        <div v-if="showGoogleOAuth || showSamlLogin" class="flex flex-col gap-4 mb-6">
           <GoogleOAuthButton v-if="showGoogleOAuth" />
           <div v-if="showSamlLogin" class="text-center">
             <router-link
               to="/app/login/sso"
-              class="inline-flex justify-center w-full px-4 py-3 items-center bg-n-background dark:bg-n-solid-3 rounded-md shadow-sm ring-1 ring-inset ring-n-container dark:ring-n-container focus:outline-offset-0 hover:bg-n-alpha-2 dark:hover:bg-n-alpha-2"
+              class="inline-flex justify-center w-full px-4 py-3 items-center bg-slate-100 rounded-lg ring-1 ring-inset ring-slate-200 hover:bg-slate-50 transition-colors"
             >
-              <Icon
-                icon="i-lucide-lock-keyhole"
-                class="size-5 text-n-slate-11"
-              />
-              <span class="ml-2 text-base font-medium text-n-slate-12">
+              <Icon icon="i-lucide-lock-keyhole" class="size-5 text-slate-500" />
+              <span class="ml-2 text-base font-medium text-slate-700">
                 {{ $t('LOGIN.SAML.LABEL') }}
               </span>
             </router-link>
           </div>
-          <SimpleDivider
-            v-if="showGoogleOAuth || showSamlLogin"
-            :label="$t('COMMON.OR')"
-            class="uppercase"
-          />
+          <SimpleDivider :label="$t('COMMON.OR')" class="uppercase" />
         </div>
+
         <form class="space-y-5" @submit.prevent="submitFormLogin">
           <FormInput
             v-model="credentials.email"
@@ -400,97 +362,300 @@ export default {
             <p v-if="!globalConfig.disableUserProfileUpdate">
               <router-link
                 to="auth/reset/password"
-                class="text-sm text-link"
+                class="text-sm text-blue-500 hover:underline"
                 tabindex="4"
               >
                 {{ $t('LOGIN.FORGOT_PASSWORD') }}
               </router-link>
             </p>
           </FormInput>
-          <NextButton
-            lg
+
+          <button
             type="submit"
-            data-testid="submit_button"
-            class="w-full"
             :tabindex="3"
-            :label="$t('LOGIN.SUBMIT')"
             :disabled="loginApi.showLoading"
-            :is-loading="loginApi.showLoading"
-          />
+            data-testid="submit_button"
+            class="romicars-submit-btn"
+          >
+            <Spinner
+              v-if="loginApi.showLoading"
+              color-scheme="primary"
+              size="sm"
+              class="mr-2"
+            />
+            {{ $t('LOGIN.SUBMIT') }}
+          </button>
         </form>
+
+        <p v-if="showSignupLink" class="mt-5 text-sm text-center text-slate-400">
+          {{ $t('COMMON.OR') }}
+          <router-link
+            to="auth/signup"
+            class="text-blue-500 hover:underline lowercase"
+          >
+            {{ $t('LOGIN.CREATE_NEW_ACCOUNT') }}
+          </router-link>
+        </p>
       </div>
-      <div v-else class="flex items-center justify-center">
+
+      <div v-else class="flex items-center justify-center py-10">
         <Spinner color-scheme="primary" size="" />
       </div>
+
+      <!-- Footer -->
+      <p class="mt-8 text-xs text-center text-slate-400">
+        Plataforma de gestión de clientes © Romicars
+      </p>
     </section>
   </main>
 </template>
 
 <style>
-/* Animated login background — dark mode only */
-.romicars-login-orbs {
+/* =============================================
+   ROMICARS LOGIN — Animated dark background
+   ============================================= */
+
+.romicars-login-root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0c1220;
+  position: relative;
+  overflow: hidden;
+  padding: 2rem 1rem;
+}
+
+/* ---- Animated background layer ---- */
+.romicars-bg {
   position: absolute;
   inset: 0;
   pointer-events: none;
   overflow: hidden;
 }
 
-.romicars-login-orb {
+/* ---- Orbs ---- */
+.romicars-orb {
   position: absolute;
   border-radius: 50%;
-  display: none;
+  filter: blur(90px);
+  will-change: transform, opacity;
 }
 
-.dark .romicars-login-orb {
-  display: block;
-  filter: blur(100px);
+.orb-1 {
+  width: 72vw;
+  height: 72vw;
+  background: radial-gradient(
+    circle at 40% 40%,
+    rgba(99, 102, 241, 0.3) 0%,
+    transparent 68%
+  );
+  top: -30%;
+  left: -18%;
+  animation:
+    orb-1-move 18s ease-in-out infinite alternate,
+    orb-pulse 8s ease-in-out infinite alternate;
 }
 
-.dark .romicars-orb-1 {
-  width: 60vw;
-  height: 60vw;
-  background: rgba(26, 54, 93, 0.5);
-  top: -25%;
-  left: -20%;
-  animation: orb-drift-1 24s ease-in-out infinite alternate;
+.orb-2 {
+  width: 58vw;
+  height: 58vw;
+  background: radial-gradient(
+    circle at 55% 55%,
+    rgba(147, 51, 234, 0.25) 0%,
+    transparent 68%
+  );
+  bottom: -24%;
+  right: -12%;
+  animation:
+    orb-2-move 24s ease-in-out infinite alternate,
+    orb-pulse 11s ease-in-out infinite alternate;
+  animation-delay: -6s, -4s;
 }
 
-.dark .romicars-orb-2 {
+.orb-3 {
   width: 42vw;
   height: 42vw;
-  background: rgba(54, 30, 44, 0.45);
-  bottom: -20%;
-  right: -12%;
-  animation: orb-drift-2 30s ease-in-out infinite alternate;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(220, 38, 38, 0.18) 0%,
+    transparent 68%
+  );
+  top: 18%;
+  right: 20%;
+  animation:
+    orb-3-move 21s ease-in-out infinite alternate,
+    orb-pulse 7s ease-in-out infinite alternate;
+  animation-delay: -10s, -2s;
 }
 
-.dark .romicars-orb-3 {
-  width: 32vw;
-  height: 32vw;
-  background: rgba(26, 54, 93, 0.3);
-  top: 38%;
-  right: 18%;
-  animation: orb-drift-3 20s ease-in-out infinite alternate;
+.orb-4 {
+  width: 38vw;
+  height: 38vw;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(14, 165, 233, 0.13) 0%,
+    transparent 68%
+  );
+  bottom: 8%;
+  left: 5%;
+  animation: orb-4-move 27s ease-in-out infinite alternate;
+  animation-delay: -14s;
 }
 
-@keyframes orb-drift-1 {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(14vw, 18vh); }
+@keyframes orb-1-move {
+  0%   { transform: translate(0, 0) scale(1); }
+  40%  { transform: translate(8vw, 10vh) scale(1.06); }
+  100% { transform: translate(5vw, 18vh) scale(0.94); }
+}
+@keyframes orb-2-move {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(-12vw, -9vh) scale(1.08); }
+  100% { transform: translate(-7vw, -16vh) scale(0.92); }
+}
+@keyframes orb-3-move {
+  0%   { transform: translate(0, 0) scale(1); }
+  35%  { transform: translate(-9vw, 9vh) scale(1.1); }
+  100% { transform: translate(9vw, -8vh) scale(0.9); }
+}
+@keyframes orb-4-move {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(13vw, -11vh); }
+}
+@keyframes orb-pulse {
+  0%   { opacity: 0.5; }
+  100% { opacity: 1; }
 }
 
-@keyframes orb-drift-2 {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(-11vw, -14vh); }
+/* ---- Floating particles ---- */
+.romicars-p {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  animation: particle-float linear infinite;
+  will-change: transform, opacity;
 }
 
-@keyframes orb-drift-3 {
-  0% { transform: translate(0, 0); }
-  50% { transform: translate(-9vw, 9vh); }
-  100% { transform: translate(11vw, -11vh); }
+.p-1  { width: 3px;  height: 3px;  left: 9%;  top: 88%; animation-duration: 12s; animation-delay: 0s; }
+.p-2  { width: 2px;  height: 2px;  left: 20%; top: 91%; animation-duration: 16s; animation-delay: -3s; }
+.p-3  { width: 4px;  height: 4px;  left: 36%; top: 87%; animation-duration: 10s; animation-delay: -7s; }
+.p-4  { width: 2px;  height: 2px;  left: 50%; top: 94%; animation-duration: 14s; animation-delay: -1s; }
+.p-5  { width: 3px;  height: 3px;  left: 63%; top: 86%; animation-duration: 11s; animation-delay: -9s; }
+.p-6  { width: 5px;  height: 5px;  left: 78%; top: 80%; animation-duration: 18s; animation-delay: -5s; }
+.p-7  { width: 2px;  height: 2px;  left: 29%; top: 96%; animation-duration: 13s; animation-delay: -6s; }
+.p-8  { width: 3px;  height: 3px;  left: 71%; top: 83%; animation-duration: 9s;  animation-delay: -2s; }
+.p-9  { width: 2px;  height: 2px;  left: 44%; top: 89%; animation-duration: 15s; animation-delay: -11s; }
+.p-10 { width: 4px;  height: 4px;  left: 86%; top: 90%; animation-duration: 12s; animation-delay: -8s; }
+
+@keyframes particle-float {
+  0%   { transform: translateY(0) translateX(0);     opacity: 0; }
+  6%   { opacity: 0.9; }
+  88%  { opacity: 0.3; }
+  100% { transform: translateY(-96vh) translateX(25px); opacity: 0; }
 }
 
+/* ---- Overlay sections (MFA / session limit) ---- */
+.romicars-overlay-section {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* ---- White card ---- */
+.romicars-card {
+  position: relative;
+  z-index: 10;
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 2.75rem 2.5rem;
+  width: 100%;
+  max-width: 450px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Force light appearance inside the white card */
+.romicars-card input[type='text'],
+.romicars-card input[type='email'],
+.romicars-card input[type='password'] {
+  background-color: #eef2f7 !important;
+  color: #1e293b !important;
+  border-color: #dde3ed !important;
+}
+.romicars-card input[type='text']:focus,
+.romicars-card input[type='email']:focus,
+.romicars-card input[type='password']:focus {
+  border-color: #6366f1 !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15) !important;
+  outline: none !important;
+}
+.romicars-card label {
+  color: #374151 !important;
+}
+.romicars-card p,
+.romicars-card span {
+  color: inherit;
+}
+
+/* ---- Card typography ---- */
+.romicars-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  color: #1a202c;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.25rem;
+}
+.romicars-subtitle {
+  font-size: 0.875rem;
+  text-align: center;
+  color: #94a3b8;
+  margin-bottom: 2rem;
+}
+
+/* ---- Red submit button ---- */
+.romicars-submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.8rem 1rem;
+  background: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    transform 0.1s ease,
+    box-shadow 0.18s ease;
+  letter-spacing: 0.02em;
+}
+.romicars-submit-btn:hover:not(:disabled) {
+  background: #b91c1c;
+  box-shadow: 0 4px 16px rgba(220, 38, 38, 0.45);
+}
+.romicars-submit-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.romicars-submit-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ---- Reduced motion ---- */
 @media (prefers-reduced-motion: reduce) {
-  .romicars-login-orb {
+  .romicars-orb,
+  .romicars-p {
     animation: none !important;
   }
 }
