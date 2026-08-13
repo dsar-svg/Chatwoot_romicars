@@ -78,6 +78,10 @@ const defaultState = {
       twitter: '',
     },
   },
+  customAttributes: {
+    marca_vehiculo: '',
+    modelo_vehiculo: '',
+  },
 };
 
 const state = reactive({ ...defaultState });
@@ -120,6 +124,7 @@ const prepareStateBasedOnProps = () => {
     phoneNumber,
     companyId = '',
     additionalAttributes = {},
+    customAttributes: customAttrs = {},
   } = props.contactData || {};
   const { firstName, lastName } = splitName(name || '');
   const {
@@ -153,6 +158,10 @@ const prepareStateBasedOnProps = () => {
         ...socialProfiles,
         telegram: telegramUsername,
       },
+    },
+    customAttributes: {
+      marca_vehiculo: customAttrs.marca_vehiculo || '',
+      modelo_vehiculo: customAttrs.modelo_vehiculo || '',
     },
   });
 };
@@ -329,6 +338,27 @@ defineExpose({
         </template>
       </div>
     </div>
+    <!-- Vehicle fields -->
+    <div class="flex flex-col items-start gap-2">
+      <span class="py-1 text-sm font-medium text-n-slate-12">Vehículo</span>
+      <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
+        <Input
+          v-model="state.customAttributes.marca_vehiculo"
+          placeholder="Marca del vehículo"
+          :custom-input-class="`h-8 !pt-1 !pb-1 ${!isDetailsView ? '[&:not(.error,.focus)]:!outline-transparent' : ''}`"
+          class="w-full"
+          @input="emit('update', state)"
+        />
+        <Input
+          v-model="state.customAttributes.modelo_vehiculo"
+          placeholder="Modelo del vehículo"
+          :custom-input-class="`h-8 !pt-1 !pb-1 ${!isDetailsView ? '[&:not(.error,.focus)]:!outline-transparent' : ''}`"
+          class="w-full"
+          @input="emit('update', state)"
+        />
+      </div>
+    </div>
+
     <div class="flex flex-col items-start gap-2">
       <span class="py-1 text-sm font-medium text-n-slate-12">
         {{ t('CONTACTS_LAYOUT.CARD.SOCIAL_MEDIA.TITLE') }}
