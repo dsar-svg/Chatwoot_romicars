@@ -290,9 +290,15 @@ export default {
 
 <template>
   <main
-    class="flex flex-col w-full min-h-screen py-20 bg-n-brand/5 dark:bg-n-background sm:px-6 lg:px-8"
+    class="relative flex flex-col w-full min-h-screen py-20 overflow-hidden bg-n-brand/5 dark:bg-[#0D1117] sm:px-6 lg:px-8"
   >
-    <section class="max-w-5xl mx-auto">
+    <!-- Animated orbs — visible in dark mode only via CSS -->
+    <div class="romicars-login-orbs" aria-hidden="true">
+      <div class="romicars-login-orb romicars-orb-1" />
+      <div class="romicars-login-orb romicars-orb-2" />
+      <div class="romicars-login-orb romicars-orb-3" />
+    </div>
+    <section class="relative z-10 max-w-5xl mx-auto">
       <img
         :src="globalConfig.logo"
         :alt="globalConfig.installationName"
@@ -309,14 +315,14 @@ export default {
       </h2>
       <p v-if="showSignupLink" class="mt-3 text-sm text-center text-n-slate-11">
         {{ $t('COMMON.OR') }}
-        <router-link to="auth/signup" class="lowercase text-link text-n-brand">
+        <router-link to="auth/signup" class="lowercase text-link text-blue-11">
           {{ $t('LOGIN.CREATE_NEW_ACCOUNT') }}
         </router-link>
       </p>
     </section>
 
     <!-- Session Limit Section -->
-    <section v-if="sessionsLimitReached" class="mt-11">
+    <section v-if="sessionsLimitReached" class="relative z-10 mt-11">
       <SessionLimitOverlay
         :sessions="limitedSessions"
         @revoke="handleSessionRevoke"
@@ -326,7 +332,7 @@ export default {
     </section>
 
     <!-- MFA Verification Section -->
-    <section v-else-if="mfaRequired" class="mt-11">
+    <section v-else-if="mfaRequired" class="relative z-10 mt-11">
       <MfaVerification
         :mfa-token="mfaToken"
         @verified="handleMfaVerified"
@@ -337,7 +343,7 @@ export default {
     <!-- Regular Login Section -->
     <section
       v-else
-      class="bg-white shadow sm:mx-auto mt-11 sm:w-full sm:max-w-lg dark:bg-n-solid-2 p-11 sm:shadow-lg sm:rounded-lg"
+      class="relative z-10 bg-white shadow sm:mx-auto mt-11 sm:w-full sm:max-w-lg dark:bg-n-solid-2 p-11 sm:shadow-lg sm:rounded-lg"
       :class="{
         'mb-8 mt-15': !showGoogleOAuth,
         'animate-wiggle': loginApi.hasErrored,
@@ -419,3 +425,73 @@ export default {
     </section>
   </main>
 </template>
+
+<style>
+/* Animated login background — dark mode only */
+.romicars-login-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.romicars-login-orb {
+  position: absolute;
+  border-radius: 50%;
+  display: none;
+}
+
+.dark .romicars-login-orb {
+  display: block;
+  filter: blur(100px);
+}
+
+.dark .romicars-orb-1 {
+  width: 60vw;
+  height: 60vw;
+  background: rgba(26, 54, 93, 0.5);
+  top: -25%;
+  left: -20%;
+  animation: orb-drift-1 24s ease-in-out infinite alternate;
+}
+
+.dark .romicars-orb-2 {
+  width: 42vw;
+  height: 42vw;
+  background: rgba(54, 30, 44, 0.45);
+  bottom: -20%;
+  right: -12%;
+  animation: orb-drift-2 30s ease-in-out infinite alternate;
+}
+
+.dark .romicars-orb-3 {
+  width: 32vw;
+  height: 32vw;
+  background: rgba(26, 54, 93, 0.3);
+  top: 38%;
+  right: 18%;
+  animation: orb-drift-3 20s ease-in-out infinite alternate;
+}
+
+@keyframes orb-drift-1 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(14vw, 18vh); }
+}
+
+@keyframes orb-drift-2 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-11vw, -14vh); }
+}
+
+@keyframes orb-drift-3 {
+  0% { transform: translate(0, 0); }
+  50% { transform: translate(-9vw, 9vh); }
+  100% { transform: translate(11vw, -11vh); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .romicars-login-orb {
+    animation: none !important;
+  }
+}
+</style>
