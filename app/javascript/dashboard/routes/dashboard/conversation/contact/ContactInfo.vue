@@ -59,6 +59,7 @@ export default {
     ...mapGetters({
       uiFlags: 'contacts/getUIFlags',
       currentChat: 'getSelectedChat',
+      contactAttributes: 'attributes/getContactAttributes',
     }),
     contactProfileLink() {
       return `/app/accounts/${this.$route.params.accountId}/contacts/${this.contact.id}`;
@@ -94,6 +95,16 @@ export default {
         twitter,
         telegram,
       };
+    },
+    contactCustomAttributes() {
+      const ca = this.contact.custom_attributes || {};
+      return this.contactAttributes
+        .filter(attr => ca[attr.attributeKey] !== undefined && ca[attr.attributeKey] !== '')
+        .map(attr => ({
+          key: attr.attributeKey,
+          label: attr.attributeDisplayName,
+          value: String(ca[attr.attributeKey]),
+        }));
     },
   },
   watch: {
@@ -258,6 +269,14 @@ export default {
             show-copy
             editable
             @update="value => onFieldUpdate('phone_number', value)"
+          />
+          <ContactInfoRow
+            v-for="attr in contactCustomAttributes"
+            :key="attr.key"
+            :value="attr.value"
+            icon="file-text"
+            emoji="🚗"
+            :title="attr.label"
           />
           <ContactInfoRow
             v-if="contact.identifier"
