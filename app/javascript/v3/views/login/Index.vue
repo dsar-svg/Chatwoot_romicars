@@ -313,7 +313,9 @@ export default {
       </div>
 
       <!-- Title & subtitle -->
-      <h1 class="romicars-title">Romicars Flow</h1>
+      <h1 class="romicars-title">
+        {{ replaceInstallationName($t('LOGIN.TITLE')) }}
+      </h1>
       <p class="romicars-subtitle">Accede al panel de gestión</p>
 
       <!-- Form -->
