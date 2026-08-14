@@ -11,6 +11,7 @@ import agentBot from './agentBots/agentBot.routes';
 import auditlogs from './auditlogs/audit.routes';
 import billing from './billing/billing.routes';
 import canned from './canned/canned.routes';
+import faqs from './faqs/faqs.routes';
 import inbox from './inbox/inbox.routes';
 import templates from './templates/templates.routes';
 import labels from './labels/labels.routes';
@@ -50,6 +51,7 @@ export default {
     ...auditlogs.routes,
     ...billing.routes,
     ...canned.routes,
+    ...faqs.routes,
     ...inbox.routes,
     ...templates.routes,
     ...data.routes,

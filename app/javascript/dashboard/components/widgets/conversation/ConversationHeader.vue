@@ -9,6 +9,7 @@ import MoreActions from './MoreActions.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import ConversationCallButton from './ConversationCallButton.vue';
+import Popover from 'dashboard/components-next/popover/Popover.vue';
 import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
@@ -97,6 +98,10 @@ const hasSlaPolicyId = computed(
   () => props.chat?.applied_sla?.id && !currentContact.value?.blocked
 );
 
+const botSummary = computed(
+  () => currentContact.value?.custom_attributes?.bot_summary
+);
+
 const copyConversationId = async () => {
   try {
     await copyTextToClipboard(String(props.chat.id));
@@ -131,7 +136,42 @@ const copyConversationId = async () => {
         class="flex flex-col items-start min-w-0 ml-2 overflow-hidden rtl:ml-0 rtl:mr-2"
       >
         <div class="flex flex-row items-center max-w-full gap-1 p-0 m-0">
+          <Popover v-if="botSummary" align="start">
+            <span
+              class="text-sm font-medium truncate leading-tight text-n-slate-12 cursor-pointer hover:text-n-slate-12/80 hover:underline"
+            >
+              {{ currentContact.name }}
+            </span>
+            <template #content="{ hide }">
+              <div class="p-4 w-80 max-w-[90vw]">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-semibold text-n-slate-12">
+                    {{ currentContact.name }}
+                  </span>
+                  <button
+                    class="i-lucide-x text-n-slate-11 hover:text-n-slate-12 cursor-pointer"
+                    @click="hide"
+                  />
+                </div>
+                <div class="bg-n-alpha-2 rounded-lg p-3">
+                  <p class="text-xs font-medium text-n-slate-11 mb-1 uppercase tracking-wide">
+                    Resumen del Asistente
+                  </p>
+                  <p class="text-sm text-n-slate-12 leading-relaxed whitespace-pre-wrap">
+                    {{ botSummary }}
+                  </p>
+                </div>
+                <p
+                  v-if="currentContact.custom_attributes?.handoff_reason"
+                  class="mt-2 text-xs text-n-slate-11"
+                >
+                  Motivo: {{ currentContact.custom_attributes.handoff_reason }}
+                </p>
+              </div>
+            </template>
+          </Popover>
           <span
+            v-else
             class="text-sm font-medium truncate leading-tight text-n-slate-12"
           >
             {{ currentContact.name }}

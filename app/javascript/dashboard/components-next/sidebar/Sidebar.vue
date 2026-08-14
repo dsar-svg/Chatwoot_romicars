@@ -819,6 +819,12 @@ const menuItems = computed(() => {
           icon: 'i-lucide-message-square-quote',
           to: accountScopedRoute('canned_list'),
         },
+        {
+          name: 'Settings FAQs',
+          label: 'FAQs',
+          icon: 'i-lucide-circle-help',
+          to: accountScopedRoute('faqs_list'),
+        },
         ...(hasDataImport.value
           ? [
               {
