@@ -22,6 +22,9 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
       @rate = Current.account.exchange_rates.find_or_initialize_by(effective_date: today)
       @rate.assign_attributes(result.merge(effective_date: today))
       @rate.save!
+
+      recalculate_prices(result[:equiv_13])
+
       render :show
     else
       render json: { error: 'No se pudo obtener la tasa BCV' }, status: :unprocessable_entity
@@ -32,5 +35,16 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
 
   def rate_params
     params.require(:exchange_rate).permit(:rate, :equiv_13, :effective_date, :source)
+  end
+
+  def recalculate_prices(equiv_13)
+    Current.account.vehicle_prices.find_each do |price|
+      next unless price.divisor.present?
+
+      price.update_columns(
+        cost_bs: (price.divisor * equiv_13).round(2),
+        bolivares: (price.divisor * 1.13).round(2)
+      )
+    end
   end
 end

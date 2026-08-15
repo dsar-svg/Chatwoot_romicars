@@ -13,9 +13,29 @@ class FetchExchangeRatesJob < ApplicationJob
       rate.assign_attributes(rate_data.merge(effective_date: today))
       rate.save!
 
-      Rails.logger.info "[FetchExchangeRates] Updated rate for account #{account.id}: #{rate_data[:rate]} Bs/USD"
+      recalculate_prices(account, rate_data)
+
+      Rails.logger.info "[FetchExchangeRates] Account #{account.id}: rate=#{rate_data[:rate]}, equiv_13=#{rate_data[:equiv_13]}"
     rescue StandardError => e
       Rails.logger.error "[FetchExchangeRates] Failed for account #{account.id}: #{e.message}"
+    end
+  end
+
+  private
+
+  def recalculate_prices(account, rate_data)
+    equiv_13 = rate_data[:equiv_13]
+
+    account.vehicle_prices.find_each do |price|
+      next unless price.divisor.present?
+
+      new_cost_bs = (price.divisor * equiv_13).round(2)
+      new_bolivares = (price.divisor * 1.13).round(2)
+
+      price.update_columns(
+        cost_bs: new_cost_bs,
+        bolivares: new_bolivares
+      )
     end
   end
 end
