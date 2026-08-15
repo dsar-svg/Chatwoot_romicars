@@ -19,8 +19,6 @@ json.payload @prices do |price|
       json.name price.vehicle_model.name
     end
   end
-  json.created_at price.created_at
-  json.updated_at price.updated_at
 end
 
 json.meta {

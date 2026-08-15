@@ -49,14 +49,30 @@ export default {
         m => m.brand?.id === Number(this.vehicle_brand_id)
       );
     },
+    latestRate() {
+      return this.$store.getters['exchangeRates/getLatestRate'];
+    },
+    calculatedCostBs() {
+      if (!this.divisor || !this.latestRate) return null;
+      return Number((this.divisor * this.latestRate.equiv_13).toFixed(2));
+    },
+    calculatedBolivares() {
+      if (!this.divisor) return null;
+      return Number((this.divisor * 1.13).toFixed(2));
+    },
+  },
+  watch: {
+    divisor() {
+      this.cost_bs = this.calculatedCostBs;
+      this.bolivares = this.calculatedBolivares;
+    },
   },
   async mounted() {
-    try {
-      await this.$store.dispatch('vehicleBrands/get');
-      await this.$store.dispatch('vehicleModels/get');
-    } catch (error) {
-      // Ignore
-    }
+    await Promise.all([
+      this.$store.dispatch('vehicleBrands/get'),
+      this.$store.dispatch('vehicleModels/get'),
+      this.$store.dispatch('exchangeRates/get'),
+    ]);
   },
   methods: {
     async addPrice() {
@@ -113,7 +129,11 @@ export default {
               @blur="v$.vehicle_brand_id.$touch"
             >
               <option :value="null">Seleccionar marca</option>
-              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
+              <option
+                v-for="brand in brands"
+                :key="brand.id"
+                :value="brand.id"
+              >
                 {{ brand.name }}
               </option>
             </select>
@@ -161,8 +181,12 @@ export default {
           </div>
           <div class="w-full">
             <label>
-              Divisor
-              <input v-model.number="divisor" type="number" min="0" />
+              Divisor (DIVISA)
+              <input
+                v-model.number="divisor"
+                type="number"
+                min="0"
+              />
             </label>
           </div>
         </div>
@@ -170,19 +194,24 @@ export default {
         <div class="flex gap-4">
           <div class="w-full">
             <label>
-              Monto Bs.
+              Monto Bs. (auto)
               <input
-                v-model.number="cost_bs"
-                type="number"
-                step="0.01"
-                min="0"
+                :value="calculatedCostBs"
+                type="text"
+                disabled
+                class="!bg-n-alpha-2"
               />
             </label>
           </div>
           <div class="w-full">
             <label>
-              Bolívares
-              <input v-model.number="bolivares" type="number" min="0" />
+              Bolívares (auto)
+              <input
+                :value="calculatedBolivares"
+                type="text"
+                disabled
+                class="!bg-n-alpha-2"
+              />
             </label>
           </div>
         </div>
@@ -199,7 +228,9 @@ export default {
             type="submit"
             label="Crear Precio"
             :disabled="
-              v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading
+              v$.description.$invalid ||
+              v$.vehicle_brand_id.$invalid ||
+              loading
             "
             :is-loading="loading"
           />

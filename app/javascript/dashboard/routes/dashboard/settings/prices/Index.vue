@@ -2,7 +2,7 @@
 import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { picoSearch } from '@scmmishra/pico-search';
 import AddPrice from './AddPrice.vue';
@@ -31,14 +31,26 @@ const showDeleteConfirmationPopup = ref(false);
 const activePrice = ref({});
 const loading = ref({});
 const searchQuery = ref('');
+const debouncedQuery = ref('');
 const filterBrand = ref('');
 const filterModel = ref('');
+const page = ref(1);
+const perPage = 50;
+let debounceTimer = null;
 
 const records = computed(() => getters['vehiclePrices/getPrices'].value);
 const uiFlags = computed(() => getters['vehiclePrices/getUIFlags'].value);
 const rateFlags = computed(() => getters['exchangeRates/getUIFlags'].value);
 const brands = computed(() => getters['vehicleBrands/getBrands'].value);
+const models = computed(() => getters['vehicleModels/getModels'].value);
 const latestRate = computed(() => getters['exchangeRates/getLatestRate'].value);
+
+const filteredModels = computed(() => {
+  if (!filterBrand.value) return [];
+  return models.value.filter(
+    m => m.brand?.id === Number(filterBrand.value)
+  );
+});
 
 const filteredRecords = computed(() => {
   let items = records.value;
@@ -50,13 +62,32 @@ const filteredRecords = computed(() => {
     items = items.filter(p => p.model?.id === Number(filterModel.value));
   }
 
-  const query = searchQuery.value.trim();
+  const query = debouncedQuery.value.trim();
   if (query) {
     items = picoSearch(items, query, ['description', 'variant']);
   }
 
   return items;
 });
+
+const totalPages = computed(() =>
+  Math.ceil(filteredRecords.value.length / perPage)
+);
+
+const pagedRecords = computed(() => {
+  const start = (page.value - 1) * perPage;
+  return filteredRecords.value.slice(start, start + perPage);
+});
+
+const calcCostBs = divisor => {
+  if (!divisor || !latestRate.value) return null;
+  return Number((divisor * latestRate.value.equiv_13).toFixed(2));
+};
+
+const calcBolivares = divisor => {
+  if (!divisor) return null;
+  return Number((divisor * 1.13).toFixed(2));
+};
 
 const fetchPrices = async () => {
   try {
@@ -74,6 +105,14 @@ const fetchBrands = async () => {
   }
 };
 
+const fetchModels = async () => {
+  try {
+    await store.dispatch('vehicleModels/get');
+  } catch (error) {
+    // Ignore Error
+  }
+};
+
 const fetchLatestRate = async () => {
   try {
     await store.dispatch('exchangeRates/get');
@@ -82,19 +121,27 @@ const fetchLatestRate = async () => {
   }
 };
 
-const refreshRate = async () => {
-  try {
-    await store.dispatch('exchangeRates/fetchCurrent');
-    useAlert('Tasa BCV actualizada correctamente');
-    await fetchPrices();
-  } catch (error) {
-    useAlert(error?.message || 'Error al obtener tasa BCV');
-  }
-};
+watch(searchQuery, val => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    debouncedQuery.value = val;
+    page.value = 1;
+  }, 300);
+});
+
+watch(filterBrand, () => {
+  filterModel.value = '';
+  page.value = 1;
+});
+
+watch(filterModel, () => {
+  page.value = 1;
+});
 
 onMounted(() => {
   fetchPrices();
   fetchBrands();
+  fetchModels();
   fetchLatestRate();
 });
 
@@ -147,6 +194,15 @@ const confirmDeletion = () => {
   deletePrice(activePrice.value.id);
 };
 
+const refreshRate = async () => {
+  try {
+    await store.dispatch('exchangeRates/fetchCurrent');
+    useAlert('Tasa BCV actualizada correctamente');
+  } catch (error) {
+    useAlert(error?.message || 'Error al obtener tasa BCV');
+  }
+};
+
 const formatCurrency = value => {
   if (!value) return '—';
   return `$${Number(value).toFixed(2)}`;
@@ -169,21 +225,25 @@ const tableHeaders = computed(() => [
   'Bs.',
   'Acciones',
 ]);
+
+const goToPage = p => {
+  page.value = Math.max(1, Math.min(p, totalPages.value));
+};
 </script>
 
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    loading-message="Cargando precios..."
+    :loading-message="'Cargando precios...'"
     :no-records-found="!records.length"
-    no-records-message="No hay precios cargados"
+    :no-records-message="'No hay precios cargados'"
   >
     <template #header>
       <BaseSettingsHeader
         v-model:search-query="searchQuery"
         title="Lista de Precios"
         description="Gestiona los precios de repuestos por marca y modelo"
-        search-placeholder="Buscar por descripción..."
+        :search-placeholder="'Buscar por descripción...'"
       >
         <template v-if="records?.length" #count>
           <span class="text-body-main text-n-slate-11">
@@ -242,15 +302,24 @@ const tableHeaders = computed(() => [
             {{ brand.name }}
           </option>
         </select>
+        <select v-model="filterModel" class="text-sm">
+          <option value="">Todos los modelos</option>
+          <option v-for="m in filteredModels" :key="m.id" :value="m.id">
+            {{ m.name }}
+          </option>
+        </select>
+        <span v-if="filteredRecords.length" class="text-xs text-n-slate-11">
+          {{ filteredRecords.length }} resultados
+        </span>
       </div>
 
       <BaseTable
         :headers="tableHeaders"
-        :items="filteredRecords"
+        :items="pagedRecords"
         :no-data-message="
           !records.length
             ? 'No hay precios cargados'
-            : searchQuery
+            : searchQuery || filterBrand || filterModel
               ? 'Sin resultados'
               : ''
         "
@@ -307,7 +376,7 @@ const tableHeaders = computed(() => [
 
               <BaseTableCell class="w-24">
                 <span class="text-sm text-n-blue-11">
-                  {{ formatBs(price.cost_bs) }}
+                  {{ formatBs(calcCostBs(price.divisor)) }}
                 </span>
               </BaseTableCell>
 
@@ -335,6 +404,64 @@ const tableHeaders = computed(() => [
           </BaseTableRow>
         </template>
       </BaseTable>
+
+      <!-- Pagination -->
+      <div
+        v-if="totalPages > 1"
+        class="flex items-center justify-between px-4 py-3 mt-2"
+      >
+        <span class="text-xs text-n-slate-11">
+          Mostrando {{ (page - 1) * perPage + 1 }}-{{
+            Math.min(page * perPage, filteredRecords.length)
+          }}
+          de {{ filteredRecords.length }}
+        </span>
+        <div class="flex items-center gap-1">
+          <Button
+            icon="i-lucide-chevron-left"
+            size="sm"
+            slate
+            ghost
+            :disabled="page <= 1"
+            @click="goToPage(page - 1)"
+          />
+          <Button
+            v-for="p in Math.min(totalPages, 7)"
+            :key="p"
+            size="sm"
+            :label="String(p)"
+            :class="p === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'"
+            slate
+            ghost
+            @click="goToPage(p)"
+          />
+          <Button
+            v-if="totalPages > 7"
+            size="sm"
+            label="..."
+            slate
+            ghost
+            disabled
+          />
+          <Button
+            v-if="totalPages > 7"
+            size="sm"
+            :label="String(totalPages)"
+            slate
+            ghost
+            :class="totalPages === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'"
+            @click="goToPage(totalPages)"
+          />
+          <Button
+            icon="i-lucide-chevron-right"
+            size="sm"
+            slate
+            ghost
+            :disabled="page >= totalPages"
+            @click="goToPage(page + 1)"
+          />
+        </div>
+      </div>
     </template>
 
     <woot-modal v-model:show="showAddPopup" :on-close="hideAddPopup">
