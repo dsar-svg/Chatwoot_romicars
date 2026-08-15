@@ -74,3 +74,10 @@ remove_orphan_conversations_job:
   cron: '0 */12 * * *'
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
+
+# executed every 6 hours
+# to fetch the daily BCV exchange rate from ve.dolarapi.com
+fetch_exchange_rates_job:
+  cron: '0 */6 * * *'
+  class: 'FetchExchangeRatesJob'
+  queue: scheduled_jobs

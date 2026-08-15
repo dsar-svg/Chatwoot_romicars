@@ -116,6 +116,9 @@ const fetchModels = async () => {
 const fetchLatestRate = async () => {
   try {
     await store.dispatch('exchangeRates/get');
+    if (!latestRate.value) {
+      await store.dispatch('exchangeRates/fetchCurrent');
+    }
   } catch (error) {
     // Ignore Error
   }
@@ -252,7 +255,6 @@ const goToPage = p => {
         </template>
         <template #actions>
           <Button
-            v-if="latestRate"
             label="Actualizar Tasa BCV"
             size="sm"
             slate
@@ -279,19 +281,30 @@ const goToPage = p => {
     <template #body>
       <!-- Tasa BCV banner -->
       <div
-        v-if="latestRate"
         class="flex items-center gap-3 px-4 py-2 mb-4 rounded-lg bg-n-alpha-2 text-n-slate-12"
       >
         <Icon class="size-5 text-n-brand-11" icon="i-lucide-banknote" />
-        <span class="text-sm font-medium">
-          Tasa BCV: {{ formatCurrency(latestRate.rate) }} Bs/USD
-        </span>
-        <span class="text-xs text-n-slate-11">
-          ({{ formatBs(latestRate.equiv_13) }} equiv. 13%)
-        </span>
-        <span class="text-xs text-n-slate-11">
-          Actualizado: {{ latestRate.effective_date }}
-        </span>
+        <template v-if="rateFlags.fetchingList || rateFlags.fetchingCurrent">
+          <span class="text-sm text-n-slate-11 animate-pulse">
+            Consultando tasa BCV...
+          </span>
+        </template>
+        <template v-else-if="latestRate">
+          <span class="text-sm font-medium">
+            Tasa BCV: {{ formatCurrency(latestRate.rate) }} Bs/USD
+          </span>
+          <span class="text-xs text-n-slate-11">
+            ({{ formatBs(latestRate.equiv_13) }} equiv. 13%)
+          </span>
+          <span class="text-xs text-n-slate-11">
+            Actualizado: {{ latestRate.effective_date }}
+          </span>
+        </template>
+        <template v-else>
+          <span class="text-sm text-n-ruby-11">
+            No hay tasa BCV disponible
+          </span>
+        </template>
       </div>
 
       <!-- Filters -->
