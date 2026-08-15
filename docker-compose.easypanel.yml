@@ -1,6 +1,6 @@
 services:
   rails:
-    image: ghcr.io/chatgptsupricom-sudo/chatwoot:latest
+    image: ghcr.io/dsar-svg/chatwoot_romicars:latest
     depends_on:
       - postgres
       - redis
@@ -44,7 +44,7 @@ services:
     restart: always
 
   sidekiq:
-    image: ghcr.io/chatgptsupricom-sudo/chatwoot:latest
+    image: ghcr.io/dsar-svg/chatwoot_romicars:latest
     depends_on:
       - postgres
       - redis

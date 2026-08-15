@@ -13,49 +13,48 @@ namespace :vehicles do
 
     puts "Seeding vehicle data for account #{account.id}..."
 
-    # Create brands
     brands_data = {
-      'DONGFENG' => %w[MINI ZNA S30],
+      'DONGFENG' => ['MINI', 'ZNA', 'S30'],
       'HAIMA' => ['HAIMA 7'],
       'ZOTYE' => ['NOMADA'],
       'CHANA' => ['CHANA 1.1'],
-      'CHERY' => %w[ARAUCA ARAUCA_NUEVO_S15 ORINOCO X1 TIGGO_2.0 TIUNA_X5 PANEL_H5 GRAN_TIGGO]
+      'CHERY' => ['ARAUCA', 'ARAUCA NUEVO S15', 'ORINOCO', 'X1', 'QQ 2018', 'TIGGO 2.0', 'TIUNA X5', 'PANEL H5', 'GRAN TIGGO']
     }
 
-    brands = {}
     brands_data.each do |brand_name, model_names|
       brand = account.vehicle_brands.find_or_create_by!(name: brand_name)
-      brands[brand_name] = brand
       puts "  Brand: #{brand.name} (ID: #{brand.id})"
 
       model_names.each do |model_name|
-        display_name = model_name.gsub('_', ' ')
         account.vehicle_models.find_or_create_by!(
           vehicle_brand: brand,
-          name: display_name
+          name: model_name
         )
-        puts "    Model: #{display_name}"
+        puts "    Model: #{model_name}"
       end
     end
 
-    # Create default exchange rate
     rate_data = ExchangeRate.fetch_bcv_rate
     if rate_data
       today = Date.current
       account.exchange_rates.find_or_create_by!(
         effective_date: today
       ).update!(rate_data)
-      puts "  Exchange rate: #{rate_data[:rate]} Bs/USD"
+      puts "  Exchange rate: #{rate_data[:rate]} Bs/USD (equiv 13%: #{rate_data[:equiv_13]})"
+    else
+      puts '  WARNING: could not fetch BCV rate, skipping exchange rate seed'
     end
 
-    # Import prices from CSV
     if File.exist?(csv_path)
       puts "\nImporting prices from #{csv_path}..."
       result = VehiclePriceImportService.new(account, File.open(csv_path)).call
       if result[:success]
         puts "  Created: #{result[:created]} prices"
         puts "  Updated: #{result[:updated]} prices"
-        puts "  Total: #{result[:total]} rows"
+        puts "  Skipped: #{result[:skipped].size} rows (unknown brand/model)"
+        result[:skipped].each do |s|
+          puts "    Row #{s[:row]}: '#{s[:description]}' (variant: '#{s[:variant]}')"
+        end
         puts "  Errors: #{result[:errors].size}" if result[:errors].any?
       else
         puts "  ERROR: #{result[:error]}"

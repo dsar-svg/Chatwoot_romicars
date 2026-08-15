@@ -93,6 +93,10 @@ export default {
           <p>
             Creados: {{ result.created }} | Actualizados: {{ result.updated }}
           </p>
+          <p v-if="result.skipped?.length">
+            Omitidas: {{ result.skipped.length }} filas (marca/modelo no
+            reconocido)
+          </p>
           <p v-if="result.errors?.length">
             Errores: {{ result.errors.length }} filas con problemas
           </p>
