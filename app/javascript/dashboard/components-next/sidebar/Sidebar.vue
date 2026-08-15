@@ -825,6 +825,18 @@ const menuItems = computed(() => {
           icon: 'i-lucide-circle-help',
           to: accountScopedRoute('faqs_list'),
         },
+        {
+          name: 'Settings Vehicle Brands',
+          label: 'Marcas y Modelos',
+          icon: 'i-lucide-car',
+          to: accountScopedRoute('vehicle_brands_list'),
+        },
+        {
+          name: 'Settings Vehicle Prices',
+          label: 'Lista de Precios',
+          icon: 'i-lucide-dollar-sign',
+          to: accountScopedRoute('vehicle_prices_list'),
+        },
         ...(hasDataImport.value
           ? [
               {

@@ -15,6 +15,10 @@ import campaigns from './modules/campaigns';
 import cannedResponse from './modules/cannedResponse';
 import categories from './modules/helpCenterCategories';
 import faqs from './modules/faqs';
+import vehicleBrands from './modules/vehicleBrands';
+import vehicleModels from './modules/vehicleModels';
+import vehiclePrices from './modules/vehiclePrices';
+import exchangeRates from './modules/exchangeRates';
 import contactConversations from './modules/contactConversations';
 import contactLabels from './modules/contactLabels';
 import contactNotes from './modules/contactNotes';
@@ -83,6 +87,10 @@ export default createStore({
     cannedResponse,
     categories,
     faqs,
+    vehicleBrands,
+    vehicleModels,
+    vehiclePrices,
+    exchangeRates,
     contactConversations,
     contactLabels,
     contactNotes,

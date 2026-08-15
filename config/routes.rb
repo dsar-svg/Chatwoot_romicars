@@ -125,6 +125,19 @@ Rails.application.routes.draw do
           end
           resources :canned_responses, only: [:index, :create, :update, :destroy]
           resources :faqs, only: [:index, :show, :create, :update, :destroy]
+          resources :vehicle_brands, only: [:index, :show, :create, :update, :destroy] do
+            resources :vehicle_models, only: [:index, :show, :create, :update, :destroy]
+          end
+          resources :vehicle_prices, only: [:index, :show, :create, :update, :destroy] do
+            collection do
+              post :import
+            end
+          end
+          resources :exchange_rates, only: [:index, :show, :create] do
+            collection do
+              post :fetch_current
+            end
+          end
           resources :automation_rules, only: [:index, :create, :show, :update, :destroy] do
             post :clone
           end
