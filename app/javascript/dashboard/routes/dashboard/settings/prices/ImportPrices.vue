@@ -36,7 +36,10 @@ export default {
       try {
         const formData = new FormData();
         formData.append('file', this.file);
-        this.result = await this.$store.dispatch('vehiclePrices/import', formData);
+        this.result = await this.$store.dispatch(
+          'vehiclePrices/import',
+          formData
+        );
         if (this.result.success) {
           useAlert(
             `Importación completada: ${this.result.created} creados, ${this.result.updated} actualizados`
@@ -65,9 +68,7 @@ export default {
 
       <div class="flex flex-col w-full p-4">
         <div class="mb-4">
-          <p class="text-sm text-n-slate-11 mb-2">
-            Formato esperado del CSV:
-          </p>
+          <p class="text-sm text-n-slate-11 mb-2">Formato esperado del CSV:</p>
           <code class="text-xs text-n-slate-11 bg-n-alpha-2 px-2 py-1 rounded">
             DESCRIPCION,MODELO,COSTO,DIVISA,MONTO Bs,BOLIVARES
           </code>
@@ -84,15 +85,23 @@ export default {
           </label>
         </div>
 
-        <div v-if="result && result.success" class="mb-4 p-3 rounded-lg bg-n-green-2 text-n-green-12 text-sm">
+        <div
+          v-if="result && result.success"
+          class="mb-4 p-3 rounded-lg bg-n-green-2 text-n-green-12 text-sm"
+        >
           <p>✅ Importación exitosa</p>
-          <p>Creados: {{ result.created }} | Actualizados: {{ result.updated }}</p>
+          <p>
+            Creados: {{ result.created }} | Actualizados: {{ result.updated }}
+          </p>
           <p v-if="result.errors?.length">
             Errores: {{ result.errors.length }} filas con problemas
           </p>
         </div>
 
-        <div v-if="result && !result.success" class="mb-4 p-3 rounded-lg bg-n-ruby-2 text-n-ruby-12 text-sm">
+        <div
+          v-if="result && !result.success"
+          class="mb-4 p-3 rounded-lg bg-n-ruby-2 text-n-ruby-12 text-sm"
+        >
           <p>❌ {{ result.error }}</p>
         </div>
 

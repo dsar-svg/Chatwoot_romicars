@@ -114,7 +114,11 @@ export default {
         <div class="w-full">
           <label :class="{ error: v$.vehicle_brand_id.$error }">
             Marca *
-            <select v-model="vehicle_brand_id" class="w-full" @blur="v$.vehicle_brand_id.$touch">
+            <select
+              v-model="vehicle_brand_id"
+              class="w-full"
+              @blur="v$.vehicle_brand_id.$touch"
+            >
               <option :value="null">Seleccionar marca</option>
               <option v-for="brand in brands" :key="brand.id" :value="brand.id">
                 {{ brand.name }}
@@ -128,7 +132,11 @@ export default {
             Modelo
             <select v-model="vehicle_model_id" class="w-full">
               <option :value="null">Sin modelo específico</option>
-              <option v-for="model in filteredModels" :key="model.id" :value="model.id">
+              <option
+                v-for="model in filteredModels"
+                :key="model.id"
+                :value="model.id"
+              >
                 {{ model.name }}
               </option>
             </select>
@@ -161,11 +169,7 @@ export default {
           <div class="w-full">
             <label>
               Divisor
-              <input
-                v-model.number="divisor"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="divisor" type="number" min="0" />
             </label>
           </div>
         </div>
@@ -185,25 +189,19 @@ export default {
           <div class="w-full">
             <label>
               Bolívares
-              <input
-                v-model.number="bolivares"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="bolivares" type="number" min="0" />
             </label>
           </div>
         </div>
 
         <div class="flex items-center gap-2 pt-2 pb-4">
           <input
+            id="price-active"
             v-model="active"
             type="checkbox"
-            id="price-active"
             class="!w-auto"
           />
-          <label for="price-active" class="!mb-0 !pb-0">
-            Activo
-          </label>
+          <label for="price-active" class="!mb-0 !pb-0"> Activo </label>
         </div>
 
         <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">
@@ -217,7 +215,9 @@ export default {
           <NextButton
             type="submit"
             label="Guardar cambios"
-            :disabled="v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading"
+            :disabled="
+              v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading
+            "
             :is-loading="loading"
           />
         </div>

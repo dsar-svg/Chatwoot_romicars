@@ -25,6 +25,7 @@ const actions = {
       const response = await ExchangeRateAPI.get();
       commit(types.default.SET_EXCHANGE_RATES, response.data.payload);
       commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, { fetchingList: false });
+      return response.data.payload;
     } catch (error) {
       commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, { fetchingList: false });
       return throwErrorMessage(error);
@@ -36,10 +37,14 @@ const actions = {
     try {
       const response = await ExchangeRateAPI.fetchCurrent();
       commit(types.default.ADD_EXCHANGE_RATE, response.data.payload);
-      commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, { fetchingCurrent: false });
+      commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, {
+        fetchingCurrent: false,
+      });
       return response.data.payload;
     } catch (error) {
-      commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, { fetchingCurrent: false });
+      commit(types.default.SET_EXCHANGE_RATE_UI_FLAG, {
+        fetchingCurrent: false,
+      });
       return throwErrorMessage(error);
     }
   },

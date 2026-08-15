@@ -3,14 +3,12 @@ import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import { computed, onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { useRouter } from 'vue-router';
 import AddBrand from './AddBrand.vue';
 import EditBrand from './EditBrand.vue';
 
 import Button from 'dashboard/components-next/button/Button.vue';
-import Icon from 'dashboard/components-next/icon/Icon.vue';
 import {
   BaseTable,
   BaseTableRow,
@@ -24,7 +22,6 @@ defineOptions({
 const getters = useStoreGetters();
 const store = useStore();
 const router = useRouter();
-const { t } = useI18n();
 
 const showAddPopup = ref(false);
 const showEditPopup = ref(false);
@@ -97,15 +94,20 @@ const goToModels = brand => {
 
 const deleteMessage = computed(() => `"${activeBrand.value.name}"?`);
 
-const tableHeaders = computed(() => ['Marca', 'Modelos', 'Precios', 'Acciones']);
+const tableHeaders = computed(() => [
+  'Marca',
+  'Modelos',
+  'Precios',
+  'Acciones',
+]);
 </script>
 
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    :loading-message="'Cargando marcas...'"
+    loading-message="Cargando marcas..."
     :no-records-found="!records.length"
-    :no-records-message="'No hay marcas creadas'"
+    no-records-message="No hay marcas creadas"
   >
     <template #header>
       <BaseSettingsHeader
@@ -127,7 +129,7 @@ const tableHeaders = computed(() => ['Marca', 'Modelos', 'Precios', 'Acciones'])
       <BaseTable
         :headers="tableHeaders"
         :items="records"
-        :no-data-message="'No hay marcas creadas'"
+        no-data-message="No hay marcas creadas"
       >
         <template #header-0>{{ tableHeaders[0] }}</template>
         <template #header-1>{{ tableHeaders[1] }}</template>

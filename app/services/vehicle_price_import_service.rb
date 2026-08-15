@@ -8,7 +8,6 @@ class VehiclePriceImportService
 
   def call
     require 'csv'
-    require 'roo'
 
     ext = File.extname(@file.original_filename).downcase
     rows = case ext
@@ -21,6 +20,8 @@ class VehiclePriceImportService
            end
 
     import_rows(rows)
+  rescue LoadError
+    { success: false, error: 'Importación de Excel no disponible. Convierta el archivo a CSV.' }
   rescue StandardError => e
     { success: false, error: "Error al procesar archivo: #{e.message}" }
   end
@@ -33,6 +34,8 @@ class VehiclePriceImportService
   end
 
   def parse_excel
+    require 'roo'
+
     spreadsheet = Roo::Spreadsheet.open(@file.path)
     sheet = spreadsheet.sheet(0)
     headers = sheet.row(1).map { |h| h.to_s.strip }
@@ -66,6 +69,7 @@ class VehiclePriceImportService
         description: description,
         variant: variant
       )
+      was_new = price.new_record?
 
       price.assign_attributes(
         cost_usd: cost_usd,
@@ -75,7 +79,7 @@ class VehiclePriceImportService
       )
 
       if price.save
-        price.new_record? ? created += 1 : updated += 1
+        was_new ? created += 1 : updated += 1
       else
         errors << { row: i + 2, errors: price.errors.full_messages }
       end

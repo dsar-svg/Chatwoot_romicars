@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'net/http'
+require 'json'
+
 class ExchangeRate < ApplicationRecord
   belongs_to :account
 
@@ -10,15 +13,20 @@ class ExchangeRate < ApplicationRecord
   scope :ordered, -> { order(effective_date: :desc) }
   scope :latest, -> { order(effective_date: :desc).first }
 
-  def self.fetch_bcv_rate
-    response = HTTParty.get('https://ve.dolarapi.com/v1/dolares')
-    return nil unless response.success?
+  BCV_API_URL = 'https://ve.dolarapi.com/v1/dolares'
 
-    official = response.parsed_response.find { |d| d['fuente'] == 'oficial' }
+  def self.fetch_bcv_rate
+    uri = URI(BCV_API_URL)
+    response = Net::HTTP.get(uri)
+    data = JSON.parse(response)
+
+    official = data.find { |d| d['fuente'] == 'oficial' }
     return nil unless official
 
     rate = official['promedio'].to_d
     equiv_13 = (rate * 1.13).round(2)
     { rate: rate, equiv_13: equiv_13, source: 've.dolarapi.com' }
+  rescue StandardError
+    nil
   end
 end

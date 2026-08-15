@@ -4,7 +4,7 @@ import { required } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
-import Modal from '../../../../components/Modal.vue';
+import Modal from '../../../../../components/Modal.vue';
 
 export default {
   name: 'EditVehicleModel',
@@ -79,14 +79,12 @@ export default {
 
         <div class="flex items-center gap-2 pt-2 pb-4">
           <input
+            id="model-active"
             v-model="active"
             type="checkbox"
-            id="model-active"
             class="!w-auto"
           />
-          <label for="model-active" class="!mb-0 !pb-0">
-            Activo
-          </label>
+          <label for="model-active" class="!mb-0 !pb-0"> Activo </label>
         </div>
 
         <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">

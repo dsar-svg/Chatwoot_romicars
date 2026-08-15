@@ -1,6 +1,6 @@
 <script>
 import { useVuelidate } from '@vuelidate/core';
-import { required, numeric } from '@vuelidate/validators';
+import { required } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -107,7 +107,11 @@ export default {
         <div class="w-full">
           <label :class="{ error: v$.vehicle_brand_id.$error }">
             Marca *
-            <select v-model="vehicle_brand_id" class="w-full" @blur="v$.vehicle_brand_id.$touch">
+            <select
+              v-model="vehicle_brand_id"
+              class="w-full"
+              @blur="v$.vehicle_brand_id.$touch"
+            >
               <option :value="null">Seleccionar marca</option>
               <option v-for="brand in brands" :key="brand.id" :value="brand.id">
                 {{ brand.name }}
@@ -121,7 +125,11 @@ export default {
             Modelo
             <select v-model="vehicle_model_id" class="w-full">
               <option :value="null">Sin modelo específico</option>
-              <option v-for="model in filteredModels" :key="model.id" :value="model.id">
+              <option
+                v-for="model in filteredModels"
+                :key="model.id"
+                :value="model.id"
+              >
                 {{ model.name }}
               </option>
             </select>
@@ -154,11 +162,7 @@ export default {
           <div class="w-full">
             <label>
               Divisor
-              <input
-                v-model.number="divisor"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="divisor" type="number" min="0" />
             </label>
           </div>
         </div>
@@ -178,11 +182,7 @@ export default {
           <div class="w-full">
             <label>
               Bolívares
-              <input
-                v-model.number="bolivares"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="bolivares" type="number" min="0" />
             </label>
           </div>
         </div>
@@ -198,7 +198,9 @@ export default {
           <NextButton
             type="submit"
             label="Crear Precio"
-            :disabled="v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading"
+            :disabled="
+              v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading
+            "
             :is-loading="loading"
           />
         </div>

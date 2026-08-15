@@ -25,6 +25,7 @@ const actions = {
       const response = await VehicleModelAPI.get({ brandId });
       commit(types.default.SET_VEHICLE_MODELS, response.data.payload);
       commit(types.default.SET_VEHICLE_MODEL_UI_FLAG, { fetchingList: false });
+      return response.data.payload;
     } catch (error) {
       commit(types.default.SET_VEHICLE_MODEL_UI_FLAG, { fetchingList: false });
       return throwErrorMessage(error);
@@ -63,6 +64,7 @@ const actions = {
       await VehicleModelAPI.delete(id);
       commit(types.default.DELETE_VEHICLE_MODEL, id);
       commit(types.default.SET_VEHICLE_MODEL_UI_FLAG, { deletingItem: false });
+      return null;
     } catch (error) {
       commit(types.default.SET_VEHICLE_MODEL_UI_FLAG, { deletingItem: false });
       return throwErrorMessage(error);

@@ -3,7 +3,6 @@ import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import { computed, onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { picoSearch } from '@scmmishra/pico-search';
 import AddPrice from './AddPrice.vue';
@@ -24,7 +23,6 @@ defineOptions({
 
 const getters = useStoreGetters();
 const store = useStore();
-const { t } = useI18n();
 
 const showAddPopup = ref(false);
 const showEditPopup = ref(false);
@@ -38,6 +36,7 @@ const filterModel = ref('');
 
 const records = computed(() => getters['vehiclePrices/getPrices'].value);
 const uiFlags = computed(() => getters['vehiclePrices/getUIFlags'].value);
+const rateFlags = computed(() => getters['exchangeRates/getUIFlags'].value);
 const brands = computed(() => getters['vehicleBrands/getBrands'].value);
 const latestRate = computed(() => getters['exchangeRates/getLatestRate'].value);
 
@@ -175,16 +174,16 @@ const tableHeaders = computed(() => [
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    :loading-message="'Cargando precios...'"
+    loading-message="Cargando precios..."
     :no-records-found="!records.length"
-    :no-records-message="'No hay precios cargados'"
+    no-records-message="No hay precios cargados"
   >
     <template #header>
       <BaseSettingsHeader
         v-model:search-query="searchQuery"
         title="Lista de Precios"
         description="Gestiona los precios de repuestos por marca y modelo"
-        :search-placeholder="'Buscar por descripción...'"
+        search-placeholder="Buscar por descripción..."
       >
         <template v-if="records?.length" #count>
           <span class="text-body-main text-n-slate-11">
@@ -200,7 +199,7 @@ const tableHeaders = computed(() => [
             ghost
             icon="i-lucide-refresh-cw"
             class="mr-2"
-            :is-loading="uiFlags.fetchingCurrent"
+            :is-loading="rateFlags.fetchingCurrent"
             @click="refreshRate"
           />
           <Button
@@ -275,7 +274,9 @@ const tableHeaders = computed(() => [
               </BaseTableCell>
 
               <BaseTableCell class="w-24">
-                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-n-alpha-2 text-n-slate-12">
+                <span
+                  class="text-xs font-medium px-2 py-0.5 rounded-full bg-n-alpha-2 text-n-slate-12"
+                >
                   {{ price.brand?.name || '—' }}
                 </span>
               </BaseTableCell>

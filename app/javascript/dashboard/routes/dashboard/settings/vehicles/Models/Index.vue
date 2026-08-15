@@ -1,9 +1,8 @@
 <script setup>
 import { useAlert } from 'dashboard/composables';
-import SettingsLayout from '../SettingsLayout.vue';
-import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
+import SettingsLayout from '../../SettingsLayout.vue';
+import BaseSettingsHeader from '../../components/BaseSettingsHeader.vue';
 import { computed, onMounted, ref, watch } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { useRoute, useRouter } from 'vue-router';
 import AddModel from './AddModel.vue';
@@ -24,7 +23,6 @@ const getters = useStoreGetters();
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
-const { t } = useI18n();
 
 const showAddPopup = ref(false);
 const showEditPopup = ref(false);
@@ -119,9 +117,9 @@ const tableHeaders = computed(() => ['Modelo', 'Acciones']);
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    :loading-message="'Cargando modelos...'"
+    loading-message="Cargando modelos..."
     :no-records-found="!records.length"
-    :no-records-message="'No hay modelos creados'"
+    no-records-message="No hay modelos creados"
   >
     <template #header>
       <BaseSettingsHeader
@@ -152,7 +150,7 @@ const tableHeaders = computed(() => ['Modelo', 'Acciones']);
       <BaseTable
         :headers="tableHeaders"
         :items="records"
-        :no-data-message="'No hay modelos creados'"
+        no-data-message="No hay modelos creados"
       >
         <template #header-0>{{ tableHeaders[0] }}</template>
         <template #header-1>{{ tableHeaders[1] }}</template>
@@ -193,10 +191,7 @@ const tableHeaders = computed(() => ['Modelo', 'Acciones']);
     </template>
 
     <woot-modal v-model:show="showAddPopup" :on-close="hideAddPopup">
-      <AddModel
-        :brand-id="brandId"
-        :on-close="hideAddPopup"
-      />
+      <AddModel :brand-id="brandId" :on-close="hideAddPopup" />
     </woot-modal>
 
     <woot-modal v-model:show="showEditPopup" :on-close="hideEditPopup">

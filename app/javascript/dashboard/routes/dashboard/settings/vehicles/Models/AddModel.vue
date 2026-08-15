@@ -4,7 +4,7 @@ import { required } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
-import Modal from '../../../../components/Modal.vue';
+import Modal from '../../../../../components/Modal.vue';
 
 export default {
   name: 'AddVehicleModel',

@@ -79,14 +79,12 @@ export default {
 
         <div class="flex items-center gap-2 pt-2 pb-4">
           <input
+            id="brand-active"
             v-model="active"
             type="checkbox"
-            id="brand-active"
             class="!w-auto"
           />
-          <label for="brand-active" class="!mb-0 !pb-0">
-            Activa
-          </label>
+          <label for="brand-active" class="!mb-0 !pb-0"> Activa </label>
         </div>
 
         <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">
