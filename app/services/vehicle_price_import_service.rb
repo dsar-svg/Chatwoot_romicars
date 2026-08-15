@@ -30,7 +30,8 @@ class VehiclePriceImportService
   def call
     require 'csv'
 
-    ext = File.extname(@file.original_filename).downcase
+    filename = @file.respond_to?(:original_filename) ? @file.original_filename : @file.path.to_s
+    ext = File.extname(filename).downcase
     rows = case ext
            when '.csv'
              parse_csv
