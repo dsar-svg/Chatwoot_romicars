@@ -27,7 +27,7 @@ VPS (169.254.0.1)
 
 1. **Hacer cambios** en el repo local
 2. **Commit y push** a la rama `claude/init-tvh2q7`
-3. **GitHub Actions** construye y sube la imagen a `ghcr.io/chatgptsupricom-sudo/chatwoot:latest`
+3. **GitHub Actions** construye y sube la imagen a `ghcr.io/dsar-svg/chatwoot_romicars:latest`
 4. **En el VPS**: detener contenedores → borrar imagen vieja → pull imagen nueva
 5. **Redesplegar** desde EasyPanel
 6. **Actualizar base de datos** si es necesario (solo cambios de config)
@@ -42,8 +42,8 @@ docker ps --format "table {{.Names}}\t{{.Status}}" | grep chatwoot
 docker stop $(docker ps -q --filter "name=chatwoot")
 
 # Borrar imagen vieja y pull la nueva
-docker rmi ghcr.io/chatgptsupricom-sudo/chatwoot:latest
-docker pull ghcr.io/chatgptsupricom-sudo/chatwoot:latest
+docker rmi ghcr.io/dsar-svg/chatwoot_romicars:latest
+docker pull ghcr.io/dsar-svg/chatwoot_romicars:latest
 
 # Actualizar base de datos (cuando sea necesario)
 docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.find_or_create_by(name: 'KEY').update(value: 'VALUE'); GlobalConfig.clear_cache"
@@ -110,7 +110,7 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.f
 
 - **Rama**: `claude/init-tvh2q7` (trigger para GitHub Actions)
 - **Commits**: Conventional Commits (`type(scope): subject`)
-- **Image tag**: `ghcr.io/chatgptsupricom-sudo/chatwoot:latest`
+- **Image tag**: `ghcr.io/dsar-svg/chatwoot_romicars:latest`
 
 ## Log de Cambios
 
