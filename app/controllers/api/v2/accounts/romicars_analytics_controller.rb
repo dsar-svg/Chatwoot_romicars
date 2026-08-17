@@ -11,12 +11,12 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     convs_30 = account.conversations.where(created_at: since_30..now)
     total    = convs_30.count
-    resolved = convs_30.where(status: :resolved).count
+    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').count
 
     render json: {
       kpis: {
         total_leads:  total,
-        conversion:   total.positive? ? (resolved.to_f / total * 100).round(1) : 0,
+        conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
         active_chats: account.conversations.where(status: :open).count
       },
       mini_metrics: {
@@ -238,15 +238,15 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since_30 = 30.days.ago
     convs    = account.conversations.where(created_at: since_30..Time.current)
     total    = convs.count
-    resolved = convs.where(status: :resolved).count
+    ganado   = convs.where(status: :resolved, resolution_type: 'ganado').count
 
     {
       period: '30 días',
       total_conversations: total,
-      resolved: resolved,
+      resolved: convs.where(status: :resolved).count,
       pending: convs.where(status: :pending).count,
       open: convs.where(status: :open).count,
-      conversion_pct: total.positive? ? (resolved.to_f / total * 100).round(1) : 0,
+      conversion_pct: total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
       high_urgency: convs.where(priority: %i[high urgent]).count,
       unassigned: convs.where(assignee_id: nil).count,
       agents_count: account.agents.count,
