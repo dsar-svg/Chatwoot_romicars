@@ -142,10 +142,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   def resolution
     account = Current.account
     since_30 = 30.days.ago
-    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido])
+    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido consulta])
 
     ganado = resolved.where(resolution_type: 'ganado')
     perdido = resolved.where(resolution_type: 'perdido')
+    consulta = resolved.where(resolution_type: 'consulta')
 
     sales = ganado.with_sale
     total_sales_amount = sales.sum(:sale_amount)
@@ -177,6 +178,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
           sin_respuesta: perdido.where(resolution_reason: 'sin_respuesta').count,
           otro: perdido.where(resolution_reason: 'otro').count
         }
+      },
+      consulta: {
+        count: consulta.count,
+        percentage: resolved.count.positive? ? (consulta.count.to_f / resolved.count * 100).round(1) : 0
       },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)

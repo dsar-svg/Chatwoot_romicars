@@ -46,6 +46,8 @@ const ganadoCount = computed(() => resolutionData.value?.ganado?.count || 0);
 const ganadoPct = computed(() => resolutionData.value?.ganado?.percentage || 0);
 const perdidoCount = computed(() => resolutionData.value?.perdido?.count || 0);
 const perdidoPct = computed(() => resolutionData.value?.perdido?.percentage || 0);
+const consultaCount = computed(() => resolutionData.value?.consulta?.count || 0);
+const consultaPct = computed(() => resolutionData.value?.consulta?.percentage || 0);
 const totalResolved = computed(() => resolutionData.value?.total_resolved || 0);
 const totalSalesAmount = computed(
   () => resolutionData.value?.ganado?.total_sales_amount || 0
@@ -73,7 +75,7 @@ const agentStats = computed(() => {
   const grouped = {};
   data.forEach(item => {
     if (!grouped[item.agent]) {
-      grouped[item.agent] = { agent: item.agent, ganado: 0, perdido: 0 };
+      grouped[item.agent] = { agent: item.agent, ganado: 0, perdido: 0, consulta: 0 };
     }
     grouped[item.agent][item.type] = item.count;
   });
@@ -85,7 +87,7 @@ const dailyStats = computed(() => {
   const grouped = {};
   data.forEach(item => {
     if (!grouped[item.date]) {
-      grouped[item.date] = { date: item.date, ganado: 0, perdido: 0 };
+      grouped[item.date] = { date: item.date, ganado: 0, perdido: 0, consulta: 0 };
     }
     grouped[item.date][item.type] = item.count;
   });
@@ -151,6 +153,15 @@ const requestedProductsList = computed(
             {{ perdidoCount }}
             <span class="text-sm font-normal text-n-ruby-11">
               ({{ formatPct(perdidoPct) }})
+            </span>
+          </div>
+        </div>
+        <div class="p-4 rounded-lg bg-n-blue-2">
+          <div class="text-sm text-n-blue-11 mb-1">Consultas Resueltas</div>
+          <div class="text-2xl font-bold text-n-blue-12">
+            {{ consultaCount }}
+            <span class="text-sm font-normal text-n-blue-11">
+              ({{ formatPct(consultaPct) }})
             </span>
           </div>
         </div>
@@ -284,7 +295,7 @@ const requestedProductsList = computed(
           Rendimiento por agente
         </h3>
         <BaseTable
-          :headers="['Agente', 'Ganadas', 'Perdidas', 'Total']"
+          :headers="['Agente', 'Ganadas', 'Perdidas', 'Consultas', 'Total']"
           :items="agentStats"
         >
           <template #row="{ items }">
@@ -310,8 +321,13 @@ const requestedProductsList = computed(
                   </span>
                 </BaseTableCell>
                 <BaseTableCell class="w-24">
+                  <span class="text-sm text-n-blue-11 font-medium">
+                    {{ stat.consulta }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-24">
                   <span class="text-sm text-n-slate-11">
-                    {{ stat.ganado + stat.perdido }}
+                    {{ stat.ganado + stat.perdido + stat.consulta }}
                   </span>
                 </BaseTableCell>
               </template>
@@ -326,7 +342,7 @@ const requestedProductsList = computed(
           Resolución diaria (últimos 30 días)
         </h3>
         <BaseTable
-          :headers="['Fecha', 'Ganadas', 'Perdidas']"
+          :headers="['Fecha', 'Ganadas', 'Perdidas', 'Consultas']"
           :items="dailyStats"
         >
           <template #row="{ items }">
@@ -347,6 +363,11 @@ const requestedProductsList = computed(
                 <BaseTableCell class="w-24">
                   <span class="text-sm text-n-ruby-11 font-medium">
                     {{ stat.perdido }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-24">
+                  <span class="text-sm text-n-blue-11 font-medium">
+                    {{ stat.consulta }}
                   </span>
                 </BaseTableCell>
               </template>

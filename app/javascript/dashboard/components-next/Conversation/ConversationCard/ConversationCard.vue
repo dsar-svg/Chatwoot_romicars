@@ -80,6 +80,12 @@ const resolutionBadge = computed(() => {
       class: 'bg-n-ruby-3 text-n-ruby-11',
     };
   }
+  if (resolutionType.value === 'consulta') {
+    return {
+      label: 'Consulta',
+      class: 'bg-n-blue-3 text-n-blue-11',
+    };
+  }
   return null;
 });
 

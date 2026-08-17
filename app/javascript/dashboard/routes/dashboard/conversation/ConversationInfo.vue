@@ -55,6 +55,7 @@ const hasResolution = computed(
 const resolutionTypeLabel = computed(() => {
   if (props.conversation?.resolution_type === 'ganado') return 'Ganado (Venta)';
   if (props.conversation?.resolution_type === 'perdido') return 'Perdido';
+  if (props.conversation?.resolution_type === 'consulta') return 'Consulta Resuelta';
   return '';
 });
 
@@ -63,6 +64,8 @@ const resolutionTypeClass = computed(() => {
     return 'bg-n-green-3 text-n-green-11';
   if (props.conversation?.resolution_type === 'perdido')
     return 'bg-n-ruby-3 text-n-ruby-11';
+  if (props.conversation?.resolution_type === 'consulta')
+    return 'bg-n-blue-3 text-n-blue-11';
   return '';
 });
 

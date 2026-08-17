@@ -40,7 +40,7 @@ const handleSubmit = () => {
   emit('resolve', {
     resolutionType: resolutionType.value,
     resolutionReason:
-      resolutionType.value === 'perdido' ? resolutionReason.value : 'venta',
+      resolutionType.value === 'perdido' ? resolutionReason.value : null,
     resolutionNotes: resolutionNotes.value,
     saleAmount:
       resolutionType.value === 'ganado' ? saleAmount.value : null,
@@ -134,6 +134,31 @@ const handleClose = () => {
                 "
               >
                 Cierre Perdido
+              </span>
+            </label>
+            <label
+              class="flex items-center gap-2 cursor-pointer p-3 rounded-lg border"
+              :class="
+                resolutionType === 'consulta'
+                  ? 'border-n-blue-11 bg-n-blue-2'
+                  : 'border-n-slate-4 bg-n-solid-1'
+              "
+            >
+              <input
+                v-model="resolutionType"
+                type="radio"
+                value="consulta"
+                class="!w-auto"
+              />
+              <span
+                class="text-sm font-medium"
+                :class="
+                  resolutionType === 'consulta'
+                    ? 'text-n-blue-11'
+                    : 'text-n-slate-12'
+                "
+              >
+                Consulta Resuelta
               </span>
             </label>
           </div>
