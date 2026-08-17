@@ -25,6 +25,7 @@ export default {
     return {
       description: '',
       variant: '',
+      synonyms: '',
       cost_usd: null,
       divisor: null,
       cost_bs: null,
@@ -81,6 +82,7 @@ export default {
         await this.$store.dispatch('vehiclePrices/create', {
           description: this.description,
           variant: this.variant,
+          synonyms: this.synonyms,
           cost_usd: this.cost_usd,
           divisor: this.divisor,
           cost_bs: this.cost_bs,
@@ -163,6 +165,17 @@ export default {
               v-model="variant"
               type="text"
               placeholder="Ej: BUS/VAN/TRUCK, 4X2, 4X4"
+            />
+          </label>
+        </div>
+
+        <div class="w-full">
+          <label>
+            Sinónimos
+            <input
+              v-model="synonyms"
+              type="text"
+              placeholder="Ej: amortiguador, shock absorber, suspensión"
             />
           </label>
         </div>

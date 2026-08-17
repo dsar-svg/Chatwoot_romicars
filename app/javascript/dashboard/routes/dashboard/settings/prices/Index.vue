@@ -64,7 +64,7 @@ const filteredRecords = computed(() => {
 
   const query = debouncedQuery.value.trim();
   if (query) {
-    items = picoSearch(items, query, ['description', 'variant']);
+    items = picoSearch(items, query, ['description', 'variant', 'synonyms']);
   }
 
   return items;
@@ -226,6 +226,7 @@ const tableHeaders = computed(() => [
   'USD',
   'Divisor',
   'Bs.',
+  'Sinónimos',
   'Acciones',
 ]);
 
@@ -345,6 +346,7 @@ const goToPage = p => {
         <template #header-5>{{ tableHeaders[5] }}</template>
         <template #header-6>{{ tableHeaders[6] }}</template>
         <template #header-7>{{ tableHeaders[7] }}</template>
+        <template #header-8>{{ tableHeaders[8] }}</template>
 
         <template #row="{ items }">
           <BaseTableRow v-for="price in items" :key="price.id" :item="price">
@@ -390,6 +392,12 @@ const goToPage = p => {
               <BaseTableCell class="w-24">
                 <span class="text-sm text-n-blue-11">
                   {{ formatBs(calcCostBs(price.divisor)) }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell class="w-48">
+                <span class="text-xs text-n-slate-11 whitespace-normal">
+                  {{ price.synonyms || '—' }}
                 </span>
               </BaseTableCell>
 

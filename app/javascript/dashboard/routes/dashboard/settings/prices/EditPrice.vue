@@ -29,6 +29,7 @@ export default {
     return {
       description: this.price.description || '',
       variant: this.price.variant || '',
+      synonyms: this.price.synonyms || '',
       cost_usd: this.price.cost_usd,
       divisor: this.price.divisor,
       cost_bs: this.price.cost_bs,
@@ -87,6 +88,7 @@ export default {
           id: this.price.id,
           description: this.description,
           variant: this.variant,
+          synonyms: this.synonyms,
           cost_usd: this.cost_usd,
           divisor: this.divisor,
           cost_bs: this.cost_bs,
@@ -170,6 +172,17 @@ export default {
               v-model="variant"
               type="text"
               placeholder="Ej: BUS/VAN/TRUCK, 4X2, 4X4"
+            />
+          </label>
+        </div>
+
+        <div class="w-full">
+          <label>
+            Sinónimos
+            <input
+              v-model="synonyms"
+              type="text"
+              placeholder="Ej: amortiguador, shock absorber, suspensión"
             />
           </label>
         </div>
