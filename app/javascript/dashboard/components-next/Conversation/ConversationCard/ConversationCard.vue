@@ -64,6 +64,25 @@ const showMessagePreviewWithoutMeta = computed(() => {
   );
 });
 
+const resolutionType = computed(() => props.conversation?.resolution_type);
+
+const resolutionBadge = computed(() => {
+  if (!resolutionType.value) return null;
+  if (resolutionType.value === 'ganado') {
+    return {
+      label: 'Ganado',
+      class: 'bg-n-green-3 text-n-green-11',
+    };
+  }
+  if (resolutionType.value === 'perdido') {
+    return {
+      label: 'Perdido',
+      class: 'bg-n-ruby-3 text-n-ruby-11',
+    };
+  }
+  return null;
+});
+
 const onCardClick = e => {
   const path = frontendURL(
     conversationUrl({
@@ -104,6 +123,14 @@ const onCardClick = e => {
         </h4>
         <div class="flex items-center gap-2">
           <CardPriorityIcon :priority="conversation.priority || null" />
+          <span
+            v-if="resolutionBadge"
+            v-tooltip.left="resolutionBadge.label"
+            class="text-[10px] font-medium leading-tight px-1.5 py-0.5 rounded-full"
+            :class="resolutionBadge.class"
+          >
+            {{ resolutionBadge.label.charAt(0) }}
+          </span>
           <div
             v-tooltip.left="inboxName"
             class="flex items-center justify-center flex-shrink-0 rounded-full bg-n-alpha-2 size-5"

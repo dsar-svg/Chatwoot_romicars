@@ -1,4 +1,5 @@
 import * as types from '../mutation-types';
+import RomicarsDashboardAPI from '../../api/romicarsAnalytics';
 
 const state = {
   resolution: null,
@@ -11,9 +12,7 @@ const getters = {
 const actions = {
   fetchResolution: async function fetchResolution({ commit }) {
     try {
-      const response = await axios.get(
-        '/api/v2/accounts/${window.location.pathname.split("/")[3]}/romicars_analytics/resolution'
-      );
+      const response = await RomicarsDashboardAPI.getResolution();
       commit(types.default.SET_ROMICARS_RESOLUTION, response.data);
       return response.data;
     } catch (error) {

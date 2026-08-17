@@ -154,12 +154,44 @@ export const mutations = {
 
   [types.CHANGE_CONVERSATION_STATUS](
     _state,
-    { conversationId, status, snoozedUntil }
+    {
+      conversationId,
+      status,
+      snoozedUntil,
+      resolutionType,
+      resolutionReason,
+      resolutionNotes,
+      resolvedAt,
+      saleAmount,
+      saleDate,
+      saleInvoice,
+    }
   ) {
     const conversation =
       getters.getConversationById(_state)(conversationId) || {};
     conversation.snoozed_until = snoozedUntil;
     conversation.status = status;
+    if (resolutionType !== undefined) {
+      conversation.resolution_type = resolutionType;
+    }
+    if (resolutionReason !== undefined) {
+      conversation.resolution_reason = resolutionReason;
+    }
+    if (resolutionNotes !== undefined) {
+      conversation.resolution_notes = resolutionNotes;
+    }
+    if (resolvedAt !== undefined) {
+      conversation.resolved_at = resolvedAt;
+    }
+    if (saleAmount !== undefined) {
+      conversation.sale_amount = saleAmount;
+    }
+    if (saleDate !== undefined) {
+      conversation.sale_date = saleDate;
+    }
+    if (saleInvoice !== undefined) {
+      conversation.sale_invoice = saleInvoice;
+    }
   },
 
   [types.MUTE_CONVERSATION](_state) {

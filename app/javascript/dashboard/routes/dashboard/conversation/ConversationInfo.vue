@@ -13,6 +13,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  conversation: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const referer = computed(() => props.conversationAttributes.referer);
@@ -41,6 +45,42 @@ const platformName = computed(() => {
 });
 
 const createdAtIp = computed(() => props.contactAttributes.created_at_ip);
+
+const hasResolution = computed(
+  () =>
+    props.conversation?.resolution_type === 'ganado' ||
+    props.conversation?.resolution_type === 'perdido'
+);
+
+const resolutionTypeLabel = computed(() => {
+  if (props.conversation?.resolution_type === 'ganado') return 'Ganado (Venta)';
+  if (props.conversation?.resolution_type === 'perdido') return 'Perdido';
+  return '';
+});
+
+const resolutionTypeClass = computed(() => {
+  if (props.conversation?.resolution_type === 'ganado')
+    return 'bg-n-green-3 text-n-green-11';
+  if (props.conversation?.resolution_type === 'perdido')
+    return 'bg-n-ruby-3 text-n-ruby-11';
+  return '';
+});
+
+const resolutionReason = computed(
+  () => props.conversation?.resolution_reason || ''
+);
+
+const resolutionNotes = computed(
+  () => props.conversation?.resolution_notes || ''
+);
+
+const saleAmount = computed(() => props.conversation?.sale_amount || null);
+
+const saleDate = computed(() => props.conversation?.sale_date || '');
+
+const saleInvoice = computed(() => props.conversation?.sale_invoice || '');
+
+const resolvedAt = computed(() => props.conversation?.resolved_at || '');
 
 const staticElements = computed(() =>
   [
@@ -110,5 +150,46 @@ const staticElements = computed(() =>
         </ContactDetailsItem>
       </template>
     </CustomAttributes>
+
+    <div v-if="hasResolution" class="mt-3 px-4 pb-3">
+      <h4 class="text-sm font-medium text-n-slate-12 mb-2">
+        Resolución
+      </h4>
+      <div class="flex flex-col gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Resultado</span>
+          <span
+            class="text-xs font-medium px-2 py-0.5 rounded-full"
+            :class="resolutionTypeClass"
+          >
+            {{ resolutionTypeLabel }}
+          </span>
+        </div>
+        <div v-if="resolutionReason" class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Motivo</span>
+          <span class="text-xs text-n-slate-12">{{ resolutionReason }}</span>
+        </div>
+        <div v-if="saleAmount" class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Monto</span>
+          <span class="text-xs text-n-slate-12">${{ saleAmount }}</span>
+        </div>
+        <div v-if="saleDate" class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Fecha</span>
+          <span class="text-xs text-n-slate-12">{{ saleDate }}</span>
+        </div>
+        <div v-if="saleInvoice" class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Factura</span>
+          <span class="text-xs text-n-slate-12">{{ saleInvoice }}</span>
+        </div>
+        <div v-if="resolutionNotes" class="flex items-start gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Notas</span>
+          <span class="text-xs text-n-slate-12">{{ resolutionNotes }}</span>
+        </div>
+        <div v-if="resolvedAt" class="flex items-center gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Cerrado</span>
+          <span class="text-xs text-n-slate-12">{{ resolvedAt }}</span>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

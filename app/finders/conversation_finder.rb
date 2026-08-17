@@ -86,6 +86,7 @@ class ConversationFinder
     filter_by_labels
     filter_by_query
     filter_by_source_id
+    filter_by_resolution_type
   end
 
   def set_inboxes
@@ -183,6 +184,12 @@ class ConversationFinder
 
     @conversations = @conversations.joins(:contact_inbox)
     @conversations = @conversations.where(contact_inboxes: { source_id: params[:source_id] })
+  end
+
+  def filter_by_resolution_type
+    return unless params[:resolution_type].present?
+
+    @conversations = @conversations.where(resolution_type: params[:resolution_type])
   end
 
   def set_count_for_all_conversations

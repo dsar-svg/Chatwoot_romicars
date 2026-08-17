@@ -285,6 +285,13 @@ const actions = {
           payload: {
             current_status: updatedStatus,
             snoozed_until: updatedSnoozedUntil,
+            resolution_type: apiResolutionType,
+            resolution_reason: apiResolutionReason,
+            resolution_notes: apiResolutionNotes,
+            resolved_at: apiResolvedAt,
+            sale_amount: apiSaleAmount,
+            sale_date: apiSaleDate,
+            sale_invoice: apiSaleInvoice,
           } = {},
         } = {},
       } = await ConversationApi.toggleStatus({
@@ -302,6 +309,13 @@ const actions = {
         conversationId,
         status: updatedStatus,
         snoozedUntil: updatedSnoozedUntil,
+        resolutionType: apiResolutionType,
+        resolutionReason: apiResolutionReason,
+        resolutionNotes: apiResolutionNotes,
+        resolvedAt: apiResolvedAt,
+        saleAmount: apiSaleAmount,
+        saleDate: apiSaleDate,
+        saleInvoice: apiSaleInvoice,
       });
     } catch (error) {
       // Handle error

@@ -123,39 +123,39 @@ const handleClose = () => {
           </label>
           <div class="flex gap-4 mb-3">
             <div class="w-full">
-              <label class="text-xs text-n-slate-11">
+              <label class="block text-xs text-n-slate-11 mb-1">
                 Monto de venta (USD) *
-                <input
-                  v-model.number="saleAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-                />
               </label>
+              <input
+                v-model.number="saleAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                class="w-full rounded-lg border border-n-slate-4 p-2.5 text-sm focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
+              />
             </div>
             <div class="w-full">
-              <label class="text-xs text-n-slate-11">
+              <label class="block text-xs text-n-slate-11 mb-1">
                 Fecha de venta
-                <input
-                  v-model="saleDate"
-                  type="date"
-                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-                />
               </label>
+              <input
+                v-model="saleDate"
+                type="date"
+                class="w-full rounded-lg border border-n-slate-4 p-2.5 text-sm focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
+              />
             </div>
           </div>
           <div>
-            <label class="text-xs text-n-slate-11">
+            <label class="block text-xs text-n-slate-11 mb-1">
               N° de factura
-              <input
-                v-model="saleInvoice"
-                type="text"
-                placeholder="FAC-0001"
-                class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-              />
             </label>
+            <input
+              v-model="saleInvoice"
+              type="text"
+              placeholder="FAC-0001"
+              class="w-full rounded-lg border border-n-slate-4 p-2.5 text-sm focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
+            />
           </div>
         </div>
 
@@ -186,14 +186,14 @@ const handleClose = () => {
         </div>
 
         <div class="mb-4">
-          <label class="block text-sm font-medium text-n-slate-12 mb-2">
+          <label class="block text-sm font-medium text-n-slate-12 mb-1">
             Observaciones
           </label>
           <textarea
             v-model="resolutionNotes"
             rows="3"
             placeholder="Detalles adicionales sobre el cierre..."
-            class="w-full rounded-lg border border-n-slate-4 p-2 text-sm text-n-slate-12 placeholder:text-n-slate-8"
+            class="w-full rounded-lg border border-n-slate-4 p-2.5 text-sm text-n-slate-12 placeholder:text-n-slate-8 focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
           />
         </div>
 
