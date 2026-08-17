@@ -93,6 +93,7 @@ class Conversation < ApplicationRecord
   scope :resolved_between, ->(start_date, end_date) {
     where(resolved_at: start_date..end_date) if start_date.present? && end_date.present?
   }
+  scope :with_sale, -> { where.not(sale_amount: nil) }
 
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
@@ -179,11 +180,14 @@ class Conversation < ApplicationRecord
     save
   end
 
-  def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil)
+  def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil, sale_amount: nil, sale_date: nil, sale_invoice: nil)
     self.status = :resolved
     self.resolution_type = resolution_type
     self.resolution_reason = resolution_reason if resolution_type == 'perdido'
     self.resolution_notes = resolution_notes
+    self.sale_amount = sale_amount if resolution_type == 'ganado'
+    self.sale_date = sale_date.presence || Date.current if resolution_type == 'ganado'
+    self.sale_invoice = sale_invoice if resolution_type == 'ganado'
     self.resolved_at = Time.current
     save
   end

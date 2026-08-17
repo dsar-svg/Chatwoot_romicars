@@ -106,6 +106,9 @@ const toggleStatus = (
     payload.resolutionType = resolutionData.resolutionType;
     payload.resolutionReason = resolutionData.resolutionReason;
     payload.resolutionNotes = resolutionData.resolutionNotes;
+    payload.saleAmount = resolutionData.saleAmount;
+    payload.saleDate = resolutionData.saleDate;
+    payload.saleInvoice = resolutionData.saleInvoice;
   }
 
   store.dispatch('toggleStatus', payload).then(() => {
@@ -155,13 +158,23 @@ const handleResolveWithOutcome = ({
   resolutionType,
   resolutionReason,
   resolutionNotes,
+  saleAmount,
+  saleDate,
+  saleInvoice,
 }) => {
   resolutionModalRef.value = false;
   toggleStatus(
     wootConstants.STATUS_TYPE.RESOLVED,
     null,
     null,
-    { resolutionType, resolutionReason, resolutionNotes }
+    {
+      resolutionType,
+      resolutionReason,
+      resolutionNotes,
+      saleAmount,
+      saleDate,
+      saleInvoice,
+    }
   );
 };
 

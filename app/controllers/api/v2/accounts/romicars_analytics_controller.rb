@@ -147,12 +147,26 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     ganado = resolved.where(resolution_type: 'ganado')
     perdido = resolved.where(resolution_type: 'perdido')
 
+    sales = ganado.with_sale
+    total_sales_amount = sales.sum(:sale_amount)
+
     render json: {
       period: '30 días',
       total_resolved: resolved.count,
       ganado: {
         count: ganado.count,
-        percentage: resolved.count.positive? ? (ganado.count.to_f / resolved.count * 100).round(1) : 0
+        percentage: resolved.count.positive? ? (ganado.count.to_f / resolved.count * 100).round(1) : 0,
+        total_sales_amount: total_sales_amount.to_f,
+        average_sale: sales.count.positive? ? (total_sales_amount.to_f / sales.count).round(2) : 0,
+        sales: sales.order(sale_date: :desc).limit(20).map do |c|
+          {
+            id: c.display_id,
+            amount: c.sale_amount.to_f,
+            date: c.sale_date,
+            invoice: c.sale_invoice,
+            contact: c.contact.try(:name)
+          }
+        end
       },
       perdido: {
         count: perdido.count,

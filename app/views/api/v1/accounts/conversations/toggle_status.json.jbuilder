@@ -10,4 +10,7 @@ json.payload do
   json.resolution_reason @conversation.resolution_reason
   json.resolution_notes @conversation.resolution_notes
   json.resolved_at @conversation.resolved_at
+  json.sale_amount @conversation.sale_amount
+  json.sale_date @conversation.sale_date
+  json.sale_invoice @conversation.sale_invoice
 end

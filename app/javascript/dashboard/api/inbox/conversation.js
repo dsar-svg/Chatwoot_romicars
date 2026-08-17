@@ -56,6 +56,9 @@ class ConversationApi extends ApiClient {
     resolutionType = null,
     resolutionReason = null,
     resolutionNotes = null,
+    saleAmount = null,
+    saleDate = null,
+    saleInvoice = null,
   }) {
     return axios.post(`${this.url}/${conversationId}/toggle_status`, {
       status,
@@ -63,6 +66,9 @@ class ConversationApi extends ApiClient {
       resolution_type: resolutionType,
       resolution_reason: resolutionReason,
       resolution_notes: resolutionNotes,
+      sale_amount: saleAmount,
+      sale_date: saleDate,
+      sale_invoice: saleInvoice,
     });
   }
 

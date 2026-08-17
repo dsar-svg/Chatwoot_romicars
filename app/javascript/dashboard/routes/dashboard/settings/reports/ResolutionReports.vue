@@ -44,6 +44,16 @@ const ganadoPct = computed(() => resolutionData.value?.ganado?.percentage || 0);
 const perdidoCount = computed(() => resolutionData.value?.perdido?.count || 0);
 const perdidoPct = computed(() => resolutionData.value?.perdido?.percentage || 0);
 const totalResolved = computed(() => resolutionData.value?.total_resolved || 0);
+const totalSalesAmount = computed(
+  () => resolutionData.value?.ganado?.total_sales_amount || 0
+);
+const averageSale = computed(() => resolutionData.value?.ganado?.average_sale || 0);
+const recentSales = computed(() => resolutionData.value?.ganado?.sales || []);
+
+const formatCurrency = value => {
+  if (!value) return '—';
+  return `$${Number(value).toFixed(2)}`;
+};
 
 const perdidoReasons = computed(() => {
   const byReason = resolutionData.value?.perdido?.by_reason || {};
@@ -131,6 +141,57 @@ const formatPct = value => `${value}%`;
             </span>
           </div>
         </div>
+        <div class="p-4 rounded-lg bg-n-blue-2">
+          <div class="text-sm text-n-blue-11 mb-1">Monto total ventas</div>
+          <div class="text-2xl font-bold text-n-blue-12">
+            {{ formatCurrency(totalSalesAmount) }}
+          </div>
+        </div>
+        <div class="p-4 rounded-lg bg-n-alpha-2">
+          <div class="text-sm text-n-slate-11 mb-1">Promedio por venta</div>
+          <div class="text-2xl font-bold text-n-slate-12">
+            {{ formatCurrency(averageSale) }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Ventas recientes -->
+      <div v-if="recentSales.length" class="mb-6">
+        <h3 class="text-heading-3 text-n-slate-12 mb-3">
+          Ventas recientes
+        </h3>
+        <BaseTable
+          :headers="['Conversación', 'Contacto', 'Fecha', 'Monto', 'Factura']"
+          :items="recentSales"
+        >
+          <template #row="{ items }">
+            <BaseTableRow v-for="sale in items" :key="sale.id" :item="sale">
+              <template #default>
+                <BaseTableCell class="w-24">
+                  <span class="text-sm text-n-slate-12">#{{ sale.id }}</span>
+                </BaseTableCell>
+                <BaseTableCell class="max-w-0">
+                  <span class="text-sm text-n-slate-12">
+                    {{ sale.contact || '—' }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-28">
+                  <span class="text-sm text-n-slate-11">{{ sale.date }}</span>
+                </BaseTableCell>
+                <BaseTableCell class="w-28">
+                  <span class="text-sm font-medium text-n-green-11">
+                    {{ formatCurrency(sale.amount) }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-28">
+                  <span class="text-sm text-n-slate-11">
+                    {{ sale.invoice || '—' }}
+                  </span>
+                </BaseTableCell>
+              </template>
+            </BaseTableRow>
+          </template>
+        </BaseTable>
       </div>
 
       <!-- Perdidos por motivo -->

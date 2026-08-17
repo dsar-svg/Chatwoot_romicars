@@ -262,6 +262,9 @@ const actions = {
       resolutionType = null,
       resolutionReason = null,
       resolutionNotes = null,
+      saleAmount = null,
+      saleDate = null,
+      saleInvoice = null,
     }
   ) => {
     try {
@@ -291,6 +294,9 @@ const actions = {
         resolutionType,
         resolutionReason,
         resolutionNotes,
+        saleAmount,
+        saleDate,
+        saleInvoice,
       });
       commit(types.CHANGE_CONVERSATION_STATUS, {
         conversationId,

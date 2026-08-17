@@ -87,7 +87,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
       @conversation.resolve_with_outcome(
         resolution_type: params[:resolution_type],
         resolution_reason: params[:resolution_reason],
-        resolution_notes: params[:resolution_notes]
+        resolution_notes: params[:resolution_notes],
+        sale_amount: params[:sale_amount],
+        sale_date: params[:sale_date],
+        sale_invoice: params[:sale_invoice]
       )
       @status = @conversation.saved_change_to_status?
     elsif params[:status].present?

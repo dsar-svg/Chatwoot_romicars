@@ -62,6 +62,9 @@ json.resolution_type conversation.resolution_type
 json.resolution_reason conversation.resolution_reason
 json.resolution_notes conversation.resolution_notes
 json.resolved_at conversation.resolved_at
+json.sale_amount conversation.sale_amount
+json.sale_date conversation.sale_date
+json.sale_invoice conversation.sale_invoice
 sla_applicable = conversation.account.feature_enabled?('sla') && (!conversation.respond_to?(:sla_applicable?) || conversation.sla_applicable?)
 json.sla_policy_id sla_applicable ? conversation.sla_policy_id : nil
 json.partial! 'enterprise/api/v1/conversations/partials/conversation', conversation: conversation if ChatwootApp.enterprise?

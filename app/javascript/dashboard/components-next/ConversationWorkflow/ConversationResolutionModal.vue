@@ -15,6 +15,9 @@ const emit = defineEmits(['close', 'resolve']);
 const resolutionType = ref('');
 const resolutionReason = ref('');
 const resolutionNotes = ref('');
+const saleAmount = ref(null);
+const saleDate = ref('');
+const saleInvoice = ref('');
 const show = computed(() => props.show);
 
 const reasons = [
@@ -27,14 +30,22 @@ const reasons = [
 const canSubmit = computed(() => {
   if (!resolutionType.value) return false;
   if (resolutionType.value === 'perdido' && !resolutionReason.value) return false;
+  if (resolutionType.value === 'ganado' && !saleAmount.value) return false;
   return true;
 });
 
 const handleSubmit = () => {
   emit('resolve', {
     resolutionType: resolutionType.value,
-    resolutionReason: resolutionType.value === 'perdido' ? resolutionReason.value : 'venta',
+    resolutionReason:
+      resolutionType.value === 'perdido' ? resolutionReason.value : 'venta',
     resolutionNotes: resolutionNotes.value,
+    saleAmount:
+      resolutionType.value === 'ganado' ? saleAmount.value : null,
+    saleDate:
+      resolutionType.value === 'ganado' && saleDate.value ? saleDate.value : null,
+    saleInvoice:
+      resolutionType.value === 'ganado' ? saleInvoice.value : null,
   });
   resetForm();
 };
@@ -43,6 +54,9 @@ const resetForm = () => {
   resolutionType.value = '';
   resolutionReason.value = '';
   resolutionNotes.value = '';
+  saleAmount.value = null;
+  saleDate.value = '';
+  saleInvoice.value = '';
 };
 
 const handleClose = () => {
@@ -99,6 +113,48 @@ const handleClose = () => {
               <span class="text-sm font-medium text-n-ruby-11">
                 Cierre Perdido
               </span>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="resolutionType === 'ganado'" class="mb-4">
+          <label class="block text-sm font-medium text-n-slate-12 mb-2">
+            Datos de la venta
+          </label>
+          <div class="flex gap-4 mb-3">
+            <div class="w-full">
+              <label class="text-xs text-n-slate-11">
+                Monto de venta (USD) *
+                <input
+                  v-model.number="saleAmount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
+                />
+              </label>
+            </div>
+            <div class="w-full">
+              <label class="text-xs text-n-slate-11">
+                Fecha de venta
+                <input
+                  v-model="saleDate"
+                  type="date"
+                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
+                />
+              </label>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-n-slate-11">
+              N° de factura
+              <input
+                v-model="saleInvoice"
+                type="text"
+                placeholder="FAC-0001"
+                class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
+              />
             </label>
           </div>
         </div>
