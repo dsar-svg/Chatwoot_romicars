@@ -83,7 +83,7 @@ const handleClose = () => {
               :class="
                 resolutionType === 'ganado'
                   ? 'border-n-green-11 bg-n-green-2'
-                  : 'border-n-slate-4 bg-white'
+                  : 'border-n-slate-4 bg-n-solid-1'
               "
             >
               <input
@@ -92,7 +92,14 @@ const handleClose = () => {
                 value="ganado"
                 class="!w-auto"
               />
-              <span class="text-sm font-medium text-n-green-11">
+              <span
+                class="text-sm font-medium"
+                :class="
+                  resolutionType === 'ganado'
+                    ? 'text-n-green-11'
+                    : 'text-n-slate-12'
+                "
+              >
                 Cierre Ganado (Venta)
               </span>
             </label>
@@ -101,7 +108,7 @@ const handleClose = () => {
               :class="
                 resolutionType === 'perdido'
                   ? 'border-n-ruby-11 bg-n-ruby-2'
-                  : 'border-n-slate-4 bg-white'
+                  : 'border-n-slate-4 bg-n-solid-1'
               "
             >
               <input
@@ -110,7 +117,14 @@ const handleClose = () => {
                 value="perdido"
                 class="!w-auto"
               />
-              <span class="text-sm font-medium text-n-ruby-11">
+              <span
+                class="text-sm font-medium"
+                :class="
+                  resolutionType === 'perdido'
+                    ? 'text-n-ruby-11'
+                    : 'text-n-slate-12'
+                "
+              >
                 Cierre Perdido
               </span>
             </label>
@@ -170,8 +184,8 @@ const handleClose = () => {
               class="flex items-center gap-2 cursor-pointer p-2 rounded-lg border"
               :class="
                 resolutionReason === reason.value
-                  ? 'border-n-brand-11 bg-n-brand-2'
-                  : 'border-n-slate-4 bg-white'
+                  ? 'border-n-brand bg-n-brand-2'
+                  : 'border-n-slate-4 bg-n-solid-1'
               "
             >
               <input
@@ -180,7 +194,16 @@ const handleClose = () => {
                 :value="reason.value"
                 class="!w-auto"
               />
-              <span class="text-sm text-n-slate-12">{{ reason.label }}</span>
+              <span
+                class="text-sm"
+                :class="
+                  resolutionReason === reason.value
+                    ? 'text-n-brand font-medium'
+                    : 'text-n-slate-12'
+                "
+              >
+                {{ reason.label }}
+              </span>
             </label>
           </div>
         </div>
@@ -193,7 +216,7 @@ const handleClose = () => {
             v-model="resolutionNotes"
             rows="3"
             placeholder="Detalles adicionales sobre el cierre..."
-            class="w-full rounded-lg border border-n-slate-4 p-2.5 text-sm text-n-slate-12 placeholder:text-n-slate-8 focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
+            class="w-full rounded-lg border border-n-slate-4 bg-n-solid-1 p-2.5 text-sm text-n-slate-12 placeholder:text-n-slate-8 focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
           />
         </div>
 
