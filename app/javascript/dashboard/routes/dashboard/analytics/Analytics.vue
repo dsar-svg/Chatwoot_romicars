@@ -8,6 +8,7 @@ import AgentPerformance from './components/AgentPerformance.vue';
 import ProductDemand from './components/ProductDemand.vue';
 import ProfitProducts from './components/ProfitProducts.vue';
 import VenezuelaMap from './components/VenezuelaMap.vue';
+import ResolutionBreakdown from './components/ResolutionBreakdown.vue';
 
 const loading = ref({
   overview: true,
@@ -137,6 +138,9 @@ onMounted(refresh);
         :loading="loading.demand"
       />
     </div>
+
+    <!-- Resolution Breakdown -->
+    <ResolutionBreakdown />
 
     <!-- Profit Products + Venezuela Map -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
