@@ -58,6 +58,10 @@ json.last_non_activity_message conversation.messages.where(account_id: conversat
 json.last_activity_at conversation.last_activity_at.to_i
 json.priority conversation.priority
 json.waiting_since conversation.waiting_since.to_i.to_i
+json.resolution_type conversation.resolution_type
+json.resolution_reason conversation.resolution_reason
+json.resolution_notes conversation.resolution_notes
+json.resolved_at conversation.resolved_at
 sla_applicable = conversation.account.feature_enabled?('sla') && (!conversation.respond_to?(:sla_applicable?) || conversation.sla_applicable?)
 json.sla_policy_id sla_applicable ? conversation.sla_policy_id : nil
 json.partial! 'enterprise/api/v1/conversations/partials/conversation', conversation: conversation if ChatwootApp.enterprise?

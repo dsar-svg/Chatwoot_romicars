@@ -83,6 +83,13 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     # FIXME: move this logic into a service object
     if bot_handoff?
       @conversation.bot_handoff!
+    elsif params[:status] == 'resolved' && params[:resolution_type].present?
+      @conversation.resolve_with_outcome(
+        resolution_type: params[:resolution_type],
+        resolution_reason: params[:resolution_reason],
+        resolution_notes: params[:resolution_notes]
+      )
+      @status = @conversation.saved_change_to_status?
     elsif params[:status].present?
       set_conversation_status
       @status = @conversation.save!

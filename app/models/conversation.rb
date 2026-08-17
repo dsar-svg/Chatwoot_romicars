@@ -85,6 +85,15 @@ class Conversation < ApplicationRecord
   enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
   enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
 
+  RESOLUTION_TYPES = %w[ganado perdido].freeze
+  RESOLUTION_REASONS = %w[venta sin_stock precio sin_respuesta otro].freeze
+
+  scope :by_resolution_type, ->(type) { where(resolution_type: type) if type.present? }
+  scope :by_resolution_reason, ->(reason) { where(resolution_reason: reason) if reason.present? }
+  scope :resolved_between, ->(start_date, end_date) {
+    where(resolved_at: start_date..end_date) if start_date.present? && end_date.present?
+  }
+
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }
@@ -167,6 +176,15 @@ class Conversation < ApplicationRecord
     # FIXME: implement state machine with aasm
     self.status = open? ? :resolved : :open
     self.status = :open if pending? || snoozed?
+    save
+  end
+
+  def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil)
+    self.status = :resolved
+    self.resolution_type = resolution_type
+    self.resolution_reason = resolution_reason if resolution_type == 'perdido'
+    self.resolution_notes = resolution_notes
+    self.resolved_at = Time.current
     save
   end
 
