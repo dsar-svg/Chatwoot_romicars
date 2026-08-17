@@ -709,6 +709,12 @@ const menuItems = computed(() => {
           label: t('SIDEBAR.REPORTS_BOT'),
           to: accountScopedRoute('bot_reports'),
         },
+        {
+          name: 'Reports Resolution',
+          label: 'Resolución',
+          icon: 'i-lucide-circle-check',
+          to: accountScopedRoute('resolution_reports'),
+        },
       ],
     },
     {

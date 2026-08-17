@@ -139,6 +139,36 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     render json: empty_profit.merge(error: e.message)
   end
 
+  def resolution
+    account = Current.account
+    since_30 = 30.days.ago
+    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido])
+
+    ganado = resolved.where(resolution_type: 'ganado')
+    perdido = resolved.where(resolution_type: 'perdido')
+
+    render json: {
+      period: '30 días',
+      total_resolved: resolved.count,
+      ganado: {
+        count: ganado.count,
+        percentage: resolved.count.positive? ? (ganado.count.to_f / resolved.count * 100).round(1) : 0
+      },
+      perdido: {
+        count: perdido.count,
+        percentage: resolved.count.positive? ? (perdido.count.to_f / resolved.count * 100).round(1) : 0,
+        by_reason: {
+          sin_stock: perdido.where(resolution_reason: 'sin_stock').count,
+          precio: perdido.where(resolution_reason: 'precio').count,
+          sin_respuesta: perdido.where(resolution_reason: 'sin_respuesta').count,
+          otro: perdido.where(resolution_reason: 'otro').count
+        }
+      },
+      daily: daily_resolution_stats(account, since_30),
+      by_agent: agent_resolution_stats(account, since_30)
+    }
+  end
+
   private
 
   def check_authorization
@@ -267,7 +297,29 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     raw = JSON.parse(resp.body)
     raw.is_a?(Array) ? raw.first(200) : (raw['clientes'] || raw['data'] || []).first(200)
   rescue => e
-    Rails.logger.error "Profit customers: #{e.message}"
+    Rails.logger.error "RomicarsCustomers Profit error: #{e.message}"
     []
+  end
+
+  def daily_resolution_stats(account, since)
+    account.conversations
+           .where(status: :resolved, resolution_type: %w[ganado perdido])
+           .where('resolved_at >= ?', since)
+           .group("DATE(resolved_at)")
+           .group(:resolution_type)
+           .count
+           .map { |(date, type), count| { date: date.to_s, type: type, count: count } }
+  end
+
+  def agent_resolution_stats(account, since)
+    account.conversations
+           .where(status: :resolved, resolution_type: %w[ganado perdido])
+           .where('resolved_at >= ?', since)
+           .where.not(assignee_id: nil)
+           .joins("LEFT JOIN users ON users.id = conversations.assignee_id")
+           .group('users.name')
+           .group(:resolution_type)
+           .count
+           .map { |(name, type), count| { agent: name, type: type, count: count } }
   end
 end
