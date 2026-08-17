@@ -52,6 +52,7 @@ export default {
         id: '',
         name: '',
       },
+      location: '',
       city: '',
       socialProfileUserNames: {
         facebook: '',
@@ -171,6 +172,7 @@ export default {
           additionalAttributes.country ||
           this.$t('CONTACT_FORM.FORM.COUNTRY.SELECT_COUNTRY'),
       };
+      this.location = additionalAttributes.location || additionalAttributes.city || '';
       this.city = additionalAttributes.city || '';
       this.description = additionalAttributes.description || '';
       this.avatarUrl = this.contact.thumbnail || '';
@@ -211,7 +213,8 @@ export default {
             this.$t('CONTACT_FORM.FORM.COUNTRY.SELECT_COUNTRY')
               ? ''
               : this.country.name,
-          city: this.city,
+          city: this.location,
+          location: this.location,
           social_profiles: this.socialProfileUserNames,
         },
       };
@@ -377,28 +380,15 @@ export default {
     />
     <div class="w-full mb-4">
       <label>
-        {{ $t('CONTACT_FORM.FORM.COUNTRY.LABEL') }}
+        Ubicación
       </label>
-      <ComboBox
-        :model-value="country.id"
-        :options="
-          countries.map(c => ({
-            value: c.id,
-            label: countryNameWithCode(c),
-          }))
-        "
-        class="[&>div>button]:!bg-n-alpha-black2"
-        :placeholder="$t('CONTACT_FORM.FORM.COUNTRY.PLACEHOLDER')"
-        :search-placeholder="$t('CONTACT_FORM.FORM.COUNTRY.SELECT_PLACEHOLDER')"
-        @update:model-value="onCountryChange"
+      <input
+        v-model="location"
+        type="text"
+        placeholder="Ej: Valencia, Carabobo"
+        class="w-full rounded-md border border-n-weak bg-n-solid-1 px-3 py-2 text-sm text-n-slate-12 placeholder:text-n-slate-8 focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
       />
     </div>
-    <woot-input
-      v-model="city"
-      class="w-full"
-      :label="$t('CONTACT_FORM.FORM.CITY.LABEL')"
-      :placeholder="$t('CONTACT_FORM.FORM.CITY.PLACEHOLDER')"
-    />
 
     <div class="w-full">
       <label>{{ $t('CONTACTS_PAGE.LIST.TABLE_HEADER.SOCIAL_PROFILES') }}</label>
