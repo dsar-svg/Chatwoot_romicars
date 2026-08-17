@@ -29,6 +29,10 @@ class RomicarsDashboardAPI extends ApiClient {
   getResolution() {
     return axios.get(`${this.url}/resolution`);
   }
+
+  getRequestedProducts() {
+    return axios.get(`${this.url}/requested_products`);
+  }
 }
 
 export default new RomicarsDashboardAPI();

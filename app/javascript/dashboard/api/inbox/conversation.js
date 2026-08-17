@@ -59,6 +59,7 @@ class ConversationApi extends ApiClient {
     saleAmount = null,
     saleDate = null,
     saleInvoice = null,
+    requestedProduct = null,
   }) {
     return axios.post(`${this.url}/${conversationId}/toggle_status`, {
       status,
@@ -69,6 +70,7 @@ class ConversationApi extends ApiClient {
       sale_amount: saleAmount,
       sale_date: saleDate,
       sale_invoice: saleInvoice,
+      requested_product: requestedProduct,
     });
   }
 

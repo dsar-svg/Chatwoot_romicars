@@ -183,6 +183,41 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
+  def requested_products
+    account = Current.account
+    since_30 = 30.days.ago
+
+    products = account.conversations
+                      .where(status: :resolved, resolution_reason: 'sin_stock')
+                      .where.not(requested_product: [nil, ''])
+                      .where('resolved_at >= ?', since_30)
+                      .order(resolved_at: :desc)
+                      .limit(100)
+
+    grouped = products.group_by(&:requested_product)
+                      .transform_values do |convs|
+                        {
+                          count: convs.count,
+                          conversations: convs.map do |c|
+                            {
+                              id: c.display_id,
+                              product: c.requested_product,
+                              contact: c.contact.try(:name),
+                              resolved_at: c.resolved_at,
+                              resolution_notes: c.resolution_notes
+                            }
+                          end
+                        }
+                      end
+
+    render json: {
+      period: '30 días',
+      total_requested: products.count,
+      unique_products: grouped.keys.count,
+      products: grouped.sort_by { |_, v| -v[:count] }.to_h
+    }
+  end
+
   private
 
   def check_authorization

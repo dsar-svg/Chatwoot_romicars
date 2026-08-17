@@ -82,6 +82,10 @@ const saleInvoice = computed(() => props.conversation?.sale_invoice || '');
 
 const resolvedAt = computed(() => props.conversation?.resolved_at || '');
 
+const requestedProduct = computed(
+  () => props.conversation?.requested_product || ''
+);
+
 const staticElements = computed(() =>
   [
     {
@@ -168,6 +172,10 @@ const staticElements = computed(() =>
         <div v-if="resolutionReason" class="flex items-center gap-2">
           <span class="text-xs text-n-slate-10 w-20">Motivo</span>
           <span class="text-xs text-n-slate-12">{{ resolutionReason }}</span>
+        </div>
+        <div v-if="requestedProduct" class="flex items-start gap-2">
+          <span class="text-xs text-n-slate-10 w-20">Repuesto</span>
+          <span class="text-xs text-n-amber-11 font-medium">{{ requestedProduct }}</span>
         </div>
         <div v-if="saleAmount" class="flex items-center gap-2">
           <span class="text-xs text-n-slate-10 w-20">Monto</span>

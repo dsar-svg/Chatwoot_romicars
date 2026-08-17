@@ -13,4 +13,5 @@ json.payload do
   json.sale_amount @conversation.sale_amount
   json.sale_date @conversation.sale_date
   json.sale_invoice @conversation.sale_invoice
+  json.requested_product @conversation.requested_product
 end

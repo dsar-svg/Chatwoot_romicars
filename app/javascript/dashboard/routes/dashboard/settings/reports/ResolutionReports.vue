@@ -20,14 +20,17 @@ const store = useStore();
 
 const loading = ref(true);
 const resolutionData = ref(null);
+const requestedProductsData = ref(null);
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    const response = await store.dispatch(
-      'romicarsAnalytics/fetchResolution'
-    );
-    resolutionData.value = response;
+    const [resolutionResponse, requestedResponse] = await Promise.all([
+      store.dispatch('romicarsAnalytics/fetchResolution'),
+      store.dispatch('romicarsAnalytics/fetchRequestedProducts'),
+    ]);
+    resolutionData.value = resolutionResponse;
+    requestedProductsData.value = requestedResponse;
   } catch (error) {
     // Ignore
   } finally {
@@ -90,6 +93,16 @@ const dailyStats = computed(() => {
 });
 
 const formatPct = value => `${value}%`;
+
+const totalRequestedProducts = computed(
+  () => requestedProductsData.value?.total_requested || 0
+);
+const uniqueProducts = computed(
+  () => requestedProductsData.value?.unique_products || 0
+);
+const requestedProductsList = computed(
+  () => requestedProductsData.value?.products || {}
+);
 </script>
 
 <template>
@@ -211,6 +224,58 @@ const formatPct = value => `${value}%`;
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Productos solicitados sin stock -->
+      <div v-if="totalRequestedProducts > 0" class="mb-6">
+        <h3 class="text-heading-3 text-n-slate-12 mb-3">
+          Productos solicitados sin stock
+        </h3>
+        <div class="grid grid-cols-2 gap-4 mb-3">
+          <div class="p-3 rounded-lg bg-n-amber-2">
+            <div class="text-sm text-n-amber-11">Total solicitudes</div>
+            <div class="text-2xl font-bold text-n-amber-12">
+              {{ totalRequestedProducts }}
+            </div>
+          </div>
+          <div class="p-3 rounded-lg bg-n-alpha-2">
+            <div class="text-sm text-n-slate-11">Productos únicos</div>
+            <div class="text-2xl font-bold text-n-slate-12">
+              {{ uniqueProducts }}
+            </div>
+          </div>
+        </div>
+        <BaseTable
+          :headers="['Producto', 'Solicitudes', 'Última conversación']"
+          :items="Object.entries(requestedProductsList)"
+        >
+          <template #row="{ items }">
+            <BaseTableRow
+              v-for="[product, data] in items"
+              :key="product"
+              :item="{ product, ...data }"
+            >
+              <template #default>
+                <BaseTableCell class="max-w-0">
+                  <span class="text-sm font-medium text-n-slate-12">
+                    {{ product }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-24">
+                  <span class="text-sm font-medium text-n-amber-11">
+                    {{ data.count }}
+                  </span>
+                </BaseTableCell>
+                <BaseTableCell class="w-40">
+                  <span class="text-sm text-n-slate-11">
+                    #{{ data.conversations[0]?.id }} —
+                    {{ data.conversations[0]?.contact || '—' }}
+                  </span>
+                </BaseTableCell>
+              </template>
+            </BaseTableRow>
+          </template>
+        </BaseTable>
       </div>
 
       <!-- Estadísticas por agente -->

@@ -109,6 +109,7 @@ const toggleStatus = (
     payload.saleAmount = resolutionData.saleAmount;
     payload.saleDate = resolutionData.saleDate;
     payload.saleInvoice = resolutionData.saleInvoice;
+    payload.requestedProduct = resolutionData.requestedProduct;
   }
 
   store.dispatch('toggleStatus', payload).then(() => {
@@ -161,6 +162,7 @@ const handleResolveWithOutcome = ({
   saleAmount,
   saleDate,
   saleInvoice,
+  requestedProduct,
 }) => {
   resolutionModalRef.value = false;
   toggleStatus(
@@ -174,6 +176,7 @@ const handleResolveWithOutcome = ({
       saleAmount,
       saleDate,
       saleInvoice,
+      requestedProduct,
     }
   );
 };

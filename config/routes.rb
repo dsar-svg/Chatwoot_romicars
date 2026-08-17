@@ -562,6 +562,7 @@ Rails.application.routes.draw do
               get :ai_insights
               get :profit
               get :resolution
+              get :requested_products
             end
           end
         end

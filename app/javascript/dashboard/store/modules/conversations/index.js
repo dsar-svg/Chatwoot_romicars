@@ -165,6 +165,7 @@ export const mutations = {
       saleAmount,
       saleDate,
       saleInvoice,
+      requestedProduct,
     }
   ) {
     const conversation =
@@ -191,6 +192,9 @@ export const mutations = {
     }
     if (saleInvoice !== undefined) {
       conversation.sale_invoice = saleInvoice;
+    }
+    if (requestedProduct !== undefined) {
+      conversation.requested_product = requestedProduct;
     }
   },
 

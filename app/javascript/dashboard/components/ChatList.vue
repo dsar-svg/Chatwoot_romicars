@@ -788,6 +788,7 @@ function handleResolveWithOutcome({
   saleAmount,
   saleDate,
   saleInvoice,
+  requestedProduct,
 }) {
   resolutionModalRef.value = false;
   const conversationId = pendingResolveConversationId.value;
@@ -804,6 +805,7 @@ function handleResolveWithOutcome({
     saleAmount,
     saleDate,
     saleInvoice,
+    requestedProduct,
   };
 
   store.dispatch('toggleStatus', payload).then(() => {

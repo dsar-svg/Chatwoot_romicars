@@ -18,6 +18,7 @@ const resolutionNotes = ref('');
 const saleAmount = ref(null);
 const saleDate = ref('');
 const saleInvoice = ref('');
+const requestedProduct = ref('');
 const show = computed(() => props.show);
 
 const reasons = [
@@ -30,6 +31,7 @@ const reasons = [
 const canSubmit = computed(() => {
   if (!resolutionType.value) return false;
   if (resolutionType.value === 'perdido' && !resolutionReason.value) return false;
+  if (resolutionType.value === 'perdido' && resolutionReason.value === 'sin_stock' && !requestedProduct.value.trim()) return false;
   if (resolutionType.value === 'ganado' && !saleAmount.value) return false;
   return true;
 });
@@ -46,6 +48,11 @@ const handleSubmit = () => {
       resolutionType.value === 'ganado' && saleDate.value ? saleDate.value : null,
     saleInvoice:
       resolutionType.value === 'ganado' ? saleInvoice.value : null,
+    requestedProduct:
+      resolutionType.value === 'perdido' &&
+      resolutionReason.value === 'sin_stock'
+        ? requestedProduct.value.trim()
+        : null,
   });
   resetForm();
 };
@@ -57,6 +64,7 @@ const resetForm = () => {
   saleAmount.value = null;
   saleDate.value = '';
   saleInvoice.value = '';
+  requestedProduct.value = '';
 };
 
 const handleClose = () => {
@@ -205,6 +213,18 @@ const handleClose = () => {
                 {{ reason.label }}
               </span>
             </label>
+          </div>
+
+          <div v-if="resolutionReason === 'sin_stock'" class="mt-3">
+            <label class="block text-xs text-n-slate-11 mb-1">
+              Repuesto solicitado *
+            </label>
+            <input
+              v-model="requestedProduct"
+              type="text"
+              placeholder="Ej: Filtro de aceite Toyota Hilux"
+              class="w-full rounded-lg border border-n-slate-4 bg-n-solid-1 p-2.5 text-sm text-n-slate-12 placeholder:text-n-slate-8 focus:outline-n-brand focus:ring-1 focus:ring-n-brand"
+            />
           </div>
         </div>
 
