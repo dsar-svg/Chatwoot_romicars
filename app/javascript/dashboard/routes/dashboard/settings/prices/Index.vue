@@ -349,8 +349,8 @@ const goToPage = p => {
         <template #row="{ items }">
           <BaseTableRow v-for="price in items" :key="price.id" :item="price">
             <template #default>
-              <BaseTableCell class="max-w-xs">
-                <span class="text-sm text-n-slate-12 truncate block">
+              <BaseTableCell class="w-64">
+                <span class="text-sm text-n-slate-12 whitespace-normal">
                   {{ price.description }}
                 </span>
               </BaseTableCell>
