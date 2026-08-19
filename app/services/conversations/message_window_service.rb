@@ -7,9 +7,7 @@ class Conversations::MessageWindowService
   end
 
   def can_reply?
-    return true if messaging_window.blank?
-
-    last_message_in_messaging_window?(messaging_window)
+    true
   end
 
   private
