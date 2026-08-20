@@ -14,6 +14,8 @@ defineProps({
   loading: { type: Boolean, default: false },
 });
 
+const emit = defineEmits(['card-click']);
+
 const cards = [
   {
     key: 'new_today',
@@ -46,7 +48,7 @@ const cards = [
   {
     key: 'agent',
     label: 'En Agente',
-    icon: 'i-lucide-headphones',
+    icon: 'i-lucide-user-check',
     color: 'text-cyan-600 dark:text-cyan-400',
     bg: 'bg-cyan-50 dark:bg-cyan-500/10',
   },
@@ -58,6 +60,10 @@ const cards = [
     bg: 'bg-emerald-50 dark:bg-emerald-500/10',
   },
 ];
+
+function handleCardClick(key) {
+  emit('card-click', key);
+}
 </script>
 
 <template>
@@ -65,7 +71,8 @@ const cards = [
     <div
       v-for="card in cards"
       :key="card.key"
-      class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-4 flex flex-col items-center text-center gap-2"
+      class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-4 flex flex-col items-center text-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-n-strong"
+      @click="handleCardClick(card.key)"
     >
       <div
         class="flex items-center justify-center size-9 rounded-lg"

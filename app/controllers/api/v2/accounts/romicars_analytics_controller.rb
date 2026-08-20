@@ -31,6 +31,37 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
+  def mini_metrics_detail
+    account = Current.account
+    today   = Time.current.beginning_of_day
+    type    = params[:type]
+
+    items, label = case type
+                   when 'new_today'
+                     contacts = account.contacts.where('created_at >= ?', today).order(created_at: :desc).limit(50)
+                     [contacts.map { |c| { id: c.id, contact_name: c.name, status: 'nuevo', agent_name: '—', created_at: c.created_at } }, 'Nuevos Hoy']
+                   when 'pending'
+                     convs = account.conversations.where(status: :pending).includes(:contact, :assignee).order(created_at: :desc).limit(50)
+                     [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Pendiente', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Pendientes']
+                   when 'high_urgency'
+                     convs = account.conversations.where(priority: %i[high urgent], status: %i[open pending]).includes(:contact, :assignee).order(priority: :desc).limit(50)
+                     [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: c.status == 'open' ? 'Abierta' : 'Pendiente', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Alta Urgencia']
+                   when 'bot'
+                     convs = account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).includes(:contact).order(created_at: :desc).limit(50)
+                     [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Abierta', agent_name: 'Bot', created_at: c.created_at } }, 'En Bot']
+                   when 'agent'
+                     convs = account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).includes(:contact, :assignee).order(created_at: :desc).limit(50)
+                     [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Abierta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'En Agente']
+                   when 'resolved_today'
+                     convs = account.conversations.where(status: :resolved).where('status_changed_at >= ?', today).includes(:contact, :assignee).order(status_changed_at: :desc).limit(50)
+                     [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Resuelta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Resueltos Hoy']
+                   else
+                     [[], type]
+                   end
+
+    render json: { type: type, label: label, total: items.length, items: items }
+  end
+
   def agents
     account  = Current.account
     since_30 = 30.days.ago

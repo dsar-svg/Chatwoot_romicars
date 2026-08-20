@@ -9,6 +9,7 @@ import ProductDemand from './components/ProductDemand.vue';
 import ProfitProducts from './components/ProfitProducts.vue';
 import VenezuelaMap from './components/VenezuelaMap.vue';
 import ResolutionBreakdown from './components/ResolutionBreakdown.vue';
+import MetricDetailModal from './components/MetricDetailModal.vue';
 
 const loading = ref({
   overview: true,
@@ -25,6 +26,14 @@ const aiInsights = ref({ insights: [], source: 'rules' });
 const profit = ref({ products_top: [], products_bottom: [], customers: [], available: false });
 
 const lastUpdated = ref(null);
+
+// Modal state
+const showModal = ref(false);
+const modalType = ref('');
+const modalLabel = ref('');
+const modalItems = ref([]);
+const modalTotal = ref(0);
+const modalLoading = ref(false);
 
 async function loadOverview() {
   try {
@@ -77,6 +86,39 @@ async function refresh() {
   lastUpdated.value = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' });
 }
 
+const cardLabels = {
+  new_today: 'Nuevos Hoy',
+  pending: 'Pendientes',
+  high_urgency: 'Alta Urgencia',
+  bot: 'En Bot',
+  agent: 'En Agente',
+  resolved_today: 'Resueltos Hoy',
+};
+
+async function handleCardClick(type) {
+  modalType.value = type;
+  modalLabel.value = cardLabels[type] || type;
+  modalItems.value = [];
+  modalTotal.value = 0;
+  showModal.value = true;
+  modalLoading.value = true;
+
+  try {
+    const { data } = await api.getMiniMetricsDetail(type);
+    modalItems.value = data.items || [];
+    modalTotal.value = data.total || 0;
+  } catch (e) {
+    modalItems.value = [];
+    modalTotal.value = 0;
+  } finally {
+    modalLoading.value = false;
+  }
+}
+
+function handleCloseModal() {
+  showModal.value = false;
+}
+
 onMounted(refresh);
 </script>
 
@@ -125,6 +167,7 @@ onMounted(refresh);
     <LeadMetrics
       :metrics="overview.mini_metrics"
       :loading="loading.overview"
+      @card-click="handleCardClick"
     />
 
     <!-- Agent + Demand -->
@@ -158,4 +201,15 @@ onMounted(refresh);
 
   </div>
   </div>
+
+  <!-- Metric Detail Modal -->
+  <MetricDetailModal
+    :show="showModal"
+    :type="modalType"
+    :label="modalLabel"
+    :items="modalItems"
+    :total="modalTotal"
+    :loading="modalLoading"
+    @close="handleCloseModal"
+  />
 </template>

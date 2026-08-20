@@ -564,6 +564,7 @@ Rails.application.routes.draw do
               get :profit
               get :resolution
               get :requested_products
+              get :mini_metrics_detail
             end
           end
         end

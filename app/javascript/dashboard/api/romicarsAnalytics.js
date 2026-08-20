@@ -33,6 +33,10 @@ class RomicarsDashboardAPI extends ApiClient {
   getRequestedProducts() {
     return axios.get(`${this.url}/requested_products`);
   }
+
+  getMiniMetricsDetail(type) {
+    return axios.get(`${this.url}/mini_metrics_detail`, { params: { type } });
+  }
 }
 
 export default new RomicarsDashboardAPI();
