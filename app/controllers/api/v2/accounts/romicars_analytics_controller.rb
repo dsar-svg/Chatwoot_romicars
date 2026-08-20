@@ -26,7 +26,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         bot:            account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).count,
         agent:          account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).count,
         resolved_today: account.conversations.where(status: :resolved)
-                               .where('status_changed_at >= ?', today).count
+                               .where('resolved_at >= ?', today).count
       }
     }
   end
@@ -53,7 +53,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
                      convs = account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).includes(:contact, :assignee).order(created_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Abierta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'En Agente']
                    when 'resolved_today'
-                     convs = account.conversations.where(status: :resolved).where('status_changed_at >= ?', today).includes(:contact, :assignee).order(status_changed_at: :desc).limit(50)
+                     convs = account.conversations.where(status: :resolved).where('resolved_at >= ?', today).includes(:contact, :assignee).order(resolved_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Resuelta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Resueltos Hoy']
                    else
                      [[], type]
