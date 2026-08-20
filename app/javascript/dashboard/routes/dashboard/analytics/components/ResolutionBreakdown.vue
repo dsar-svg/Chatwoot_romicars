@@ -51,12 +51,6 @@ function barWidth(count) {
         <h3 class="text-sm font-semibold text-n-slate-12">Resolución de Conversaciones</h3>
         <p class="text-xs text-n-slate-10 mt-0.5">Últimos 30 días · {{ totalResolved }} total</p>
       </div>
-      <button
-        class="text-xs text-n-slate-10 hover:text-n-slate-12 transition-colors"
-        @click="loadData"
-      >
-        <span class="i-lucide-refresh-cw size-3.5" />
-      </button>
     </div>
 
     <div v-if="loading" class="flex items-center justify-center py-8">

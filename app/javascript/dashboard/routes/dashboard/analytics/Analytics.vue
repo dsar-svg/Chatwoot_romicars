@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import api from 'dashboard/api/romicarsAnalytics';
 import AIInsights from './components/AIInsights.vue';
 import KPICards from './components/KPICards.vue';
@@ -119,7 +119,16 @@ function handleCloseModal() {
   showModal.value = false;
 }
 
-onMounted(refresh);
+let refreshInterval = null;
+
+onMounted(() => {
+  refresh();
+  refreshInterval = setInterval(refresh, 300000);
+});
+
+onUnmounted(() => {
+  if (refreshInterval) clearInterval(refreshInterval);
+});
 </script>
 
 <template>
@@ -136,17 +145,6 @@ onMounted(refresh);
         <div v-if="lastUpdated" class="text-xs text-n-slate-9">
           Actualizado {{ lastUpdated }}
         </div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-          <span class="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span class="text-xs font-medium text-emerald-700 dark:text-emerald-400">Tiempo real</span>
-        </div>
-        <button
-          class="flex items-center gap-1.5 text-xs text-n-slate-11 hover:text-n-slate-12 px-2.5 py-1.5 rounded-lg hover:bg-n-alpha-2 transition-colors"
-          @click="refresh"
-        >
-          <span class="i-lucide-refresh-cw size-3.5" />
-          Actualizar
-        </button>
       </div>
     </div>
 
