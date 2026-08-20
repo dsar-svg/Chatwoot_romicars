@@ -4,7 +4,7 @@ import { computed } from 'vue';
 const props = defineProps({
   demand: {
     type: Object,
-    default: () => ({ popular_labels: [], channel_breakdown: [], total_30d: 0 }),
+    default: () => ({ popular_products: [], channel_breakdown: [], total_30d: 0 }),
   },
   loading: { type: Boolean, default: false },
 });
@@ -14,14 +14,15 @@ const channelIcon = {
   twitterprofile: 'i-lucide-twitter',
   whatsapp: 'i-lucide-message-circle',
   email: 'i-lucide-mail',
-  facebook: 'i-lucide-facebook',
+  facebookpage: 'i-lucide-facebook',
   instagram: 'i-lucide-instagram',
   telegram: 'i-lucide-send',
   sms: 'i-lucide-smartphone',
+  tiktok: 'i-lucide-music',
 };
 
-const topLabels = computed(() =>
-  (props.demand.popular_labels || []).slice(0, 8)
+const products = computed(() =>
+  (props.demand.popular_products || []).slice(0, 8)
 );
 
 const channels = computed(() =>
@@ -29,7 +30,10 @@ const channels = computed(() =>
 );
 
 const maxCount = computed(() =>
-  channels.value.reduce((m, c) => Math.max(m, c.count), 1)
+  Math.max(
+    channels.value.reduce((m, c) => Math.max(m, c.count), 1),
+    products.value.reduce((m, p) => Math.max(m, p.count), 1)
+  )
 );
 
 function barWidth(count) {
@@ -53,23 +57,29 @@ function iconForChannel(ch) {
     </div>
 
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Popular labels -->
+      <!-- Popular products -->
       <div>
         <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
-          Etiquetas populares
+          Productos más solicitados
         </p>
-        <div v-if="topLabels.length" class="flex flex-wrap gap-2">
-          <span
-            v-for="label in topLabels"
-            :key="label.term"
-            class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-[#1A365D]/10 text-[#1A365D] dark:bg-blue-11/10 dark:text-blue-11"
-          >
-            <span class="i-lucide-tag size-3" />
-            {{ label.term }}
-            <span class="text-[10px] opacity-70">({{ label.count }})</span>
-          </span>
+        <div v-if="products.length" class="space-y-2">
+          <div v-for="product in products" :key="product.name" class="flex items-center gap-2">
+            <span class="size-3.5 text-n-slate-10 flex-shrink-0 i-lucide-car" />
+            <span class="text-xs text-n-slate-11 w-28 truncate flex-shrink-0">
+              {{ product.name }}
+            </span>
+            <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
+              <div
+                class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
+                :style="{ width: barWidth(product.count) }"
+              />
+            </div>
+            <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
+              {{ product.count }}
+            </span>
+          </div>
         </div>
-        <p v-else class="text-xs text-n-slate-9">Sin etiquetas aún.</p>
+        <p v-else class="text-xs text-n-slate-9">Sin datos de productos aún.</p>
       </div>
 
       <!-- Channels breakdown -->
@@ -80,7 +90,7 @@ function iconForChannel(ch) {
         <div v-if="channels.length" class="space-y-2.5">
           <div v-for="ch in channels" :key="ch.channel" class="flex items-center gap-2">
             <span class="size-3.5 text-n-slate-10 flex-shrink-0" :class="iconForChannel(ch.channel)" />
-            <span class="text-xs text-n-slate-11 w-24 truncate capitalize flex-shrink-0">
+            <span class="text-xs text-n-slate-11 w-28 truncate capitalize flex-shrink-0">
               {{ ch.channel }}
             </span>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">

@@ -90,15 +90,6 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
-    label_counts = account.conversations
-                          .where(created_at: since_30..Time.current)
-                          .where.not(cached_label_list: ['', nil])
-                          .pluck(:cached_label_list)
-                          .flat_map { |l| l.to_s.split(',').map(&:strip) }
-                          .reject(&:blank?)
-                          .tally
-                          .sort_by { |_, v| -v }
-
     channel_breakdown = account.conversations
                                .where(created_at: since_30..Time.current)
                                .joins(:inbox)
@@ -106,10 +97,21 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
                                .count
                                .map { |k, v| { channel: k.to_s.split('::').last.downcase, count: v } }
 
+    # Get top vehicle brands from contact custom attributes
+    brand_counts = account.contacts
+                         .where.not(custom_attributes: nil)
+                         .where("custom_attributes->>'marca_vehiculo' IS NOT NULL AND custom_attributes->>'marca_vehiculo' != ''")
+                         .pluck(Arel.sql("custom_attributes->>'marca_vehiculo'"))
+                         .reject(&:blank?)
+                         .tally
+                         .sort_by { |_, v| -v }
+                         .first(8)
+                         .map { |brand, count| { name: brand, count: count } }
+
     render json: {
-      popular_labels:   label_counts.first(8).map { |term, count| { term: term, count: count } },
+      popular_products: brand_counts,
       channel_breakdown: channel_breakdown,
-      total_30d:        account.conversations.where(created_at: since_30..Time.current).count
+      total_30d: account.conversations.where(created_at: since_30..Time.current).count
     }
   end
 
