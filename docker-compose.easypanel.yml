@@ -34,6 +34,7 @@ services:
       - SMTP_ENABLE_STARTTLS_AUTO=${SMTP_ENABLE_STARTTLS_AUTO}
       - SMTP_TLS=${SMTP_TLS}
       - SMTP_DOMAIN=${SMTP_DOMAIN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     entrypoint: docker/entrypoints/rails.sh
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     volumes:
