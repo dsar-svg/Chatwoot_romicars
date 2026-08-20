@@ -121,6 +121,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     key     = ENV.fetch('OPENAI_API_KEY', nil) ||
               InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
 
+    Rails.logger.error "RomicarsDashboard AI: OPENAI_API_KEY present? #{key.present?}"
+    Rails.logger.error "RomicarsDashboard AI: ENV value length: #{ENV.fetch('OPENAI_API_KEY', '').length}"
+
     raise 'No OpenAI API key configured' unless key.present?
 
     client   = OpenAI::Client.new(access_token: key)
