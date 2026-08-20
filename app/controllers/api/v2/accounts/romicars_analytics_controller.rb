@@ -119,10 +119,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account = Current.account
     ctx     = insights_context(account)
     key     = ENV.fetch('OPENAI_API_KEY', nil) ||
-              InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value
+              InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value ||
+              InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value
 
     Rails.logger.error "RomicarsDashboard AI: OPENAI_API_KEY present? #{key.present?}"
     Rails.logger.error "RomicarsDashboard AI: ENV value length: #{ENV.fetch('OPENAI_API_KEY', '').length}"
+    Rails.logger.error "RomicarsDashboard AI: CAPTAIN config present? #{InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value.present?}"
+    Rails.logger.error "RomicarsDashboard AI: OPENAI config present? #{InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value.present?}"
 
     raise 'No OpenAI API key configured' unless key.present?
 
