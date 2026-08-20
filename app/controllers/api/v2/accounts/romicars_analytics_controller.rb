@@ -10,20 +10,21 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     today    = now.beginning_of_day
 
     convs_30 = account.conversations.where(created_at: since_30..now)
-    total    = convs_30.count
-    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').count
+    active   = convs_30.where.not(status: :resolved)
+    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado')
 
     render json: {
       kpis: {
-        total_leads:  total,
-        conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
+        total_leads:  active.count,
+        conversion:   convs_30.count.positive? ? (ganado.count.to_f / convs_30.count * 100).round(1) : 0,
         active_chats: account.conversations.where(status: :open).count
       },
       mini_metrics: {
-        new_today:    account.conversations.where(created_at: today..now).count,
-        pending:      account.conversations.where(status: :pending).count,
-        high_urgency: account.conversations.where(priority: %i[high urgent]).count,
-        unassigned:   account.conversations.where(status: :open, assignee_id: nil).count,
+        new_today:      account.conversations.where(created_at: today..now).count,
+        pending:        account.conversations.where(status: :pending).count,
+        high_urgency:   account.conversations.where(priority: %i[high urgent]).where(status: %i[open pending]).count,
+        bot:            account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).count,
+        agent:          account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).count,
         resolved_today: account.conversations.where(status: :resolved)
                                .where('status_changed_at >= ?', today).count
       }

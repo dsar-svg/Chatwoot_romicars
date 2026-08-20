@@ -6,7 +6,8 @@ defineProps({
       new_today: 0,
       pending: 0,
       high_urgency: 0,
-      unassigned: 0,
+      bot: 0,
+      agent: 0,
       resolved_today: 0,
     }),
   },
@@ -36,11 +37,18 @@ const cards = [
     bg: 'bg-red-50 dark:bg-red-500/10',
   },
   {
-    key: 'unassigned',
-    label: 'Sin Asignar',
-    icon: 'i-lucide-headphones',
+    key: 'bot',
+    label: 'En Bot',
+    icon: 'i-lucide-bot',
     color: 'text-violet-600 dark:text-violet-400',
     bg: 'bg-violet-50 dark:bg-violet-500/10',
+  },
+  {
+    key: 'agent',
+    label: 'En Agente',
+    icon: 'i-lucide-headphones',
+    color: 'text-cyan-600 dark:text-cyan-400',
+    bg: 'bg-cyan-50 dark:bg-cyan-500/10',
   },
   {
     key: 'resolved_today',
@@ -53,7 +61,7 @@ const cards = [
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+  <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
     <div
       v-for="card in cards"
       :key="card.key"
