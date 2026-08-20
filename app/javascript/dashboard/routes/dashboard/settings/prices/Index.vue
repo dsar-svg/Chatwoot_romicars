@@ -225,9 +225,10 @@ const tableHeaders = computed(() => [
   'Marca',
   'Modelo',
   'Variante',
-  'USD',
+  'Costo USD',
+  'Divisa',
   'Bolívares',
-  'Bs.',
+  'Monto BS',
   'Sinónimos',
   'Acciones',
 ]);
@@ -349,6 +350,7 @@ const goToPage = p => {
         <template #header-6>{{ tableHeaders[6] }}</template>
         <template #header-7>{{ tableHeaders[7] }}</template>
         <template #header-8>{{ tableHeaders[8] }}</template>
+        <template #header-9>{{ tableHeaders[9] }}</template>
 
         <template #row="{ items }">
           <BaseTableRow v-for="price in items" :key="price.id" :item="price">
@@ -382,6 +384,12 @@ const goToPage = p => {
               <BaseTableCell class="w-20">
                 <span class="text-sm font-medium text-n-green-11">
                   {{ formatCurrency(price.cost_usd) }}
+                </span>
+              </BaseTableCell>
+
+              <BaseTableCell class="w-16">
+                <span class="text-sm text-n-slate-11">
+                  {{ price.divisa || '—' }}
                 </span>
               </BaseTableCell>
 
