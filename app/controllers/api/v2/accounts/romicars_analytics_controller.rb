@@ -20,7 +20,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         active_chats: account.conversations.where(status: :open).count
       },
       mini_metrics: {
-        new_today:      account.conversations.where(created_at: today..now).count,
+        new_today:      account.contacts.where('created_at >= ?', today).count,
         pending:        account.conversations.where(status: :pending).count,
         high_urgency:   account.conversations.where(priority: %i[high urgent]).where(status: %i[open pending]).count,
         bot:            account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).count,
@@ -39,7 +39,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     items, label = case type
                    when 'new_today'
                      contacts = account.contacts.where('created_at >= ?', today).order(created_at: :desc).limit(50)
-                     [contacts.map { |c| { id: c.id, contact_name: c.name, status: 'nuevo', agent_name: '—', created_at: c.created_at } }, 'Nuevos Hoy']
+                     [contacts.map { |c| { id: c.id, contact_name: c.name, status: 'Nuevo', agent_name: '—', created_at: c.created_at } }, 'Nuevos Hoy']
                    when 'pending'
                      convs = account.conversations.where(status: :pending).includes(:contact, :assignee).order(created_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Pendiente', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Pendientes']
