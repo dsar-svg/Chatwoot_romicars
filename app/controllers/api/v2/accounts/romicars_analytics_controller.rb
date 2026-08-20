@@ -10,13 +10,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     today    = now.beginning_of_day
 
     convs_30 = account.conversations.where(created_at: since_30..now)
-    active   = convs_30.where.not(status: :resolved)
-    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado')
+    total    = convs_30.count
+    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').count
 
     render json: {
       kpis: {
-        total_leads:  active.count,
-        conversion:   convs_30.count.positive? ? (ganado.count.to_f / convs_30.count * 100).round(1) : 0,
+        total_leads:  total,
+        conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
         active_chats: account.conversations.where(status: :open).count
       },
       mini_metrics: {
