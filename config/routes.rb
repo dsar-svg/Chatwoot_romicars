@@ -137,6 +137,7 @@ Rails.application.routes.draw do
               post :fetch_current
             end
           end
+          resources :bot_logs, only: [:index, :show]
           resources :automation_rules, only: [:index, :create, :show, :update, :destroy] do
             post :clone
           end

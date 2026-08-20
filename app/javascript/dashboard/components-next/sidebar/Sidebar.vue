@@ -715,6 +715,12 @@ const menuItems = computed(() => {
           icon: 'i-lucide-circle-check',
           to: accountScopedRoute('resolution_reports'),
         },
+        {
+          name: 'Reports Bot Logs',
+          label: 'Logs del Bot',
+          icon: 'i-lucide-scroll-text',
+          to: accountScopedRoute('bot_logs'),
+        },
       ],
     },
     {

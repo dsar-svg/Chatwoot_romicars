@@ -20,6 +20,7 @@ import vehicleModels from './modules/vehicleModels';
 import vehiclePrices from './modules/vehiclePrices';
 import exchangeRates from './modules/exchangeRates';
 import romicarsAnalytics from './modules/romicarsAnalytics';
+import botLogs from './modules/botLogs';
 import contactConversations from './modules/contactConversations';
 import contactLabels from './modules/contactLabels';
 import contactNotes from './modules/contactNotes';
@@ -93,6 +94,7 @@ export default createStore({
     vehiclePrices,
     exchangeRates,
     romicarsAnalytics,
+    botLogs,
     contactConversations,
     contactLabels,
     contactNotes,
