@@ -196,6 +196,7 @@ onMounted(() => {
               <ConversationInfo
                 :conversation-attributes="conversationAdditionalAttributes"
                 :contact-attributes="contactAdditionalAttributes"
+                :conversation="currentChat"
               />
             </AccordionItem>
           </div>

@@ -180,7 +180,7 @@ class Conversation < ApplicationRecord
     save
   end
 
-  def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil, sale_amount: nil, sale_date: nil, sale_invoice: nil)
+  def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil, sale_amount: nil, sale_date: nil, sale_invoice: nil, requested_product: nil)
     self.status = :resolved
     self.resolution_type = resolution_type
     self.resolution_reason = resolution_reason if resolution_type == 'perdido'
@@ -188,6 +188,7 @@ class Conversation < ApplicationRecord
     self.sale_amount = sale_amount if resolution_type == 'ganado'
     self.sale_date = sale_date.presence || Date.current if resolution_type == 'ganado'
     self.sale_invoice = sale_invoice if resolution_type == 'ganado'
+    self.requested_product = requested_product if resolution_type == 'perdido' && resolution_reason == 'sin_stock'
     self.resolved_at = Time.current
     save
   end

@@ -265,6 +265,7 @@ const actions = {
       saleAmount = null,
       saleDate = null,
       saleInvoice = null,
+      requestedProduct = null,
     }
   ) => {
     try {
@@ -285,6 +286,14 @@ const actions = {
           payload: {
             current_status: updatedStatus,
             snoozed_until: updatedSnoozedUntil,
+            resolution_type: apiResolutionType,
+            resolution_reason: apiResolutionReason,
+            resolution_notes: apiResolutionNotes,
+            resolved_at: apiResolvedAt,
+            sale_amount: apiSaleAmount,
+            sale_date: apiSaleDate,
+            sale_invoice: apiSaleInvoice,
+            requested_product: apiRequestedProduct,
           } = {},
         } = {},
       } = await ConversationApi.toggleStatus({
@@ -297,11 +306,20 @@ const actions = {
         saleAmount,
         saleDate,
         saleInvoice,
+        requestedProduct,
       });
       commit(types.CHANGE_CONVERSATION_STATUS, {
         conversationId,
         status: updatedStatus,
         snoozedUntil: updatedSnoozedUntil,
+        resolutionType: apiResolutionType,
+        resolutionReason: apiResolutionReason,
+        resolutionNotes: apiResolutionNotes,
+        resolvedAt: apiResolvedAt,
+        saleAmount: apiSaleAmount,
+        saleDate: apiSaleDate,
+        saleInvoice: apiSaleInvoice,
+        requestedProduct: apiRequestedProduct,
       });
     } catch (error) {
       // Handle error

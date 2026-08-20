@@ -38,8 +38,7 @@ const FORM_CONFIG = {
   LAST_NAME: { field: 'lastName' },
   EMAIL_ADDRESS: { field: 'email' },
   PHONE_NUMBER: { field: 'phoneNumber' },
-  CITY: { field: 'additionalAttributes.city' },
-  COUNTRY: { field: 'additionalAttributes.countryCode' },
+  LOCATION: { field: 'additionalAttributes.location' },
   BIO: { field: 'additionalAttributes.description' },
   COMPANY_NAME: { field: 'additionalAttributes.companyName' },
 };
@@ -68,6 +67,7 @@ const defaultState = {
     countryCode: '',
     country: '',
     city: '',
+    location: '',
     socialProfiles: {
       facebook: '',
       github: '',
@@ -133,6 +133,7 @@ const prepareStateBasedOnProps = () => {
     countryCode = '',
     country = '',
     city = '',
+    location = '',
     socialTelegramUserName = '',
     socialProfiles = {},
   } = additionalAttributes || {};
@@ -154,6 +155,7 @@ const prepareStateBasedOnProps = () => {
       countryCode,
       country,
       city,
+      location: location || city,
       socialProfiles: {
         ...socialProfiles,
         telegram: telegramUsername,
@@ -244,9 +246,8 @@ const getMessageType = key => {
     : 'info';
 };
 
-const handleCountrySelection = value => {
-  const selectedCountry = countries.find(option => option.id === value);
-  state.additionalAttributes.country = selectedCountry?.name || '';
+const handleLocationUpdate = value => {
+  state.additionalAttributes.location = value;
   emit('update', state);
 };
 
@@ -289,18 +290,17 @@ defineExpose({
       </span>
       <div class="grid w-full grid-cols-1 gap-4 sm:grid-cols-2">
         <template v-for="item in editDetailsForm" :key="item.key">
-          <ComboBox
-            v-if="item.key === 'COUNTRY'"
-            v-model="state.additionalAttributes.countryCode"
-            :options="countryOptions"
-            :placeholder="item.placeholder"
+          <Input
+            v-if="item.key === 'LOCATION'"
+            v-model="getFormBinding(item.key).value"
+            :placeholder="'Ej: Valencia, Carabobo'"
+            :show-border="isDetailsView"
             class="[&>div>button]:h-8"
             :class="{
               '[&>div>button]:bg-n-alpha-black2 [&>div>button:not(.focused)]:!outline-transparent':
                 !isDetailsView,
               '[&>div>button]:!bg-n-alpha-black2': isDetailsView,
             }"
-            @update:model-value="handleCountrySelection"
           />
           <PhoneNumberInput
             v-else-if="item.key === 'PHONE_NUMBER'"

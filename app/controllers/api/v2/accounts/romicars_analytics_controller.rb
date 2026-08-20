@@ -11,12 +11,12 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     convs_30 = account.conversations.where(created_at: since_30..now)
     total    = convs_30.count
-    resolved = convs_30.where(status: :resolved).count
+    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').count
 
     render json: {
       kpis: {
         total_leads:  total,
-        conversion:   total.positive? ? (resolved.to_f / total * 100).round(1) : 0,
+        conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
         active_chats: account.conversations.where(status: :open).count
       },
       mini_metrics: {
@@ -142,10 +142,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   def resolution
     account = Current.account
     since_30 = 30.days.ago
-    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido])
+    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido consulta])
 
     ganado = resolved.where(resolution_type: 'ganado')
     perdido = resolved.where(resolution_type: 'perdido')
+    consulta = resolved.where(resolution_type: 'consulta')
 
     sales = ganado.with_sale
     total_sales_amount = sales.sum(:sale_amount)
@@ -178,8 +179,47 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
           otro: perdido.where(resolution_reason: 'otro').count
         }
       },
+      consulta: {
+        count: consulta.count,
+        percentage: resolved.count.positive? ? (consulta.count.to_f / resolved.count * 100).round(1) : 0
+      },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)
+    }
+  end
+
+  def requested_products
+    account = Current.account
+    since_30 = 30.days.ago
+
+    products = account.conversations
+                      .where(status: :resolved, resolution_reason: 'sin_stock')
+                      .where.not(requested_product: [nil, ''])
+                      .where('resolved_at >= ?', since_30)
+                      .order(resolved_at: :desc)
+                      .limit(100)
+
+    grouped = products.group_by(&:requested_product)
+                      .transform_values do |convs|
+                        {
+                          count: convs.count,
+                          conversations: convs.map do |c|
+                            {
+                              id: c.display_id,
+                              product: c.requested_product,
+                              contact: c.contact.try(:name),
+                              resolved_at: c.resolved_at,
+                              resolution_notes: c.resolution_notes
+                            }
+                          end
+                        }
+                      end
+
+    render json: {
+      period: '30 días',
+      total_requested: products.count,
+      unique_products: grouped.keys.count,
+      products: grouped.sort_by { |_, v| -v[:count] }.to_h
     }
   end
 
@@ -203,15 +243,15 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since_30 = 30.days.ago
     convs    = account.conversations.where(created_at: since_30..Time.current)
     total    = convs.count
-    resolved = convs.where(status: :resolved).count
+    ganado   = convs.where(status: :resolved, resolution_type: 'ganado').count
 
     {
       period: '30 días',
       total_conversations: total,
-      resolved: resolved,
+      resolved: convs.where(status: :resolved).count,
       pending: convs.where(status: :pending).count,
       open: convs.where(status: :open).count,
-      conversion_pct: total.positive? ? (resolved.to_f / total * 100).round(1) : 0,
+      conversion_pct: total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
       high_urgency: convs.where(priority: %i[high urgent]).count,
       unassigned: convs.where(assignee_id: nil).count,
       agents_count: account.agents.count,

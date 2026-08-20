@@ -90,7 +90,8 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
         resolution_notes: params[:resolution_notes],
         sale_amount: params[:sale_amount],
         sale_date: params[:sale_date],
-        sale_invoice: params[:sale_invoice]
+        sale_invoice: params[:sale_invoice],
+        requested_product: params[:requested_product]
       )
       @status = @conversation.saved_change_to_status?
     elsif params[:status].present?

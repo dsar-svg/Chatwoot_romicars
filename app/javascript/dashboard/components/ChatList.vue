@@ -17,6 +17,7 @@ import DeleteCustomViews from 'dashboard/routes/dashboard/customviews/DeleteCust
 import ConversationBulkActions from './widgets/conversation/conversationBulkActions/Index.vue';
 import TeleportWithDirection from 'dashboard/components-next/TeleportWithDirection.vue';
 import ConversationResolveAttributesModal from 'dashboard/components-next/ConversationWorkflow/ConversationResolveAttributesModal.vue';
+import ConversationResolutionModal from 'dashboard/components-next/ConversationWorkflow/ConversationResolutionModal.vue';
 
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAlert } from 'dashboard/composables';
@@ -71,6 +72,8 @@ const route = useRoute();
 const store = useStore();
 
 const resolveAttributesModalRef = ref(null);
+const resolutionModalRef = ref(null);
+const pendingResolveConversationId = ref(null);
 
 const activeAssigneeTab = ref(wootConstants.ASSIGNEE_TYPE.ME);
 const activeStatus = ref(wootConstants.STATUS_TYPE.OPEN);
@@ -773,8 +776,41 @@ function handleResolveConversation(conversationId, status, snoozedUntil) {
       conversationContext
     );
   } else {
-    toggleConversationStatus(conversationId, status, snoozedUntil);
+    pendingResolveConversationId.value = conversationId;
+    resolutionModalRef.value = true;
   }
+}
+
+function handleResolveWithOutcome({
+  resolutionType,
+  resolutionReason,
+  resolutionNotes,
+  saleAmount,
+  saleDate,
+  saleInvoice,
+  requestedProduct,
+}) {
+  resolutionModalRef.value = false;
+  const conversationId = pendingResolveConversationId.value;
+  pendingResolveConversationId.value = null;
+  if (!conversationId) return;
+
+  const payload = {
+    conversationId,
+    status: wootConstants.STATUS_TYPE.RESOLVED,
+    snoozedUntil: null,
+    resolutionType,
+    resolutionReason,
+    resolutionNotes,
+    saleAmount,
+    saleDate,
+    saleInvoice,
+    requestedProduct,
+  };
+
+  store.dispatch('toggleStatus', payload).then(() => {
+    useAlert(t('CONVERSATION.CHANGE_STATUS'));
+  });
 }
 
 function handleResolveWithAttributes({ attributes, context }) {
@@ -996,6 +1032,11 @@ watch(conversationFilters, (newVal, oldVal) => {
     <ConversationResolveAttributesModal
       ref="resolveAttributesModalRef"
       @submit="handleResolveWithAttributes"
+    />
+    <ConversationResolutionModal
+      :show="resolutionModalRef"
+      @close="resolutionModalRef = false"
+      @resolve="handleResolveWithOutcome"
     />
   </div>
 </template>
