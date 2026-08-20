@@ -224,7 +224,7 @@ const tableHeaders = computed(() => [
   'Modelo',
   'Variante',
   'USD',
-  'Divisor',
+  'Bolívares',
   'Bs.',
   'Sinónimos',
   'Acciones',
@@ -385,7 +385,7 @@ const goToPage = p => {
 
               <BaseTableCell class="w-16">
                 <span class="text-sm text-n-slate-11">
-                  {{ price.divisor || '—' }}
+                  {{ calcBolivares(price.divisor) || '—' }}
                 </span>
               </BaseTableCell>
 
