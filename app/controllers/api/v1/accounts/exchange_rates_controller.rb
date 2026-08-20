@@ -38,12 +38,16 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
   end
 
   def recalculate_prices(equiv_13)
+    tasa_bcv = equiv_13 / 1.13
     Current.account.vehicle_prices.find_each do |price|
-      next unless price.divisor.present?
+      next unless price.divisa.present?
+
+      new_monto_bs = (price.divisa * equiv_13).round(2)
+      new_bolivares = (new_monto_bs / tasa_bcv).round(2)
 
       price.update_columns(
-        cost_bs: (price.divisor * equiv_13).round(2),
-        bolivares: (price.divisor * 1.13).round(2)
+        monto_bs: new_monto_bs,
+        bolivares: new_bolivares
       )
     end
   end

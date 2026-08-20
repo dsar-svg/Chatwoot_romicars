@@ -79,14 +79,16 @@ const pagedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + perPage);
 });
 
-const calcCostBs = divisor => {
-  if (!divisor || !latestRate.value) return null;
-  return Number((divisor * latestRate.value.equiv_13).toFixed(2));
+const calcCostBs = divisa => {
+  if (!divisa || !latestRate.value) return null;
+  return Number((divisa * latestRate.value.equiv_13).toFixed(2));
 };
 
-const calcBolivares = divisor => {
-  if (!divisor) return null;
-  return Number((divisor * 1.13).toFixed(2));
+const calcBolivares = divisa => {
+  if (!divisa || !latestRate.value) return null;
+  const montoBs = divisa * latestRate.value.equiv_13;
+  const tasaBcv = latestRate.value.equiv_13 / 1.13;
+  return Number((montoBs / tasaBcv).toFixed(2));
 };
 
 const fetchPrices = async () => {
@@ -385,13 +387,13 @@ const goToPage = p => {
 
               <BaseTableCell class="w-16">
                 <span class="text-sm text-n-slate-11">
-                  {{ calcBolivares(price.divisor) || '—' }}
+                  {{ calcBolivares(price.divisa) || '—' }}
                 </span>
               </BaseTableCell>
 
               <BaseTableCell class="w-24">
                 <span class="text-sm text-n-blue-11">
-                  {{ formatBs(calcCostBs(price.divisor)) }}
+                  {{ formatBs(calcCostBs(price.divisa)) }}
                 </span>
               </BaseTableCell>
 

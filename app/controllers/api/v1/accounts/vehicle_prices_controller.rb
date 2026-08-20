@@ -45,7 +45,7 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
   def price_params
     params.require(:vehicle_price).permit(
       :vehicle_brand_id, :vehicle_model_id, :description,
-      :variant, :cost_usd, :divisor, :cost_bs, :bolivares, :active, :synonyms
+      :variant, :cost_usd, :divisa, :monto_bs, :bolivares, :active, :synonyms
     )
   end
 end

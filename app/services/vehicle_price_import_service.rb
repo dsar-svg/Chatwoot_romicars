@@ -106,8 +106,8 @@ class VehiclePriceImportService
         vehicle_brand: brand,
         vehicle_model: model,
         cost_usd: row['COSTO']&.to_d,
-        divisor: row['DIVISA']&.to_i,
-        cost_bs: row['MONTO Bs']&.to_d,
+        divisa: row['DIVISA']&.to_i,
+        monto_bs: row['MONTO Bs']&.to_d,
         bolivares: row['BOLIVARES']&.to_i,
         synonyms: row['SINONIMOS']&.to_s&.strip
       )

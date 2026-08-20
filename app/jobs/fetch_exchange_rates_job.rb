@@ -25,15 +25,16 @@ class FetchExchangeRatesJob < ApplicationJob
 
   def recalculate_prices(account, rate_data)
     equiv_13 = rate_data[:equiv_13]
+    tasa_bcv = equiv_13 / 1.13
 
     account.vehicle_prices.find_each do |price|
-      next unless price.divisor.present?
+      next unless price.divisa.present?
 
-      new_cost_bs = (price.divisor * equiv_13).round(2)
-      new_bolivares = (price.divisor * 1.13).round(2)
+      new_monto_bs = (price.divisa * equiv_13).round(2)
+      new_bolivares = (new_monto_bs / tasa_bcv).round(2)
 
       price.update_columns(
-        cost_bs: new_cost_bs,
+        monto_bs: new_monto_bs,
         bolivares: new_bolivares
       )
     end

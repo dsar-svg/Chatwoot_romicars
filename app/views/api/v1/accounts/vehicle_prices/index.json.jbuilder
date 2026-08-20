@@ -5,8 +5,8 @@ json.payload @prices do |price|
   json.description price.description
   json.variant price.variant
   json.cost_usd price.cost_usd
-  json.divisor price.divisor
-  json.cost_bs price.cost_bs
+  json.divisa price.divisa
+  json.monto_bs price.monto_bs
   json.bolivares price.bolivares
   json.active price.active
   json.synonyms price.synonyms

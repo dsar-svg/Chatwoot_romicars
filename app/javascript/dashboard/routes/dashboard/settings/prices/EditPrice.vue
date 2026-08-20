@@ -31,8 +31,8 @@ export default {
       variant: this.price.variant || '',
       synonyms: this.price.synonyms || '',
       cost_usd: this.price.cost_usd,
-      divisor: this.price.divisor,
-      cost_bs: this.price.cost_bs,
+      divisa: this.price.divisa,
+      monto_bs: this.price.monto_bs,
       bolivares: this.price.bolivares,
       vehicle_brand_id: this.price.brand?.id || null,
       vehicle_model_id: this.price.model?.id || null,
@@ -59,17 +59,19 @@ export default {
       return this.$store.getters['exchangeRates/getLatestRate'];
     },
     calculatedCostBs() {
-      if (!this.divisor || !this.latestRate) return null;
-      return Number((this.divisor * this.latestRate.equiv_13).toFixed(2));
+      if (!this.divisa || !this.latestRate) return null;
+      return Number((this.divisa * this.latestRate.equiv_13).toFixed(2));
     },
     calculatedBolivares() {
-      if (!this.divisor) return null;
-      return Number((this.divisor * 1.13).toFixed(2));
+      if (!this.divisa || !this.latestRate) return null;
+      const montoBs = this.divisa * this.latestRate.equiv_13;
+      const tasaBcv = this.latestRate.equiv_13 / 1.13;
+      return Number((montoBs / tasaBcv).toFixed(2));
     },
   },
   watch: {
-    divisor() {
-      this.cost_bs = this.calculatedCostBs;
+    divisa() {
+      this.monto_bs = this.calculatedCostBs;
       this.bolivares = this.calculatedBolivares;
     },
   },
@@ -90,8 +92,8 @@ export default {
           variant: this.variant,
           synonyms: this.synonyms,
           cost_usd: this.cost_usd,
-          divisor: this.divisor,
-          cost_bs: this.cost_bs,
+          divisa: this.divisa,
+          monto_bs: this.monto_bs,
           bolivares: this.bolivares,
           vehicle_brand_id: this.vehicle_brand_id,
           vehicle_model_id: this.vehicle_model_id || null,
@@ -201,9 +203,9 @@ export default {
           </div>
           <div class="w-full">
             <label>
-              Divisor (DIVISA)
+              Divisa
               <input
-                v-model.number="divisor"
+                v-model.number="divisa"
                 type="number"
                 min="0"
               />
