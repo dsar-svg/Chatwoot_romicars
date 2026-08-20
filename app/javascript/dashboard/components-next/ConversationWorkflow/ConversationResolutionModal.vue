@@ -1,10 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useI18n } from 'vue-i18n';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Modal from 'dashboard/components/Modal.vue';
-
-const { t } = useI18n();
 
 const props = defineProps({
   show: { type: Boolean, default: false },
@@ -40,12 +37,10 @@ const handleSubmit = () => {
     resolutionReason:
       resolutionType.value === 'perdido' ? resolutionReason.value : 'venta',
     resolutionNotes: resolutionNotes.value,
-    saleAmount:
-      resolutionType.value === 'ganado' ? saleAmount.value : null,
+    saleAmount: resolutionType.value === 'ganado' ? saleAmount.value : null,
     saleDate:
       resolutionType.value === 'ganado' && saleDate.value ? saleDate.value : null,
-    saleInvoice:
-      resolutionType.value === 'ganado' ? saleInvoice.value : null,
+    saleInvoice: resolutionType.value === 'ganado' ? saleInvoice.value : null,
   });
   resetForm();
 };
@@ -67,151 +62,180 @@ const handleClose = () => {
 
 <template>
   <Modal v-model:show="show" :on-close="handleClose">
-    <div class="flex flex-col h-auto overflow-auto">
+    <template #header>
       <woot-modal-header
         header-title="Cerrar Conversación"
         header-content="Selecciona el resultado de esta conversación"
       />
-      <form class="flex flex-col w-full p-4" @submit.prevent="handleSubmit">
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-n-slate-12 mb-2">
-            Resultado *
-          </label>
-          <div class="flex gap-4">
-            <label
-              class="flex items-center gap-2 cursor-pointer p-3 rounded-lg border"
+    </template>
+    <form class="flex flex-col w-full p-4 gap-4" @submit.prevent="handleSubmit">
+      <!-- Resultado -->
+      <div>
+        <label class="block text-sm font-medium text-n-slate-12 mb-3">
+          Resultado *
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            class="flex items-center gap-2 p-4 rounded-lg border-2 transition-colors"
+            :class="
+              resolutionType === 'ganado'
+                ? 'border-n-green-9 bg-n-green-3 text-n-green-12'
+                : 'border-n-slate-6 hover:border-n-slate-8 bg-transparent text-n-slate-11'
+            "
+            @click="resolutionType = 'ganado'"
+          >
+            <div
+              class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
               :class="
                 resolutionType === 'ganado'
-                  ? 'border-n-green-11 bg-n-green-2'
-                  : 'border-n-slate-4 bg-white'
+                  ? 'border-n-green-9'
+                  : 'border-n-slate-8'
               "
             >
-              <input
-                v-model="resolutionType"
-                type="radio"
-                value="ganado"
-                class="!w-auto"
+              <div
+                v-if="resolutionType === 'ganado'"
+                class="w-2 h-2 rounded-full bg-n-green-9"
               />
-              <span class="text-sm font-medium text-n-green-11">
-                Cierre Ganado (Venta)
-              </span>
-            </label>
-            <label
-              class="flex items-center gap-2 cursor-pointer p-3 rounded-lg border"
+            </div>
+            <span class="text-sm font-medium">Cierre Ganado (Venta)</span>
+          </button>
+
+          <button
+            type="button"
+            class="flex items-center gap-2 p-4 rounded-lg border-2 transition-colors"
+            :class="
+              resolutionType === 'perdido'
+                ? 'border-n-ruby-9 bg-n-ruby-3 text-n-ruby-12'
+                : 'border-n-slate-6 hover:border-n-slate-8 bg-transparent text-n-slate-11'
+            "
+            @click="resolutionType = 'perdido'"
+          >
+            <div
+              class="w-4 h-4 rounded-full border-2 flex items-center justify-center"
               :class="
                 resolutionType === 'perdido'
-                  ? 'border-n-ruby-11 bg-n-ruby-2'
-                  : 'border-n-slate-4 bg-white'
+                  ? 'border-n-ruby-9'
+                  : 'border-n-slate-8'
               "
             >
-              <input
-                v-model="resolutionType"
-                type="radio"
-                value="perdido"
-                class="!w-auto"
+              <div
+                v-if="resolutionType === 'perdido'"
+                class="w-2 h-2 rounded-full bg-n-ruby-9"
               />
-              <span class="text-sm font-medium text-n-ruby-11">
-                Cierre Perdido
-              </span>
-            </label>
-          </div>
+            </div>
+            <span class="text-sm font-medium">Cierre Perdido</span>
+          </button>
         </div>
+      </div>
 
-        <div v-if="resolutionType === 'ganado'" class="mb-4">
-          <label class="block text-sm font-medium text-n-slate-12 mb-2">
-            Datos de la venta
-          </label>
-          <div class="flex gap-4 mb-3">
-            <div class="w-full">
-              <label class="text-xs text-n-slate-11">
-                Monto de venta (USD) *
-                <input
-                  v-model.number="saleAmount"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-                />
-              </label>
-            </div>
-            <div class="w-full">
-              <label class="text-xs text-n-slate-11">
-                Fecha de venta
-                <input
-                  v-model="saleDate"
-                  type="date"
-                  class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-                />
-              </label>
-            </div>
+      <!-- Campos de venta (solo ganado) -->
+      <div v-if="resolutionType === 'ganado'" class="p-4 rounded-lg bg-n-alpha-1 space-y-4">
+        <label class="block text-sm font-medium text-n-slate-12">
+          Datos de la venta
+        </label>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-n-slate-11 mb-1">
+              Monto de venta (USD) *
+            </label>
+            <input
+              v-model.number="saleAmount"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              class="w-full px-3 py-2 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12 placeholder:text-n-slate-8 focus:outline-none focus:ring-2 focus:ring-n-brand-8"
+            />
           </div>
           <div>
-            <label class="text-xs text-n-slate-11">
-              N° de factura
-              <input
-                v-model="saleInvoice"
-                type="text"
-                placeholder="FAC-0001"
-                class="w-full rounded-lg border border-n-slate-4 p-2 text-sm"
-              />
+            <label class="block text-xs font-medium text-n-slate-11 mb-1">
+              Fecha de venta
             </label>
+            <input
+              v-model="saleDate"
+              type="date"
+              class="w-full px-3 py-2 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12 focus:outline-none focus:ring-2 focus:ring-n-brand-8"
+            />
           </div>
         </div>
-
-        <div v-if="resolutionType === 'perdido'" class="mb-4">
-          <label class="block text-sm font-medium text-n-slate-12 mb-2">
-            Motivo *
+        <div>
+          <label class="block text-xs font-medium text-n-slate-11 mb-1">
+            N° de factura
           </label>
-          <div class="flex flex-col gap-2">
-            <label
-              v-for="reason in reasons"
-              :key="reason.value"
-              class="flex items-center gap-2 cursor-pointer p-2 rounded-lg border"
+          <input
+            v-model="saleInvoice"
+            type="text"
+            placeholder="FAC-0001"
+            class="w-full px-3 py-2 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12 placeholder:text-n-slate-8 focus:outline-none focus:ring-2 focus:ring-n-brand-8"
+          />
+        </div>
+      </div>
+
+      <!-- Motivos (solo perdido) -->
+      <div v-if="resolutionType === 'perdido'">
+        <label class="block text-sm font-medium text-n-slate-12 mb-3">
+          Motivo *
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            v-for="reason in reasons"
+            :key="reason.value"
+            type="button"
+            class="flex items-center gap-2 p-3 rounded-lg border-2 text-left transition-colors"
+            :class="
+              resolutionReason === reason.value
+                ? 'border-n-brand-9 bg-n-brand-3 text-n-slate-12'
+                : 'border-n-slate-6 hover:border-n-slate-8 bg-transparent text-n-slate-11'
+            "
+            @click="resolutionReason = reason.value"
+          >
+            <div
+              class="w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center"
               :class="
                 resolutionReason === reason.value
-                  ? 'border-n-brand-11 bg-n-brand-2'
-                  : 'border-n-slate-4 bg-white'
+                  ? 'border-n-brand-9'
+                  : 'border-n-slate-8'
               "
             >
-              <input
-                v-model="resolutionReason"
-                type="radio"
-                :value="reason.value"
-                class="!w-auto"
+              <div
+                v-if="resolutionReason === reason.value"
+                class="w-1.5 h-1.5 rounded-full bg-n-brand-9"
               />
-              <span class="text-sm text-n-slate-12">{{ reason.label }}</span>
-            </label>
-          </div>
+            </div>
+            <span class="text-sm">{{ reason.label }}</span>
+          </button>
         </div>
+      </div>
 
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-n-slate-12 mb-2">
-            Observaciones
-          </label>
-          <textarea
-            v-model="resolutionNotes"
-            rows="3"
-            placeholder="Detalles adicionales sobre el cierre..."
-            class="w-full rounded-lg border border-n-slate-4 p-2 text-sm text-n-slate-12 placeholder:text-n-slate-8"
-          />
-        </div>
+      <!-- Observaciones -->
+      <div>
+        <label class="block text-sm font-medium text-n-slate-12 mb-2">
+          Observaciones
+        </label>
+        <textarea
+          v-model="resolutionNotes"
+          rows="3"
+          placeholder="Detalles adicionales sobre el cierre..."
+          class="w-full px-3 py-2 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12 placeholder:text-n-slate-8 focus:outline-none focus:ring-2 focus:ring-n-brand-8 resize-none"
+        />
+      </div>
 
-        <div class="flex flex-row justify-end w-full gap-2">
-          <NextButton
-            faded
-            slate
-            type="button"
-            label="Cancelar"
-            @click="handleClose"
-          />
-          <NextButton
-            type="submit"
-            label="Cerrar Conversación"
-            :disabled="!canSubmit"
-          />
-        </div>
-      </form>
-    </div>
+      <!-- Botones -->
+      <div class="flex flex-row justify-end w-full gap-2 pt-2">
+        <NextButton
+          faded
+          slate
+          type="button"
+          label="Cancelar"
+          @click="handleClose"
+        />
+        <NextButton
+          type="submit"
+          label="Cerrar Conversación"
+          :disabled="!canSubmit"
+        />
+      </div>
+    </form>
   </Modal>
 </template>
