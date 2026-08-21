@@ -90,27 +90,37 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
-    channel_breakdown = account.conversations
-                               .where(created_at: since_30..Time.current)
-                               .joins(:inbox)
-                               .group('inboxes.channel_type')
-                               .count
-                               .map { |k, v| { channel: k.to_s.split('::').last.downcase, count: v } }
+    inquiries = account.product_inquiries.where(created_at: since_30..Time.current)
 
-    # Get top vehicle brands from contact custom attributes
-    brand_counts = account.contacts
-                         .where.not(custom_attributes: nil)
-                         .where("custom_attributes->>'marca_vehiculo' IS NOT NULL AND custom_attributes->>'marca_vehiculo' != ''")
-                         .pluck(Arel.sql("custom_attributes->>'marca_vehiculo'"))
-                         .reject(&:blank?)
-                         .tally
-                         .sort_by { |_, v| -v }
-                         .first(8)
-                         .map { |brand, count| { name: brand, count: count } }
+    # Top repuestos más buscados
+    top_products = inquiries
+                    .group(:repuesto_buscado)
+                    .order('count_id DESC')
+                    .limit(8)
+                    .count
+                    .map { |name, count| { name: name, count: count } }
+
+    # Consultas por canal
+    channel_breakdown = inquiries
+                         .group(:canal)
+                         .order('count_id DESC')
+                         .count
+                         .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
+
+    # Búsquedas sin resultado (para ver qué falta en el catálogo)
+    not_found = inquiries.not_found
+                          .group(:repuesto_buscado)
+                          .order('count_id DESC')
+                          .limit(5)
+                          .count
 
     render json: {
-      popular_products: brand_counts,
+      popular_products: top_products,
       channel_breakdown: channel_breakdown,
+      not_found_products: not_found.map { |name, count| { name: name, count: count } },
+      total_inquiries: inquiries.count,
+      found_count: inquiries.found.count,
+      not_found_count: inquiries.not_found.count,
       total_30d: account.conversations.where(created_at: since_30..Time.current).count
     }
   end

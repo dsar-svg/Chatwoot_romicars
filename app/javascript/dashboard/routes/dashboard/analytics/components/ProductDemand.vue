@@ -4,7 +4,14 @@ import { computed } from 'vue';
 const props = defineProps({
   demand: {
     type: Object,
-    default: () => ({ popular_products: [], channel_breakdown: [], total_30d: 0 }),
+    default: () => ({
+      popular_products: [],
+      channel_breakdown: [],
+      not_found_products: [],
+      total_inquiries: 0,
+      found_count: 0,
+      not_found_count: 0,
+    }),
   },
   loading: { type: Boolean, default: false },
 });
@@ -23,6 +30,10 @@ const channelIcon = {
 
 const products = computed(() =>
   (props.demand.popular_products || []).slice(0, 8)
+);
+
+const notFoundProducts = computed(() =>
+  (props.demand.not_found_products || []).slice(0, 5)
 );
 
 const channels = computed(() =>
@@ -56,55 +67,91 @@ function iconForChannel(ch) {
       <div v-for="i in 4" :key="i" class="h-4 bg-n-alpha-2 rounded w-full" />
     </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Popular products -->
-      <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
-          Productos más solicitados
-        </p>
-        <div v-if="products.length" class="space-y-2">
-          <div v-for="product in products" :key="product.name" class="flex items-center gap-2">
-            <span class="size-3.5 text-n-slate-10 flex-shrink-0 i-lucide-car" />
-            <span class="text-xs text-n-slate-11 w-28 truncate flex-shrink-0">
-              {{ product.name }}
-            </span>
-            <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
-              <div
-                class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
-                :style="{ width: barWidth(product.count) }"
-              />
-            </div>
-            <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
-              {{ product.count }}
-            </span>
-          </div>
+    <div v-else>
+      <!-- Summary stats -->
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="p-3 rounded-lg bg-n-alpha-2">
+          <div class="text-xs text-n-slate-11 mb-1">Consultas</div>
+          <div class="text-xl font-bold text-n-slate-12">{{ demand.total_inquiries || 0 }}</div>
         </div>
-        <p v-else class="text-xs text-n-slate-9">Sin datos de productos aún.</p>
+        <div class="p-3 rounded-lg bg-n-green-2">
+          <div class="text-xs text-n-green-11 mb-1">Encontrados</div>
+          <div class="text-xl font-bold text-n-green-12">{{ demand.found_count || 0 }}</div>
+        </div>
+        <div class="p-3 rounded-lg bg-n-amber-2">
+          <div class="text-xs text-n-amber-11 mb-1">No encontrados</div>
+          <div class="text-xl font-bold text-n-amber-12">{{ demand.not_found_count || 0 }}</div>
+        </div>
       </div>
 
-      <!-- Channels breakdown -->
-      <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
-          Por canal (30 días)
-        </p>
-        <div v-if="channels.length" class="space-y-2.5">
-          <div v-for="ch in channels" :key="ch.channel" class="flex items-center gap-2">
-            <span class="size-3.5 text-n-slate-10 flex-shrink-0" :class="iconForChannel(ch.channel)" />
-            <span class="text-xs text-n-slate-11 w-28 truncate capitalize flex-shrink-0">
-              {{ ch.channel }}
-            </span>
-            <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
-              <div
-                class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
-                :style="{ width: barWidth(ch.count) }"
-              />
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Popular products -->
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
+            Productos más solicitados
+          </p>
+          <div v-if="products.length" class="space-y-2">
+            <div v-for="product in products" :key="product.name" class="flex items-center gap-2">
+              <span class="size-3.5 text-n-slate-10 flex-shrink-0 i-lucide-car" />
+              <span class="text-xs text-n-slate-11 w-28 truncate flex-shrink-0">
+                {{ product.name }}
+              </span>
+              <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
+                  :style="{ width: barWidth(product.count) }"
+                />
+              </div>
+              <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
+                {{ product.count }}
+              </span>
             </div>
-            <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
-              {{ ch.count }}
+          </div>
+          <p v-else class="text-xs text-n-slate-9">Sin consultas de productos aún.</p>
+        </div>
+
+        <!-- Channels breakdown -->
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
+            Por canal (30 días)
+          </p>
+          <div v-if="channels.length" class="space-y-2.5">
+            <div v-for="ch in channels" :key="ch.channel" class="flex items-center gap-2">
+              <span class="size-3.5 text-n-slate-10 flex-shrink-0" :class="iconForChannel(ch.channel)" />
+              <span class="text-xs text-n-slate-11 w-28 truncate capitalize flex-shrink-0">
+                {{ ch.channel }}
+              </span>
+              <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
+                <div
+                  class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
+                  :style="{ width: barWidth(ch.count) }"
+                />
+              </div>
+              <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
+                {{ ch.count }}
+              </span>
+            </div>
+          </div>
+          <p v-else class="text-xs text-n-slate-9">Sin datos de canales.</p>
+        </div>
+      </div>
+
+      <!-- Not found products -->
+      <div v-if="notFoundProducts.length > 0" class="mt-5">
+        <p class="text-[10px] font-semibold uppercase tracking-widest text-n-amber-11 mb-3">
+          Buscados sin resultado (catálogo incompleto)
+        </p>
+        <div class="space-y-1.5">
+          <div v-for="item in notFoundProducts" :key="item.name" class="flex items-center gap-2">
+            <span class="size-3.5 text-n-amber-11 flex-shrink-0 i-lucide-alert-circle" />
+            <span class="text-xs text-n-slate-11 truncate flex-shrink-0">
+              {{ item.name }}
+            </span>
+            <span class="text-[10px] font-medium text-n-amber-11 tabular-nums ml-auto">
+              {{ item.count }}x
             </span>
           </div>
         </div>
-        <p v-else class="text-xs text-n-slate-9">Sin datos de canales.</p>
       </div>
     </div>
   </div>
