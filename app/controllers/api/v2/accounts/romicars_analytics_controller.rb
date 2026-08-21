@@ -107,21 +107,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
                          .count
                          .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
 
-    # Búsquedas sin resultado (para ver qué falta en el catálogo)
-    not_found = inquiries.not_found
-                          .group(:repuesto_buscado)
-                          .order('count_id DESC')
-                          .limit(5)
-                          .count
-
     render json: {
       popular_products: top_products,
       channel_breakdown: channel_breakdown,
-      not_found_products: not_found.map { |name, count| { name: name, count: count } },
-      total_inquiries: inquiries.count,
-      found_count: inquiries.found.count,
-      not_found_count: inquiries.not_found.count,
-      total_30d: account.conversations.where(created_at: since_30..Time.current).count
+      total_inquiries: inquiries.count
     }
   end
 
