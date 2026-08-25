@@ -56,7 +56,6 @@ async function loadAgents() {
 async function loadDemand() {
   try {
     const { data } = await api.getDemand();
-    console.log('RomicarsDashboard demand data:', data);
     demand.value = data;
   } finally {
     loading.value.demand = false;
