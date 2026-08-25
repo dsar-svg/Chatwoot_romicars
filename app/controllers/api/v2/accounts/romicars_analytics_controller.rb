@@ -90,7 +90,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
+    Rails.logger.error "RomicarsDashboard demand: account_id=#{account&.id}"
+    Rails.logger.error "RomicarsDashboard demand: total_product_inquiries=#{ProductInquiry.count}"
+    Rails.logger.error "RomicarsDashboard demand: account_inquiries=#{account&.product_inquiries&.count}"
+
     inquiries = account.product_inquiries.where(created_at: since_30..Time.current)
+
+    Rails.logger.error "RomicarsDashboard demand: filtered_inquiries=#{inquiries.count}"
 
     # Top repuestos más buscados
     top_products = inquiries
