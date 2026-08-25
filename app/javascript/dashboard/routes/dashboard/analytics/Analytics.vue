@@ -56,7 +56,10 @@ async function loadAgents() {
 async function loadDemand() {
   try {
     const { data } = await api.getDemand();
+    console.log('[DEMAND DEBUG] API response:', JSON.stringify(data));
     demand.value = data;
+  } catch (e) {
+    console.error('[DEMAND DEBUG] Error:', e);
   } finally {
     loading.value.demand = false;
   }
