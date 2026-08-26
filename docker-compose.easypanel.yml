@@ -39,10 +39,21 @@ services:
     command: ['bundle', 'exec', 'rails', 's', '-p', '3000', '-b', '0.0.0.0']
     volumes:
       - storage_data:/app/storage
+      - /app/tmp
+      - /app/log
     networks:
       - default
       - easypanel
     restart: always
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
 
   sidekiq:
     image: ghcr.io/dsar-svg/chatwoot_romicars:latest
@@ -75,9 +86,20 @@ services:
     command: ['bundle', 'exec', 'sidekiq', '-C', 'config/sidekiq.yml']
     volumes:
       - storage_data:/app/storage
+      - /app/tmp
+      - /app/log
     networks:
       - default
     restart: always
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
 
   postgres:
     image: pgvector/pgvector:pg16
