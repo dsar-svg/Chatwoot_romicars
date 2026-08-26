@@ -11,6 +11,7 @@ Rails.application.config.content_security_policy do |policy|
   policy.object_src  :none
   policy.script_src  :self
   policy.style_src   :self, :unsafe_inline
+  policy.frame_ancestors :self
 
   # WebSocket para Action Cable
   policy.connect_src :self, 'wss:', 'ws:'
