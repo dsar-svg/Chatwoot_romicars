@@ -25,6 +25,7 @@
 # Ignore application configuration
 node_modules
 master.key
+config/secrets.yml
 *.rdb
 
 # Ignore env files
