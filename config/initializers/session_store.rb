@@ -5,6 +5,6 @@ secure_cookies = ActiveModel::Type::Boolean.new.cast(ENV.fetch('FORCE_SSL', fals
 
 Rails.application.config.session_store :cookie_store,
                                        key: "_#{Rails.env}_chatwoot_session",
-                                       same_site: :lax,
+                                       same_site: :strict,
                                        secure: secure_cookies,
                                        httponly: true

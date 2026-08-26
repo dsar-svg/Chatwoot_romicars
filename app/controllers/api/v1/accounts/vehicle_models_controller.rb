@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::VehicleModelsController < Api::V1::Accounts::BaseController
+  before_action :check_authorization
   before_action :fetch_model, only: [:show, :update, :destroy]
 
   def index

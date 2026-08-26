@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseController
+  before_action :check_authorization
+
   def index
     @rates = Current.account.exchange_rates.ordered
   end
