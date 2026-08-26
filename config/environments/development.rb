@@ -61,7 +61,7 @@ Rails.application.configure do
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
 
   # Disable host check during development
-  config.hosts = nil
+  config.hosts = ['localhost', '127.0.0.1']
   
   # GitHub Codespaces configuration
   if ENV['CODESPACES']

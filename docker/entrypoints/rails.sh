@@ -24,9 +24,6 @@ done
 
 echo "Database ready to accept connections."
 
-#install missing gems for local dev as we are using base image compiled for production
-bundle install
-
 BUNDLE="bundle check"
 
 until $BUNDLE
