@@ -129,8 +129,7 @@ RUN apk update && apk add --no-cache \
   postgresql-client \
   imagemagick \
   git \
-  vips \
-  && gem install bundler -v "$BUNDLER_VERSION"
+  vips
 
 # Restrict libvips to its trusted image loaders when generating variants
 ENV VIPS_BLOCK_UNTRUSTED=1
