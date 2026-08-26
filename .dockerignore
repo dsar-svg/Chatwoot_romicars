@@ -1,17 +1,113 @@
+# Dependencies
 .bundle
+node_modules
+vendor/bundle
+
+# Environment files
 .env
 .env.*
+
+# Docker
 docker-compose.*
 docker/Dockerfile
 docker/dockerfiles
+
+# Logs
 log
+tmp
+*.log
+
+# Storage
 storage
 public/system
-tmp
-.codeclimate.yml
 public/packs
-node_modules
-vendor/bundle
+public/packs-test
+public/vite*
+
+# Test files
+spec
+test
+tests
+__mocks__
+
+# IDE and editor files
 .DS_Store
 *.swp
 *~
+.vscode
+.idea
+.cursor
+.windsurf
+
+# Git
+.git
+.gitignore
+
+# CI/CD
+.github
+.circleci
+.dependabot
+.codeclimate.yml
+
+# Dev environment
+.devcontainer
+.nvmrc
+.rspec
+.rubocop.yml
+.ruby-version
+.scss-lint.yml
+
+# Documentation
+docs
+AGENTS.md
+CLAUDE.md
+README.md
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+LICENSE
+
+# Non-essential files
+loguito.png
+docker-compose.easypanel.yml
+docker-compose.production.yaml
+docker-compose.test.yaml
+docker-compose.yaml
+app.json
+Capfile
+crowdin.yml
+Makefile
+Procfile
+Procfile.dev
+Procfile.test
+Procfile.tunnel
+semantic.yml
+VERSION_CW
+VERSION_CWCTL
+.all-contributorsrc
+.annotaterb.yml
+.browserslistrc
+.bundler-audit.yml
+.editorconfig
+.eslintrc.js
+.husky
+.qlty
+.scss-lint.yml
+.slugignore
+data
+deployment
+enterprise
+histoire.config.ts
+postcss.config.js
+rubocop
+script
+swagger
+tailwind.config.js
+theme
+vite.config.ts
+vite.lib.config.ts
+vite.shared.ts
+vitest.config.ts
+vitest.i18n.js
+vitest.setup.js
+workbox-config.js
