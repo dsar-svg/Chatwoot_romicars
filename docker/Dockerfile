@@ -152,4 +152,10 @@ COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
 
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+  && chown -R appuser:appgroup /app \
+  && chown -R appuser:appgroup /gems
+
+USER appuser
+
 EXPOSE 3000
