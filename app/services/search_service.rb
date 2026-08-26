@@ -181,8 +181,11 @@ class SearchService
     @articles = articles_query.page(params[:page]).per(15)
   end
 
+  ALLOWED_TIME_COLUMNS = %w[messages.created_at last_activity_at updated_at created_at].freeze
+
   def apply_time_filter(query, column_name)
     return query if params[:since].blank? && params[:until].blank?
+    return query unless ALLOWED_TIME_COLUMNS.include?(column_name)
 
     query = query.where("#{column_name} >= ?", cap_since_time(params[:since])) if params[:since].present?
     query = query.where("#{column_name} <= ?", cap_until_time(params[:until])) if params[:until].present?
