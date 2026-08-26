@@ -7,8 +7,8 @@ import { useMapGetter } from 'dashboard/composables/store.js';
 export function useBranding() {
   const globalConfig = useMapGetter('globalConfig/get');
   /**
-   * Replaces "Chatwoot" (any casing) in text with the installation name from
-   * global config
+   * Replaces standalone "Chatwoot" (any casing) in text with the installation name
+   * from global config. Only matches whole words to avoid breaking URLs or code.
    * @param {string} text - The text to process
    * @returns {string} - Text with "Chatwoot" replaced by installation name
    */
@@ -18,7 +18,7 @@ export function useBranding() {
     const installationName = globalConfig.value?.installationName;
     if (!installationName) return text;
 
-    return text.replace(/chatwoot/gi, installationName);
+    return text.replace(/\bchatwoot\b/gi, installationName);
   };
 
   return {
