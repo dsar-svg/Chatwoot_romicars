@@ -7,9 +7,9 @@ class Api::V1::Integrations::WebhooksController < ApplicationController
 
   private
 
-  # TODO: This is a temporary solution to permit all params for slack unfurling job.
-  # We should only permit the params that we use. Handle all the params based on events and send it to the respective services.
   def permitted_params
-    params.permit!
+    params.permit(:token, :type, :challenge, event: [:type, :user, :subtype, :text, :channel, :ts,
+      message: [:text, :user, :subtype, :ts], item: [:channel, :ts]], team_id: {}, api_app_id: {},
+      event_id: {}, event_time: {})
   end
 end

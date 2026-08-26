@@ -82,8 +82,7 @@ RUN mkdir -p /app/log
 
 # generate production assets if production environment
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile \
-  && rm -rf spec node_modules tmp/cache; \
+  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile; \
   fi
 
 # Generate .git_sha file with current commit hash
@@ -94,6 +93,9 @@ RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
   && rm -rf .git \
   && rm .gitignore
+
+# Clean up /app before copying to final stage
+RUN rm -rf spec test tests node_modules tmp/cache tmp/pids log
 
 # final build stage
 FROM ruby:3.4.4-alpine3.21
@@ -121,14 +123,11 @@ ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
 RUN apk update && apk add --no-cache \
-  build-base \
   openssl \
   tzdata \
   postgresql-client \
   imagemagick \
-  git \
-  vips \
-  && gem install bundler -v "$BUNDLER_VERSION"
+  vips
 
 # Restrict libvips to its trusted image loaders when generating variants
 ENV VIPS_BLOCK_UNTRUSTED=1
@@ -151,5 +150,14 @@ COPY --from=pre-builder /app /app
 COPY --from=pre-builder /app/.git_sha /app/.git_sha
 
 WORKDIR /app
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
+  && chown -R appuser:appgroup /app \
+  && chown -R appuser:appgroup /gems
+
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO /dev/null http://localhost:3000/health || exit 1
 
 EXPOSE 3000

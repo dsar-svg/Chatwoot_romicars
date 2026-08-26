@@ -61,12 +61,12 @@ Rails.application.configure do
   config.file_watcher = ActiveSupport::EventedFileUpdateChecker
 
   # Disable host check during development
-  config.hosts = nil
+  config.hosts = ['localhost', '127.0.0.1']
   
   # GitHub Codespaces configuration
   if ENV['CODESPACES']
     # Allow web console access from any IP
-    config.web_console.allowed_ips = %w(0.0.0.0/0 ::/0)
+    config.web_console.allowed_ips = %w(127.0.0.1)
     # Allow CSRF from codespace URLs
     config.force_ssl = false
     config.action_controller.forgery_protection_origin_check = false

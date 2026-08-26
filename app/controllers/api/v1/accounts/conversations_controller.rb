@@ -49,7 +49,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def filter
-    result = ::Conversations::FilterService.new(params.permit!, current_user, current_account).perform
+    result = ::Conversations::FilterService.new(filter_params, current_user, current_account).perform
     @conversations = result[:conversations]
     @conversations_count = result[:count]
   rescue CustomExceptions::CustomFilter::InvalidAttribute,
@@ -152,6 +152,12 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   def permitted_update_params
     # TODO: Move the other conversation attributes to this method and remove specific endpoints for each attribute
     params.permit(:priority)
+  end
+
+  def filter_params
+    params.permit(:page, :label, :status, :assignee_type, :assignee_id, :inbox_id, :team_id,
+      :contact_id, :conversation_type, :channel_id, :before, :after, :sort, :meta,
+      custom_attributes: {}, additional_attributes: {}, filters: [:attribute_key, :filter_operator, :filter_value, :values])
   end
 
   def attachment_params
