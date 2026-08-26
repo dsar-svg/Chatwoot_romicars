@@ -90,42 +90,28 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
-    Rails.logger.error "[DEMAND] account_id=#{account&.id}"
-    Rails.logger.error "[DEMAND] total_product_inquiries=#{ProductInquiry.count}"
-
     inquiries = account.product_inquiries.where(created_at: since_30..Time.current)
-
-    Rails.logger.error "[DEMAND] filtered_inquiries=#{inquiries.count}"
-    Rails.logger.error "[DEMAND] inquiries_sql=#{inquiries.to_sql}"
 
     # Top repuestos más buscados
     top_products = inquiries
                     .group(:repuesto_buscado)
-                    .order('count_id DESC')
-                    .limit(8)
                     .count
+                    .sort_by { |_, v| -v }
+                    .first(8)
                     .map { |name, count| { name: name, count: count } }
-
-    Rails.logger.error "[DEMAND] top_products=#{top_products.inspect}"
 
     # Consultas por canal
     channel_breakdown = inquiries
                          .group(:canal)
-                         .order('count_id DESC')
                          .count
+                         .sort_by { |_, v| -v }
                          .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
 
-    Rails.logger.error "[DEMAND] channel_breakdown=#{channel_breakdown.inspect}"
-
-    result = {
+    render json: {
       popular_products: top_products,
       channel_breakdown: channel_breakdown,
       total_inquiries: inquiries.count
     }
-
-    Rails.logger.error "[DEMAND] response=#{result.inspect}"
-
-    render json: result
   end
 
   def ai_insights
