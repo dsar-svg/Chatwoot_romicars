@@ -123,12 +123,10 @@ ENV RAILS_ENV ${RAILS_ENV}
 ENV BUNDLE_PATH="/gems"
 
 RUN apk update && apk add --no-cache \
-  build-base \
   openssl \
   tzdata \
   postgresql-client \
   imagemagick \
-  git \
   vips
 
 # Restrict libvips to its trusted image loaders when generating variants
