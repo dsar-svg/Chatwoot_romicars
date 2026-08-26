@@ -47,7 +47,7 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
       new_monto_bs = (price.divisa * equiv_13).round(2)
       new_bolivares = (new_monto_bs / tasa_bcv).round(2)
 
-      price.update_columns(
+      price.update!(
         monto_bs: new_monto_bs,
         bolivares: new_bolivares
       )

@@ -49,13 +49,6 @@ Rails.application.configure do
   # when problems arise.
   config.log_level = ENV.fetch('LOG_LEVEL', 'info').to_sym
 
-  # Use Lograge for structured logging
-  config.lograge.enabled = true
-  config.lograge.formatter = Lograge::Formatters::Json.new
-  config.lograge.custom_options = lambda do |event|
-    { time: event.time, request_id: event.payload[:request_id] }
-  end
-
   # Prepend all log lines with the following tags.
   config.log_tags = [:request_id]
 

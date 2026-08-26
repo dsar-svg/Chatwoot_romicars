@@ -15,7 +15,7 @@ import GoogleOAuthButton from '../../../../../components/GoogleOauth/Button.vue'
 import { register } from '../../../../../api/auth';
 import * as CompanyEmailValidator from 'company-email-validator';
 
-const MIN_PASSWORD_LENGTH = 6;
+const MIN_PASSWORD_LENGTH = 10;
 
 const store = useStore();
 const { t } = useI18n();
