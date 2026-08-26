@@ -121,7 +121,7 @@ const blockClass = type => {
         </span>
         <h1
           class="text-lg font-semibold leading-snug text-n-slate-12"
-          v-html="titleDiff"
+          v-dompurify-html="titleDiff"
         />
       </div>
 
@@ -134,7 +134,7 @@ const blockClass = type => {
           :key="index"
           class="px-3 py-1.5 overflow-x-auto text-sm leading-relaxed break-words border-s-[3px] rounded-e-md text-n-slate-12 prose-sm prose dark:prose-invert max-w-none [&_p]:my-0 [&>:first-child]:mt-0 [&>:last-child]:mb-0"
           :class="blockClass(block.type)"
-          v-html="renderMarkdown(block.md)"
+          v-dompurify-html="renderMarkdown(block.md)"
         />
       </div>
     </div>

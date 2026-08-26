@@ -52,14 +52,19 @@ const v$ = useVuelidate(rules, { credentials });
 
 const globalConfig = computed(() => store.getters['globalConfig/get']);
 
-const termsLink = computed(() =>
-  t('REGISTER.TERMS_ACCEPT')
-    .replace('https://www.chatwoot.com/terms', globalConfig.value.termsURL)
-    .replace(
-      'https://www.chatwoot.com/privacy-policy',
-      globalConfig.value.privacyURL
-    )
-);
+const sanitizeUrl = url => {
+  if (!url || typeof url !== 'string') return '#';
+  const trimmed = url.trim();
+  return trimmed.startsWith('https://') ? trimmed : '#';
+};
+
+const termsLink = computed(() => {
+  const termsUrl = sanitizeUrl(globalConfig.value.termsURL);
+  const privacyUrl = sanitizeUrl(globalConfig.value.privacyURL);
+  return t('REGISTER.TERMS_ACCEPT')
+    .replace('https://www.chatwoot.com/terms', termsUrl)
+    .replace('https://www.chatwoot.com/privacy-policy', privacyUrl);
+});
 
 const allowedLoginMethods = computed(
   () => window.chatwootConfig.allowedLoginMethods || ['email']
