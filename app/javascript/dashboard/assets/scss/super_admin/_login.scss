@@ -1,0 +1,59 @@
+.romicars-sa-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.romicars-sa-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+}
+
+.romicars-sa-orb-1 {
+  width: 55vw;
+  height: 55vw;
+  background: rgba(26, 54, 93, 0.12);
+  top: -20%;
+  left: -15%;
+  animation: sa-orb-drift-1 26s ease-in-out infinite alternate;
+}
+
+.romicars-sa-orb-2 {
+  width: 38vw;
+  height: 38vw;
+  background: rgba(54, 30, 44, 0.09);
+  bottom: -18%;
+  right: -10%;
+  animation: sa-orb-drift-2 32s ease-in-out infinite alternate;
+}
+
+.romicars-sa-orb-3 {
+  width: 28vw;
+  height: 28vw;
+  background: rgba(26, 54, 93, 0.08);
+  top: 40%;
+  right: 20%;
+  animation: sa-orb-drift-3 22s ease-in-out infinite alternate;
+}
+
+@keyframes sa-orb-drift-1 {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(12vw, 16vh); }
+}
+
+@keyframes sa-orb-drift-2 {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(-10vw, -13vh); }
+}
+
+@keyframes sa-orb-drift-3 {
+  0%   { transform: translate(0, 0); }
+  50%  { transform: translate(-8vw, 8vh); }
+  100% { transform: translate(10vw, -10vh); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .romicars-sa-orb { animation: none !important; }
+}
