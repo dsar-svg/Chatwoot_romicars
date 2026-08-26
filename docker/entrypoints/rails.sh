@@ -25,11 +25,21 @@ done
 echo "Database ready to accept connections."
 
 BUNDLE="bundle check"
+MAX_RETRIES=5
+RETRY_COUNT=0
 
 until $BUNDLE
 do
+  RETRY_COUNT=$((RETRY_COUNT + 1))
+  if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+    echo "ERROR: bundle check failed after $MAX_RETRIES attempts"
+    exit 1
+  fi
+  echo "bundle check failed, retrying ($RETRY_COUNT/$MAX_RETRIES)..."
   sleep 2;
 done
+
+echo "Bundle check passed."
 
 # Execute the main process of the container
 exec "$@"
