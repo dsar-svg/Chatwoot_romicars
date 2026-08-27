@@ -84,7 +84,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     if bot_handoff?
       @conversation.bot_handoff!
     elsif params[:status] == 'resolved' && params[:resolution_type].present?
-      @conversation.resolve_with_outcome(
+      # Reports the result of the save itself. `saved_change_to_status?` was wrong here:
+      # re-closing an already-resolved conversation with a corrected outcome does not
+      # change the status, and the UI read that as a failure.
+      @status = @conversation.resolve_with_outcome(
         resolution_type: params[:resolution_type],
         resolution_reason: params[:resolution_reason],
         resolution_notes: params[:resolution_notes],
@@ -93,7 +96,6 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
         sale_invoice: params[:sale_invoice],
         requested_product: params[:requested_product]
       )
-      @status = @conversation.saved_change_to_status?
     elsif params[:status].present?
       set_conversation_status
       @status = @conversation.save!

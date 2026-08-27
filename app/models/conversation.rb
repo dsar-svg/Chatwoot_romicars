@@ -85,8 +85,15 @@ class Conversation < ApplicationRecord
   enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
   enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
 
-  RESOLUTION_TYPES = %w[ganado perdido].freeze
-  RESOLUTION_REASONS = %w[venta sin_stock precio sin_respuesta otro].freeze
+  RESOLUTION_TYPES = %w[ganado perdido consulta].freeze
+  # Reasons only apply to `perdido` closures.
+  RESOLUTION_REASONS = %w[sin_stock precio sin_respuesta otro].freeze
+  # `requested_product` is only captured for this reason.
+  RESOLUTION_REASON_REQUIRING_PRODUCT = 'sin_stock'
+
+  # Validated only on change so legacy rows with unexpected values keep saving.
+  validates :resolution_type, inclusion: { in: RESOLUTION_TYPES }, allow_nil: true, if: :resolution_type_changed?
+  validates :resolution_reason, inclusion: { in: RESOLUTION_REASONS }, allow_nil: true, if: :resolution_reason_changed?
 
   scope :by_resolution_type, ->(type) { where(resolution_type: type) if type.present? }
   scope :by_resolution_reason, ->(reason) { where(resolution_reason: reason) if reason.present? }
@@ -136,10 +143,16 @@ class Conversation < ApplicationRecord
   has_many :notifications, as: :primary_actor, dependent: :destroy_async
   has_many :attachments, through: :messages
   has_many :reporting_events, dependent: :destroy_async
+  # Written by the n8n flow. These were only declared on Account, so nothing cleaned them
+  # up when a single conversation was deleted. Deleted inline rather than async because
+  # both tables hold a real FK to conversations.
+  has_many :bot_logs, dependent: :delete_all
+  has_many :product_inquiries, dependent: :delete_all
   has_many :automation_rule_pending_executions, dependent: :delete_all
 
   before_save :ensure_snooze_until_reset
   before_save :set_status_changed_at
+  before_save :set_resolved_at
   before_create :determine_conversation_status
   before_create :ensure_waiting_since
 
@@ -181,15 +194,28 @@ class Conversation < ApplicationRecord
   end
 
   def resolve_with_outcome(resolution_type:, resolution_reason: nil, resolution_notes: nil, sale_amount: nil, sale_date: nil, sale_invoice: nil, requested_product: nil)
+    # Blank strings from the API would otherwise fail the inclusion validation, which
+    # only allows nil.
+    resolution_type = resolution_type.presence
+    resolution_reason = resolution_reason.presence
+
+    won = resolution_type == 'ganado'
+    lost = resolution_type == 'perdido'
+
     self.status = :resolved
     self.resolution_type = resolution_type
-    self.resolution_reason = resolution_reason if resolution_type == 'perdido'
     self.resolution_notes = resolution_notes
-    self.sale_amount = sale_amount if resolution_type == 'ganado'
-    self.sale_date = sale_date.presence || Date.current if resolution_type == 'ganado'
-    self.sale_invoice = sale_invoice if resolution_type == 'ganado'
-    self.requested_product = requested_product if resolution_type == 'perdido' && resolution_reason == 'sin_stock'
     self.resolved_at = Time.current
+
+    # Every branch assigns unconditionally: re-closing a conversation with a different
+    # outcome has to wipe the fields from the previous one, otherwise a `ganado` that is
+    # later reclosed as `perdido` keeps its sale_amount and inflates the sales totals.
+    self.resolution_reason = lost ? resolution_reason : nil
+    self.sale_amount = won ? sale_amount : nil
+    self.sale_date = won ? (sale_date.presence || Date.current) : nil
+    self.sale_invoice = won ? sale_invoice : nil
+    self.requested_product = lost && resolution_reason == RESOLUTION_REASON_REQUIRING_PRODUCT ? requested_product : nil
+
     save
   end
 
@@ -306,6 +332,16 @@ class Conversation < ApplicationRecord
 
   def set_status_changed_at
     self.status_changed_at = Time.current if new_record? || status_changed?
+  end
+
+  # Stamps resolved_at on *every* transition into `resolved`, not just the ones that go
+  # through the resolution modal. Without this, conversations closed by automations, the
+  # bot, macros or the plain toggle stay invisible to the RomiCars dashboard metrics.
+  def set_resolved_at
+    return unless status_changed?
+    return unless resolved?
+
+    self.resolved_at = Time.current
   end
 
   def ensure_waiting_since
