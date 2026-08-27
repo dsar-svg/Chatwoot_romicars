@@ -51,6 +51,9 @@ gem 'gmail_xoauth'
 gem 'net-smtp',  '~> 0.3.4'
 # Prevent CSV injection
 gem 'csv-safe'
+# Excel parsing for VehiclePriceImportService. Without it the .xlsx branch of the
+# importer always fell through to "Importación de Excel no disponible".
+gem 'roo', '~> 2.10'
 
 ##-- for active storage --##
 gem 'aws-sdk-s3', require: false
