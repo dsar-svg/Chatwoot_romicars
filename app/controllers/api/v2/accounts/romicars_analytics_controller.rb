@@ -6,6 +6,46 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   PROFIT_OPEN_TIMEOUT = 5
   PROFIT_TIMEOUT = 10
 
+  AI_INSIGHTS_CACHE_TTL = 3.hours
+  AI_INSIGHTS_COUNT = 6
+  AI_REQUEST_TIMEOUT = 45
+
+  COUNT_DESC = Arel.sql('COUNT(*) DESC')
+  FIRST_RESPONSE_MINUTES = Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60')
+
+  AI_SYSTEM_PROMPT = <<~PROMPT
+    Eres analista comercial de una tienda venezolana de repuestos automotrices (RomiCars).
+    Recibes métricas de su CRM y tu trabajo es explicar POR QUÉ se pierden ventas y qué
+    hacer al respecto, no describir los números.
+
+    Reglas:
+    - Compara siempre los cierres ganados contra los perdidos. El bloque
+      `ganado_vs_perdido` trae la misma métrica partida por resultado: úsalo para decir
+      qué hicieron distinto las conversaciones que sí cerraron (tiempo de primera
+      respuesta, canal, agente, prioridad).
+    - Prioriza las causas recurrentes de pérdida sobre los hallazgos aislados. El bloque
+      `perdidas` trae el desglose por motivo, los repuestos pedidos que no había en stock
+      y las notas que escribieron los agentes al cerrar.
+    - Cita cifras concretas del JSON en cada descripción. Nada de generalidades.
+    - Cada acción debe ser algo que el dueño o un agente pueda ejecutar esta semana.
+    - Si un dato viene en cero o vacío, no inventes: dilo y recomienda cómo empezar a
+      registrarlo.
+    - Escribe en español de Venezuela, directo y sin relleno.
+
+    Devuelve EXACTAMENTE un objeto JSON con esta forma, con 6 elementos ordenados de
+    mayor a menor impacto en la facturación:
+
+    {"insights":[{
+      "priority":"alta|media|baja",
+      "category":"perdidas|conversion|stock|respuesta|equipo|canales",
+      "title":"Título corto y concreto",
+      "description":"Qué está pasando, con las cifras del JSON que lo sustentan",
+      "action":"Acción específica y ejecutable"
+    }]}
+
+    Al menos 2 de los 6 deben ser de categoría `perdidas`, analizando causas raíz.
+  PROMPT
+
   before_action :check_authorization
 
   def overview
@@ -115,44 +155,17 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   def ai_insights
     account = Current.account
-    ctx     = insights_context(account)
-    key     = ENV.fetch('OPENAI_API_KEY', nil) ||
-              InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value ||
-              InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value
 
-    raise 'No OpenAI API key configured' if key.blank?
+    # The dashboard auto-refreshes every 5 minutes, so this used to bill an OpenAI call
+    # per agent per refresh for numbers that barely move. Only successful AI answers are
+    # cached — a transient failure must not pin the rules fallback for hours.
+    cached = params[:refresh].blank? ? Redis::Alfred.get(ai_insights_cache_key(account)) : nil
+    return render(json: JSON.parse(cached)) if cached.present?
 
-    client   = OpenAI::Client.new(access_token: key)
-    response = client.chat(
-      parameters: {
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Eres un analista de negocios experto en autopartes venezolanas. ' \
-                     'Analiza los datos del CRM y proporciona exactamente 3 insights estratégicos accionables. ' \
-                     'Responde SOLO con un JSON array válido.'
-          },
-          {
-            role: 'user',
-            content: "Datos CRM últimos 30 días: #{ctx.to_json}\n\n" \
-                     'Proporciona 3 insights en este formato JSON array: ' \
-                     '[{"priority":"alta|media|baja","title":"Título","description":"Descripción con datos concretos","action":"Acción recomendada"}]'
-          }
-        ],
-        max_tokens: 900
-      }
-    )
+    payload = build_ai_insights(account)
+    Redis::Alfred.setex(ai_insights_cache_key(account), payload.to_json, AI_INSIGHTS_CACHE_TTL) if payload[:source] == 'ai'
 
-    content = response.dig('choices', 0, 'message', 'content').to_s.strip
-    content = content.gsub(/\A```json?\s*|\s*```\z/, '')
-    insights = JSON.parse(content)
-    insights = insights.values.first if insights.is_a?(Hash)
-
-    render json: { insights: Array(insights).first(3), source: 'ai' }
-  rescue StandardError => e
-    Rails.logger.error "RomicarsDashboard AI insights error: #{e.message}"
-    render json: { insights: rule_based_insights(account), source: 'rules' }
+    render json: payload
   end
 
   def profit
@@ -285,78 +298,275 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     average = account.conversations
                      .where(assignee_id: agent_id, created_at: since..Time.current)
                      .where.not(first_reply_created_at: nil)
-                     .average(Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60'))
+                     .average(FIRST_RESPONSE_MINUTES)
 
     average.to_f.round(1)
   end
 
+  def ai_insights_cache_key(account)
+    "romicars:ai_insights:v2:#{account.id}"
+  end
+
+  def openai_api_key
+    ENV.fetch('OPENAI_API_KEY', nil).presence ||
+      InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value.presence ||
+      InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value.presence
+  end
+
+  def build_ai_insights(account)
+    # Built once and reused by the fallback, so a failed OpenAI call does not re-run the
+    # ~15 aggregate queries behind the context.
+    context = insights_context(account)
+    key = openai_api_key
+    raise 'No OpenAI API key configured' if key.blank?
+
+    insights = parse_ai_response(request_ai_insights(key, context))
+    raise 'AI returned no usable insights' if insights.empty?
+
+    { insights: insights.first(AI_INSIGHTS_COUNT), source: 'ai', generated_at: Time.current }
+  rescue StandardError => e
+    Rails.logger.error "RomicarsDashboard AI insights error: #{e.class}: #{e.message}"
+    # context is nil only if insights_context itself blew up; an empty card list beats a 500.
+    { insights: context ? rule_based_insights(context) : [], source: 'rules', generated_at: Time.current }
+  end
+
+  def request_ai_insights(key, context)
+    OpenAI::Client.new(access_token: key, request_timeout: AI_REQUEST_TIMEOUT).chat(
+      parameters: {
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: AI_SYSTEM_PROMPT },
+          { role: 'user', content: "Datos del CRM (últimos 30 días):\n#{JSON.pretty_generate(context)}" }
+        ],
+        max_tokens: 2500
+      }
+    ).dig('choices', 0, 'message', 'content').to_s
+  end
+
+  def parse_ai_response(content)
+    parsed = JSON.parse(content.strip.gsub(/\A```json?\s*|\s*```\z/, ''))
+    # json_object mode always returns an object, so the array arrives wrapped under some
+    # key. Take the first array-valued entry rather than guessing its name.
+    parsed = parsed.values.find { |v| v.is_a?(Array) } || [] if parsed.is_a?(Hash)
+
+    Array(parsed).select { |i| i.is_a?(Hash) && i['title'].present? }
+  end
+
+  # Everything below feeds the prompt. The old context was volume-only — totals and a
+  # channel list — which is why the insights never said anything about *why* deals were
+  # being lost. These add the won/lost comparison the shop actually needs.
   def insights_context(account)
-    since_30 = 30.days.ago
-    convs    = account.conversations.where(created_at: since_30..Time.current)
-    total    = convs.count
-    ganado   = convs.where(status: :resolved, resolution_type: 'ganado').count
+    since = 30.days.ago
+    convs = account.conversations.where(created_at: since..Time.current)
+    resolved = account.conversations
+                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(resolved_at: since..)
+    by_type = resolved.group(:resolution_type).count
+    ganado = by_type.fetch('ganado', 0)
+    perdido = by_type.fetch('perdido', 0)
 
     {
-      period: '30 días',
-      total_conversations: total,
-      resolved: convs.where(status: :resolved).count,
-      pending: convs.where(status: :pending).count,
-      open: convs.where(status: :open).count,
-      conversion_pct: total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
-      high_urgency: convs.where(priority: %i[high urgent]).count,
-      unassigned: convs.where(assignee_id: nil).count,
-      agents_count: account.agents.count,
-      channels: convs.joins(:inbox).group('inboxes.channel_type').count
-                     .map { |k, v| "#{k.to_s.split('::').last}: #{v}" }.first(4)
+      periodo: '30 días',
+      volumen: {
+        conversaciones_totales: convs.count,
+        abiertas: convs.where(status: :open).count,
+        pendientes: convs.where(status: :pending).count,
+        sin_asignar: convs.where(status: :open, assignee_id: nil).count,
+        alta_urgencia: convs.where(priority: %i[high urgent]).count,
+        agentes_activos: account.agents.count
+      },
+      cierres: {
+        ganado: ganado,
+        perdido: perdido,
+        consulta: by_type.fetch('consulta', 0),
+        tasa_conversion_pct: percentage_of(ganado, ganado + perdido)
+      },
+      ventas: sales_context(resolved),
+      perdidas: loss_context(resolved, perdido),
+      ganado_vs_perdido: comparison_context(resolved),
+      demanda: demand_context(account, since)
     }
   end
 
-  def rule_based_insights(account)
-    since_30 = 30.days.ago
-    convs    = account.conversations.where(created_at: since_30..Time.current)
-    total    = convs.count
-    resolved = convs.where(status: :resolved).count
-    conv_pct = total.positive? ? (resolved.to_f / total * 100).round(1) : 0
-    unassigned  = convs.where(status: :open, assignee_id: nil).count
-    high_urgency = convs.where(priority: %i[high urgent]).count
+  def sales_context(resolved)
+    sales = resolved.where(resolution_type: 'ganado').with_sale
+    count = sales.count
+    total = sales.sum(:sale_amount).to_f
 
-    insights = []
+    {
+      ventas_con_monto: count,
+      monto_total_usd: total.round(2),
+      ticket_promedio_usd: count.positive? ? (total / count).round(2) : 0
+    }
+  end
 
-    if conv_pct < 20
-      insights << {
-        priority: 'alta', title: 'Conversión por debajo del objetivo',
-        description: "Tasa actual: #{conv_pct}% (objetivo ≥ 20%). #{total} conversaciones, #{resolved} resueltas en 30 días.",
-        action: 'Revisar proceso de seguimiento y asignar agentes a conversaciones sin resolver.'
-      }
+  def loss_context(resolved, perdido_total)
+    lost = resolved.where(resolution_type: 'perdido')
+    reasons = lost.group(:resolution_reason).count
+
+    {
+      total: perdido_total,
+      por_motivo: Conversation::RESOLUTION_REASONS.to_h do |reason|
+        count = reasons.fetch(reason, 0)
+        [reason, { cantidad: count, pct_de_las_perdidas: percentage_of(count, perdido_total) }]
+      end,
+      repuestos_pedidos_sin_stock: lost
+        .where(resolution_reason: Conversation::RESOLUTION_REASON_REQUIRING_PRODUCT)
+        .where.not(requested_product: [nil, ''])
+        .group(:requested_product).order(COUNT_DESC).limit(15).count,
+      notas_de_cierres_perdidos: lost.where.not(resolution_notes: [nil, ''])
+                                     .order(resolved_at: :desc).limit(25).pluck(:resolution_notes)
+    }
+  end
+
+  # The heart of it: same metric, split by outcome, so the model can say what the won
+  # deals did differently instead of describing each side in isolation.
+  def comparison_context(resolved)
+    {
+      minutos_primera_respuesta: resolved.where.not(first_reply_created_at: nil)
+                                         .group(:resolution_type)
+                                         .average(FIRST_RESPONSE_MINUTES)
+                                         .transform_values { |v| v.to_f.round(1) },
+      por_canal: nest_pair_counts(resolved.joins(:inbox).group('inboxes.channel_type').group(:resolution_type).count),
+      por_agente: nest_pair_counts(
+        resolved.where.not(assignee_id: nil)
+                .joins('LEFT JOIN users ON users.id = conversations.assignee_id')
+                .group('users.name').group(:resolution_type).count
+      ),
+      por_prioridad: nest_pair_counts(resolved.group(:priority).group(:resolution_type).count)
+    }
+  end
+
+  def demand_context(account, since)
+    inquiries = account.product_inquiries.where(created_at: since..Time.current)
+    total = inquiries.count
+    missing = inquiries.not_found.count
+
+    {
+      consultas_registradas: total,
+      no_encontrados: missing,
+      pct_no_encontrado: percentage_of(missing, total),
+      mas_buscados: inquiries.top_repuestos(10),
+      no_encontrados_mas_buscados: inquiries.not_found_repuestos(10).map do |(repuesto, marca, modelo), count|
+        { repuesto: repuesto, marca: marca, modelo: modelo, veces: count }
+      end
+    }
+  end
+
+  # `group(a).group(b).count` keys on [a, b] tuples, which serialise to JSON as unreadable
+  # stringified arrays. Nest them so the prompt stays legible.
+  def nest_pair_counts(counts)
+    counts.each_with_object({}) do |((outer, inner), count), acc|
+      label = outer.to_s.split('::').last.to_s
+      label = 'sin_definir' if label.blank?
+      (acc[label] ||= {})[inner.to_s] = count
     end
+  end
 
-    if unassigned > 3
-      insights << {
-        priority: 'alta', title: "#{unassigned} conversaciones sin agente",
-        description: "#{unassigned} chats abiertos sin asignación impactan el tiempo de respuesta.",
-        action: 'Activar auto-asignación o distribuir manualmente entre el equipo.'
-      }
-    end
+  # Fallback when OpenAI is unavailable. Built from the same context as the prompt so it
+  # covers the same ground — losses first — instead of only volume alerts.
+  def rule_based_insights(ctx)
+    insights = loss_rule_insights(ctx) + operations_rule_insights(ctx)
 
-    if high_urgency.positive?
-      insights << {
-        priority: 'media', title: "#{high_urgency} conversaciones urgentes",
-        description: "#{high_urgency} chats marcados como alta prioridad o urgente requieren atención.",
-        action: 'Asignar a los agentes más disponibles y hacer seguimiento inmediato.'
-      }
-    end
-
-    # Padding used to append the same card up to three times, so an account with nothing
-    # to flag saw "Sistema operando con normalidad" repeated three times.
     if insights.empty?
       insights << {
-        priority: 'baja', title: 'Sistema operando con normalidad',
-        description: "#{total} conversaciones registradas, #{resolved} resueltas. Sin alertas en los últimos 30 días.",
-        action: 'Añade OPENAI_API_KEY al entorno del servidor para habilitar análisis con IA.'
+        priority: 'baja', category: 'conversion',
+        title: 'Sin alertas en los últimos 30 días',
+        description: "#{ctx[:volumen][:conversaciones_totales]} conversaciones, " \
+                     "#{ctx[:cierres][:ganado]} ganadas y #{ctx[:cierres][:perdido]} perdidas.",
+        action: 'Configura OPENAI_API_KEY para habilitar el análisis con IA.'
       }
     end
 
-    insights.first(3)
+    insights.first(AI_INSIGHTS_COUNT)
+  end
+
+  def loss_rule_insights(ctx)
+    perdidas = ctx[:perdidas]
+    return [] unless perdidas[:total].positive?
+
+    insights = []
+    top_reason, top_data = perdidas[:por_motivo].max_by { |_, data| data[:cantidad] }
+
+    if top_data && top_data[:cantidad].positive?
+      insights << {
+        priority: 'alta', category: 'perdidas',
+        title: "Motivo principal de pérdida: #{top_reason.tr('_', ' ')}",
+        description: "#{top_data[:cantidad]} de #{perdidas[:total]} cierres perdidos " \
+                     "(#{top_data[:pct_de_las_perdidas]}%) se fueron por este motivo.",
+        action: 'Revisar las notas de esos cierres y atacar la causa raíz antes que el volumen.'
+      }
+    end
+
+    top_missing = perdidas[:repuestos_pedidos_sin_stock].first(3)
+    if top_missing.any?
+      listado = top_missing.map { |producto, veces| "#{producto} (#{veces})" }.join(', ')
+      insights << {
+        priority: 'alta', category: 'stock',
+        title: 'Ventas perdidas por falta de stock',
+        description: "Repuestos más pedidos que no había: #{listado}.",
+        action: 'Cotizar reposición de estos códigos; son demanda ya confirmada.'
+      }
+    end
+
+    tiempos = ctx[:ganado_vs_perdido][:minutos_primera_respuesta]
+    if tiempos['ganado'] && tiempos['perdido'] && tiempos['perdido'] > tiempos['ganado']
+      insights << {
+        priority: 'media', category: 'respuesta',
+        title: 'Respondemos más lento lo que perdemos',
+        description: "Primera respuesta: #{tiempos['ganado']} min en las ganadas vs " \
+                     "#{tiempos['perdido']} min en las perdidas.",
+        action: 'Fijar un objetivo de primera respuesta cercano al de las conversaciones ganadas.'
+      }
+    end
+
+    insights
+  end
+
+  def operations_rule_insights(ctx)
+    volumen = ctx[:volumen]
+    demanda = ctx[:demanda]
+    insights = []
+
+    if volumen[:sin_asignar] > 3
+      insights << {
+        priority: 'alta', category: 'equipo',
+        title: "#{volumen[:sin_asignar]} conversaciones sin agente",
+        description: "#{volumen[:sin_asignar]} chats abiertos sin asignación impactan el tiempo de respuesta.",
+        action: 'Activar auto-asignación o distribuirlas manualmente entre el equipo.'
+      }
+    end
+
+    if ctx[:cierres][:tasa_conversion_pct] < 20 && (ctx[:cierres][:ganado] + ctx[:cierres][:perdido]).positive?
+      insights << {
+        priority: 'alta', category: 'conversion',
+        title: 'Conversión por debajo del objetivo',
+        description: "#{ctx[:cierres][:tasa_conversion_pct]}% de cierres ganados sobre " \
+                     "#{ctx[:cierres][:ganado] + ctx[:cierres][:perdido]} conversaciones cerradas (objetivo ≥ 20%).",
+        action: 'Revisar el proceso de seguimiento de las conversaciones que quedan sin cerrar.'
+      }
+    end
+
+    if demanda[:pct_no_encontrado] > 25
+      insights << {
+        priority: 'media', category: 'stock',
+        title: "#{demanda[:pct_no_encontrado]}% de las consultas no encuentran el repuesto",
+        description: "#{demanda[:no_encontrados]} de #{demanda[:consultas_registradas]} búsquedas del bot no dieron resultado.",
+        action: 'Revisar el catálogo y los sinónimos de los repuestos más buscados sin resultado.'
+      }
+    end
+
+    if volumen[:alta_urgencia].positive?
+      insights << {
+        priority: 'media', category: 'equipo',
+        title: "#{volumen[:alta_urgencia]} conversaciones urgentes",
+        description: "#{volumen[:alta_urgencia]} chats marcados como alta prioridad o urgente requieren atención.",
+        action: 'Asignarlas a los agentes disponibles y hacer seguimiento inmediato.'
+      }
+    end
+
+    insights
   end
 
   def empty_profit

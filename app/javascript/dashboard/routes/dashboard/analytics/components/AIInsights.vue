@@ -14,6 +14,22 @@ const priorityConfig = {
 function priorityCfg(p) {
   return priorityConfig[p] || priorityConfig.baja;
 }
+
+// Matches the `category` field the prompt asks for. Unknown values fall through to the
+// raw string rather than being hidden.
+const categoryLabels = {
+  perdidas: 'Pérdidas',
+  conversion: 'Conversión',
+  stock: 'Stock',
+  respuesta: 'Respuesta',
+  equipo: 'Equipo',
+  canales: 'Canales',
+};
+
+function categoryLabel(c) {
+  if (!c) return '';
+  return categoryLabels[c] || c;
+}
 </script>
 
 <template>
@@ -36,7 +52,7 @@ function priorityCfg(p) {
     <!-- Loading skeletons -->
     <div v-if="loading" class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div
-        v-for="i in 3"
+        v-for="i in 6"
         :key="i"
         class="animate-pulse bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5 h-48"
       >
@@ -57,10 +73,18 @@ function priorityCfg(p) {
         :key="idx"
         class="group bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#1A365D]/30 dark:hover:border-blue-11/20"
       >
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-bold text-n-slate-9 tabular-nums">
-            {{ String(idx + 1).padStart(2, '0') }}
-          </span>
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="text-[10px] font-bold text-n-slate-9 tabular-nums">
+              {{ String(idx + 1).padStart(2, '0') }}
+            </span>
+            <span
+              v-if="insight.category"
+              class="text-[10px] font-medium px-1.5 py-0.5 rounded bg-n-alpha-2 text-n-slate-10 truncate"
+            >
+              {{ categoryLabel(insight.category) }}
+            </span>
+          </div>
           <span
             class="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
             :class="priorityCfg(insight.priority).classes"
