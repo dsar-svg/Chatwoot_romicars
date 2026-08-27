@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseController
+  # Profit runs on the customer's own network. Without explicit timeouts a slow or
+  # unreachable host held the dashboard request open until Rack::Timeout killed it.
+  PROFIT_OPEN_TIMEOUT = 5
+  PROFIT_TIMEOUT = 10
+
   before_action :check_authorization
 
   def overview
@@ -92,20 +97,14 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     inquiries = account.product_inquiries.where(created_at: since_30..Time.current)
 
-    # Top repuestos más buscados
-    top_products = inquiries
-                    .group(:repuesto_buscado)
-                    .count
-                    .sort_by { |_, v| -v }
-                    .first(8)
-                    .map { |name, count| { name: name, count: count } }
+    # Aggregated and sorted in SQL by ProductInquiry. Rows written by the n8n flow can
+    # arrive without a repuesto or canal; those scopes drop them so the dashboard stops
+    # rendering an unlabelled bar.
+    top_products = inquiries.top_repuestos(8)
+                            .map { |name, count| { name: name, count: count } }
 
-    # Consultas por canal
-    channel_breakdown = inquiries
-                         .group(:canal)
-                         .count
-                         .sort_by { |_, v| -v }
-                         .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
+    channel_breakdown = inquiries.by_canal_stats
+                                 .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
 
     render json: {
       popular_products: top_products,
@@ -121,12 +120,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
               InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value ||
               InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value
 
-    Rails.logger.error "RomicarsDashboard AI: OPENAI_API_KEY present? #{key.present?}"
-    Rails.logger.error "RomicarsDashboard AI: ENV value length: #{ENV.fetch('OPENAI_API_KEY', '').length}"
-    Rails.logger.error "RomicarsDashboard AI: CAPTAIN config present? #{InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_API_KEY')&.value.present?}"
-    Rails.logger.error "RomicarsDashboard AI: OPENAI config present? #{InstallationConfig.find_by(name: 'OPENAI_API_KEY')&.value.present?}"
-
-    raise 'No OpenAI API key configured' unless key.present?
+    raise 'No OpenAI API key configured' if key.blank?
 
     client   = OpenAI::Client.new(access_token: key)
     response = client.chat(
@@ -156,7 +150,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     insights = insights.values.first if insights.is_a?(Hash)
 
     render json: { insights: Array(insights).first(3), source: 'ai' }
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error "RomicarsDashboard AI insights error: #{e.message}"
     render json: { insights: rule_based_insights(account), source: 'rules' }
   end
@@ -173,32 +167,39 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     render json: { products_top: products[:top], products_bottom: products[:bottom],
                    customers: customers, available: true }
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error "RomicarsDashboard Profit error: #{e.message}"
     render json: empty_profit.merge(error: e.message)
   end
 
   def resolution
-    account = Current.account
+    account  = Current.account
     since_30 = 30.days.ago
-    resolved = account.conversations.where(status: :resolved, resolution_type: %w[ganado perdido consulta])
 
-    ganado = resolved.where(resolution_type: 'ganado')
-    perdido = resolved.where(resolution_type: 'perdido')
-    consulta = resolved.where(resolution_type: 'consulta')
+    # This endpoint reports itself as "30 días" but used to query all history, so the
+    # percentages never matched the daily/by_agent series below them.
+    resolved = account.conversations
+                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(resolved_at: since_30..)
 
-    sales = ganado.with_sale
-    total_sales_amount = sales.sum(:sale_amount)
+    # One grouped query instead of ~10 separate COUNT round trips.
+    counts_by_type = resolved.group(:resolution_type).count
+    total_resolved = counts_by_type.values.sum
+
+    perdido_by_reason = resolved.where(resolution_type: 'perdido').group(:resolution_reason).count
+    sales             = resolved.where(resolution_type: 'ganado').with_sale
+    sales_count       = sales.count
+    total_sales_amount = sales.sum(:sale_amount).to_f
 
     render json: {
       period: '30 días',
-      total_resolved: resolved.count,
+      total_resolved: total_resolved,
       ganado: {
-        count: ganado.count,
-        percentage: resolved.count.positive? ? (ganado.count.to_f / resolved.count * 100).round(1) : 0,
-        total_sales_amount: total_sales_amount.to_f,
-        average_sale: sales.count.positive? ? (total_sales_amount.to_f / sales.count).round(2) : 0,
-        sales: sales.order(sale_date: :desc).limit(20).map do |c|
+        count: counts_by_type.fetch('ganado', 0),
+        percentage: percentage_of(counts_by_type.fetch('ganado', 0), total_resolved),
+        total_sales_amount: total_sales_amount,
+        average_sale: sales_count.positive? ? (total_sales_amount / sales_count).round(2) : 0,
+        sales: sales.includes(:contact).order(sale_date: :desc).limit(20).map do |c|
           {
             id: c.display_id,
             amount: c.sale_amount.to_f,
@@ -209,18 +210,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         end
       },
       perdido: {
-        count: perdido.count,
-        percentage: resolved.count.positive? ? (perdido.count.to_f / resolved.count * 100).round(1) : 0,
-        by_reason: {
-          sin_stock: perdido.where(resolution_reason: 'sin_stock').count,
-          precio: perdido.where(resolution_reason: 'precio').count,
-          sin_respuesta: perdido.where(resolution_reason: 'sin_respuesta').count,
-          otro: perdido.where(resolution_reason: 'otro').count
-        }
+        count: counts_by_type.fetch('perdido', 0),
+        percentage: percentage_of(counts_by_type.fetch('perdido', 0), total_resolved),
+        by_reason: Conversation::RESOLUTION_REASONS.index_with { |reason| perdido_by_reason.fetch(reason, 0) }
       },
       consulta: {
-        count: consulta.count,
-        percentage: resolved.count.positive? ? (consulta.count.to_f / resolved.count * 100).round(1) : 0
+        count: counts_by_type.fetch('consulta', 0),
+        percentage: percentage_of(counts_by_type.fetch('consulta', 0), total_resolved)
       },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)
@@ -228,37 +224,46 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def requested_products
-    account = Current.account
+    account  = Current.account
     since_30 = 30.days.ago
 
-    products = account.conversations
-                      .where(status: :resolved, resolution_reason: 'sin_stock')
-                      .where.not(requested_product: [nil, ''])
-                      .where('resolved_at >= ?', since_30)
-                      .order(resolved_at: :desc)
-                      .limit(100)
+    scope = account.conversations
+                   .where(status: :resolved, resolution_reason: Conversation::RESOLUTION_REASON_REQUIRING_PRODUCT)
+                   .where.not(requested_product: [nil, ''])
+                   .where(resolved_at: since_30..)
 
-    grouped = products.group_by(&:requested_product)
-                      .transform_values do |convs|
-                        {
-                          count: convs.count,
-                          conversations: convs.map do |c|
-                            {
-                              id: c.display_id,
-                              product: c.requested_product,
-                              contact: c.contact.try(:name),
-                              resolved_at: c.resolved_at,
-                              resolution_notes: c.resolution_notes
-                            }
-                          end
-                        }
-                      end
+    # Totals come from SQL over the whole window. They used to be derived from a
+    # `limit(100)` slice, so both counters silently capped at 100 once the shop had a
+    # busy month.
+    counts_by_product = scope.group(:requested_product).count
+    total_requested   = counts_by_product.values.sum
+
+    # Only the sample of conversations shown under each product is capped.
+    recent = scope.includes(:contact).order(resolved_at: :desc).limit(200).group_by(&:requested_product)
+
+    products = counts_by_product.sort_by { |_, count| -count }.to_h do |product, count|
+      [
+        product,
+        {
+          count: count,
+          conversations: recent.fetch(product, []).map do |c|
+            {
+              id: c.display_id,
+              product: c.requested_product,
+              contact: c.contact.try(:name),
+              resolved_at: c.resolved_at,
+              resolution_notes: c.resolution_notes
+            }
+          end
+        }
+      ]
+    end
 
     render json: {
       period: '30 días',
-      total_requested: products.count,
-      unique_products: grouped.keys.count,
-      products: grouped.sort_by { |_, v| -v[:count] }.to_h
+      total_requested: total_requested,
+      unique_products: counts_by_product.size,
+      products: products
     }
   end
 
@@ -268,14 +273,21 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     authorize :report, :view?
   end
 
-  def avg_first_response(account, agent_id, since)
-    convs = account.conversations
-                   .where(assignee_id: agent_id, created_at: since..Time.current)
-                   .where.not(first_reply_created_at: nil)
-    return 0 if convs.empty?
+  def percentage_of(part, total)
+    return 0 unless total.to_i.positive?
 
-    total = convs.sum { |c| ((c.first_reply_created_at - c.created_at) / 60).to_i }
-    (total.to_f / convs.count).round(1)
+    (part.to_f / total * 100).round(1)
+  end
+
+  # Averaged in SQL. The Ruby version loaded every conversation of every agent into
+  # memory just to subtract two timestamps.
+  def avg_first_response(account, agent_id, since)
+    average = account.conversations
+                     .where(assignee_id: agent_id, created_at: since..Time.current)
+                     .where.not(first_reply_created_at: nil)
+                     .average(Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60'))
+
+    average.to_f.round(1)
   end
 
   def insights_context(account)
@@ -334,11 +346,15 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       }
     end
 
-    insights << {
-      priority: 'baja', title: 'Sistema operando con normalidad',
-      description: "#{total} conversaciones registradas. Configura OpenAI para insights avanzados.",
-      action: 'Añade OPENAI_API_KEY al entorno del servidor para habilitar análisis con IA.'
-    } while insights.length < 3
+    # Padding used to append the same card up to three times, so an account with nothing
+    # to flag saw "Sistema operando con normalidad" repeated three times.
+    if insights.empty?
+      insights << {
+        priority: 'baja', title: 'Sistema operando con normalidad',
+        description: "#{total} conversaciones registradas, #{resolved} resueltas. Sin alertas en los últimos 30 días.",
+        action: 'Añade OPENAI_API_KEY al entorno del servidor para habilitar análisis con IA.'
+      }
+    end
 
     insights.first(3)
   end
@@ -347,23 +363,30 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     { products_top: [], products_bottom: [], customers: [], available: false }
   end
 
+  def profit_connection(url)
+    Faraday.new(url: url.chomp('/')) do |conn|
+      conn.options.open_timeout = PROFIT_OPEN_TIMEOUT
+      conn.options.timeout = PROFIT_TIMEOUT
+    end
+  end
+
   def authenticate_profit(url)
-    resp = Faraday.post(
-      "#{url.chomp('/')}/api/auth",
-      { usuario: ENV['PROFIT_API_USER'], clave: ENV['PROFIT_API_PASSWORD'] }.to_json,
+    resp = profit_connection(url).post(
+      '/api/auth',
+      { usuario: ENV.fetch('PROFIT_API_USER', nil), clave: ENV.fetch('PROFIT_API_PASSWORD', nil) }.to_json,
       'Content-Type' => 'application/json'
     )
     return nil unless resp.success?
 
     JSON.parse(resp.body)['token']
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error "Profit auth: #{e.message}"
     nil
   end
 
   def fetch_profit_products(url, token)
-    resp = Faraday.get(
-      "#{url.chomp('/')}/api/productos/mas-vendidos",
+    resp = profit_connection(url).get(
+      '/api/productos/mas-vendidos',
       {},
       'Authorization' => "Bearer #{token}"
     )
@@ -374,14 +397,14 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     sorted = list.sort_by { |p| -(p['cantidad_vendida'] || p['cantidad'] || 0).to_i }
 
     { top: sorted.first(6), bottom: sorted.last(6).reverse }
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error "Profit products: #{e.message}"
     { top: [], bottom: [] }
   end
 
   def fetch_profit_customers(url, token)
-    resp = Faraday.get(
-      "#{url.chomp('/')}/api/clientes/ubicacion",
+    resp = profit_connection(url).get(
+      '/api/clientes/ubicacion',
       {},
       'Authorization' => "Bearer #{token}"
     )
@@ -389,16 +412,18 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     raw = JSON.parse(resp.body)
     raw.is_a?(Array) ? raw.first(200) : (raw['clientes'] || raw['data'] || []).first(200)
-  rescue => e
+  rescue StandardError => e
     Rails.logger.error "RomicarsCustomers Profit error: #{e.message}"
     []
   end
 
+  # Both series excluded `consulta`, so the "Consulta" column in the daily and per-agent
+  # tables of the resolution report was permanently zero.
   def daily_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: %w[ganado perdido])
-           .where('resolved_at >= ?', since)
-           .group("DATE(resolved_at)")
+           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(resolved_at: since..)
+           .group(Arel.sql('DATE(resolved_at)'))
            .group(:resolution_type)
            .count
            .map { |(date, type), count| { date: date.to_s, type: type, count: count } }
@@ -406,10 +431,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   def agent_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: %w[ganado perdido])
-           .where('resolved_at >= ?', since)
+           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(resolved_at: since..)
            .where.not(assignee_id: nil)
-           .joins("LEFT JOIN users ON users.id = conversations.assignee_id")
+           .joins('LEFT JOIN users ON users.id = conversations.assignee_id')
            .group('users.name')
            .group(:resolution_type)
            .count

@@ -22,12 +22,18 @@ class VehiclePrice < ApplicationRecord
     )
   }
 
+  # Fuzzy search over the pg_trgm indexes. The ORDER BY used to interpolate the search
+  # term straight into SQL through `sanitize_sql_for_like` — a method that does not
+  # exist, so the scope raised NoMethodError on every call, and had it existed it escapes
+  # LIKE wildcards, not quotes. Both the filter and the ordering are bound now.
   scope :by_search_trgm, lambda { |search, threshold: 0.15|
-    return all unless search.present?
+    next all if search.blank?
+
+    order_sql = sanitize_sql_array(['similarity(description, ?) DESC', search])
 
     where(
-      'similarity(description, :s) > :t OR similarity(synonyms, :s) > :t',
+      'similarity(description, :s) > :t OR similarity(COALESCE(synonyms, \'\'), :s) > :t',
       s: search, t: threshold
-    ).order(Arel.sql("similarity(description, '#{sanitize_sql_for_like(search)}') DESC"))
+    ).order(Arel.sql(order_sql))
   }
 end

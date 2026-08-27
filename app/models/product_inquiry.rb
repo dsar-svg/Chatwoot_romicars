@@ -11,30 +11,42 @@ class ProductInquiry < ApplicationRecord
   }
   scope :not_found, -> { where(encontrado: false) }
   scope :found, -> { where(encontrado: true) }
+  scope :with_repuesto, -> { where.not(repuesto_buscado: [nil, '']) }
+  scope :with_canal, -> { where.not(canal: [nil, '']) }
+
+  # These grouped aggregates all ordered by `count_id`, a column that does not exist:
+  # `group(...).count` aliases its aggregate as `count_all`, and Rails 7 rejects raw
+  # non-attribute order arguments, so every one of them raised instead of returning rows.
+  COUNT_DESC = Arel.sql('COUNT(*) DESC')
 
   def self.top_repuestos(limit = 20)
-    group(:repuesto_buscado)
-      .order('count_id DESC')
+    with_repuesto
+      .group(:repuesto_buscado)
+      .order(COUNT_DESC)
       .limit(limit)
       .count
   end
 
   def self.by_canal_stats
-    group(:canal)
-      .order('count_id DESC')
+    with_canal
+      .group(:canal)
+      .order(COUNT_DESC)
       .count
   end
 
   def self.top_repuestos_by_canal
-    group(:canal, :repuesto_buscado)
-      .order('canal, count_id DESC')
+    with_canal
+      .with_repuesto
+      .group(:canal, :repuesto_buscado)
+      .order(Arel.sql('canal ASC, COUNT(*) DESC'))
       .count
   end
 
   def self.not_found_repuestos(limit = 20)
     not_found
+      .with_repuesto
       .group(:repuesto_buscado, :marca_buscada, :modelo_buscado)
-      .order('count_id DESC')
+      .order(COUNT_DESC)
       .limit(limit)
       .count
   end
