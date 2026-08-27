@@ -18,4 +18,10 @@ class ExchangeRatePolicy < ApplicationPolicy
   def destroy?
     account_user.admin?
   end
+
+  # Same as VehiclePricePolicy#import? — without this the "actualizar tasa BCV" button
+  # errored out instead of refreshing the rate.
+  def fetch_current?
+    account_user.admin?
+  end
 end

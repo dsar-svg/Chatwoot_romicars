@@ -25,7 +25,9 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
       @rate.assign_attributes(result.merge(effective_date: today))
       @rate.save!
 
-      recalculate_prices(result[:equiv_13])
+      # Single UPDATE shared with FetchExchangeRatesJob. This used to load and save every
+      # price row one at a time, inside the request.
+      ExchangeRate.recalculate_prices!(Current.account, result[:equiv_13])
 
       render :show
     else
@@ -37,20 +39,5 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
 
   def rate_params
     params.require(:exchange_rate).permit(:rate, :equiv_13, :effective_date, :source)
-  end
-
-  def recalculate_prices(equiv_13)
-    tasa_bcv = equiv_13 / 1.13
-    Current.account.vehicle_prices.find_each do |price|
-      next unless price.divisa.present?
-
-      new_monto_bs = (price.divisa * equiv_13).round(2)
-      new_bolivares = (new_monto_bs / tasa_bcv).round(2)
-
-      price.update!(
-        monto_bs: new_monto_bs,
-        bolivares: new_bolivares
-      )
-    end
   end
 end

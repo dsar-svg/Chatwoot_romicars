@@ -4,39 +4,24 @@ class FetchExchangeRatesJob < ApplicationJob
   queue_as :scheduled_jobs
 
   def perform
-    Account.find_each do |account|
-      rate_data = ExchangeRate.fetch_bcv_rate
-      next unless rate_data
+    # Fetched once. This used to sit inside the loop, hitting ve.dolarapi.com once per
+    # account for a value that is identical for all of them.
+    rate_data = ExchangeRate.fetch_bcv_rate
+    return Rails.logger.error('[FetchExchangeRates] Skipped: could not fetch BCV rate') if rate_data.nil?
 
-      today = Date.current
+    today = Date.current
+
+    Account.find_each do |account|
       rate = account.exchange_rates.find_or_initialize_by(effective_date: today)
       rate.assign_attributes(rate_data.merge(effective_date: today))
       rate.save!
 
-      recalculate_prices(account, rate_data)
+      updated = ExchangeRate.recalculate_prices!(account, rate_data[:equiv_13])
 
-      Rails.logger.info "[FetchExchangeRates] Account #{account.id}: rate=#{rate_data[:rate]}, equiv_13=#{rate_data[:equiv_13]}"
+      Rails.logger.info "[FetchExchangeRates] Account #{account.id}: rate=#{rate_data[:rate]}, " \
+                        "equiv_13=#{rate_data[:equiv_13]}, prices_updated=#{updated}"
     rescue StandardError => e
       Rails.logger.error "[FetchExchangeRates] Failed for account #{account.id}: #{e.message}"
-    end
-  end
-
-  private
-
-  def recalculate_prices(account, rate_data)
-    equiv_13 = rate_data[:equiv_13]
-    tasa_bcv = equiv_13 / 1.13
-
-    account.vehicle_prices.find_each do |price|
-      next unless price.divisa.present?
-
-      new_monto_bs = (price.divisa * equiv_13).round(2)
-      new_bolivares = (new_monto_bs / tasa_bcv).round(2)
-
-      price.update_columns(
-        monto_bs: new_monto_bs,
-        bolivares: new_bolivares
-      )
     end
   end
 end

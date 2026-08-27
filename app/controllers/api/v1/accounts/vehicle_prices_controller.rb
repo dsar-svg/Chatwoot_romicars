@@ -5,7 +5,10 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
   before_action :fetch_price, only: [:show, :update, :destroy]
 
   def index
+    # Pagination is done client side, so this returns the full catalogue. Preloading the
+    # associations turns the jbuilder's two queries per row into two queries total.
     @prices = Current.account.vehicle_prices
+                     .includes(:vehicle_brand, :vehicle_model)
                      .by_brand(params[:brand_id])
                      .by_model(params[:model_id])
                      .by_search(params[:search])
