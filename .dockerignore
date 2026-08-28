@@ -57,6 +57,20 @@ __mocks__
 .ruby-version
 .scss-lint.yml
 
+# NOTE: do not exclude any of the following, the image needs them:
+#   enterprise/        config/application.rb adds enterprise/lib, enterprise/listeners
+#                      and enterprise/app/** to eager_load_paths unconditionally, so
+#                      Rails cannot boot in production without the directory. Excluding
+#                      it broke `rake assets:precompile` at boot. DISABLE_ENTERPRISE
+#                      does not help: it only affects ChatwootApp.enterprise?.
+#   vite.config.ts / vite.shared.ts / vite.lib.config.ts   vite build reads them
+#   tailwind.config.js / postcss.config.js / theme/        CSS pipeline; the tailwind
+#                      config imports ./theme/colors and ./theme/icons
+#   .browserslistrc    consumed by the frontend build
+#   data/              20260815000005_import_vehicle_prices_from_csv reads
+#                      data/vehicle_prices.csv; without it the migration silently skips
+#   swagger/           served at runtime by the /swagger routes
+
 # Documentation
 docs
 AGENTS.md
@@ -86,7 +100,6 @@ VERSION_CW
 VERSION_CWCTL
 .all-contributorsrc
 .annotaterb.yml
-.browserslistrc
 .bundler-audit.yml
 .editorconfig
 .eslintrc.js
@@ -94,19 +107,10 @@ VERSION_CWCTL
 .qlty
 .scss-lint.yml
 .slugignore
-data
 deployment
-enterprise
 histoire.config.ts
-postcss.config.js
 rubocop
 script
-swagger
-tailwind.config.js
-theme
-vite.config.ts
-vite.lib.config.ts
-vite.shared.ts
 vitest.config.ts
 vitest.i18n.js
 vitest.setup.js
