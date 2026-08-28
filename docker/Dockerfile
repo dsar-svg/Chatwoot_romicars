@@ -72,10 +72,9 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   fi
 
 COPY package.json pnpm-lock.yaml ./
-# Skip husky install during Docker build: it requires .git which is not present yet
-# and breaks pnpm install. Husky is only needed for local development hooks.
-ENV HUSKY=0
-RUN pnpm i
+# Skip all npm/pnpm scripts (including husky's 'prepare' script which requires .git).
+# We don't need git hooks during the Docker image build.
+RUN pnpm i --ignore-scripts
 
 COPY . /app
 
