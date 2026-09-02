@@ -92,8 +92,11 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
   bundle exec rake assets:precompile; \
   fi
 
-# Generate .git_sha file with current commit hash
-RUN git rev-parse HEAD > /app/.git_sha
+# Generate .git_sha file with current commit hash.
+# .git is excluded from the build context (see .dockerignore), so this always falls back
+# to "unknown" rather than failing the build - config/initializers/git_sha.rb reads this
+# same file and already handles that fallback value.
+RUN git rev-parse HEAD > /app/.git_sha || echo "unknown" > /app/.git_sha
 
 # Remove unnecessary files
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
