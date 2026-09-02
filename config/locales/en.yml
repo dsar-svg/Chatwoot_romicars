@@ -122,6 +122,7 @@ en:
         failed: File is blank
       export:
         success: We will notify you once contacts export file is ready to view.
+      delete_failed: 'Could not delete contact: %{error}'
       email:
         invalid: Invalid email
       phone_number:

@@ -108,6 +108,12 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
 
     @contact.destroy!
     head :ok
+  rescue ActiveRecord::RecordNotDestroyed => e
+    render_error({ message: I18n.t('errors.contacts.delete_failed', error: e.message) },
+                 :unprocessable_entity)
+  rescue ActiveRecord::InvalidForeignKey => e
+    render_error({ message: I18n.t('errors.contacts.delete_failed', error: e.message) },
+                 :unprocessable_entity)
   end
 
   def avatar
