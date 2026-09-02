@@ -105,6 +105,7 @@ es:
         failed: Archivo está en blanco
       export:
         success: Le notificaremos cuando el archivo de exportación de contactos esté listo para ver.
+      delete_failed: 'No se pudo eliminar el contacto: %{error}'
       email:
         invalid: Email inválido
       phone_number:

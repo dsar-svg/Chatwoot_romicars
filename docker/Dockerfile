@@ -83,8 +83,13 @@ COPY . /app
 RUN mkdir -p /app/log
 
 # generate production assets if production environment
+# POSTGRES_USERNAME/PASSWORD have no default in config/database.yml (by design, to avoid a
+# predictable production password), but Rails still parses that file on boot even though
+# assets:precompile never opens a DB connection - so it needs *some* value here at build time.
 RUN if [ "$RAILS_ENV" = "production" ]; then \
-  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled bundle exec rake assets:precompile; \
+  SECRET_KEY_BASE=precompile_placeholder RAILS_LOG_TO_STDOUT=enabled \
+  POSTGRES_USERNAME=precompile_placeholder POSTGRES_PASSWORD=precompile_placeholder \
+  bundle exec rake assets:precompile; \
   fi
 
 # Generate .git_sha file with current commit hash
