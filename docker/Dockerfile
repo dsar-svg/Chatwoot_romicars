@@ -99,10 +99,12 @@ RUN if [ "$RAILS_ENV" = "production" ]; then \
 RUN git rev-parse HEAD > /app/.git_sha || echo "unknown" > /app/.git_sha
 
 # Remove unnecessary files
+# .git and .gitignore are already excluded from the build context (see .dockerignore),
+# so these are just belt-and-suspenders - -f/-rf so a missing file doesn't fail the build.
 RUN rm -rf /gems/ruby/3.4.0/cache/*.gem \
   && find /gems/ruby/3.4.0/gems/ \( -name "*.c" -o -name "*.o" \) -delete \
   && rm -rf .git \
-  && rm .gitignore
+  && rm -f .gitignore
 
 # Clean up /app before copying to final stage
 RUN rm -rf spec test tests node_modules tmp/cache tmp/pids log
