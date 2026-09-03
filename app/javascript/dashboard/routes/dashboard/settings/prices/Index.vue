@@ -79,16 +79,16 @@ const pagedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + perPage);
 });
 
-const calcCostBs = divisa => {
-  if (!divisa || !latestRate.value) return null;
-  return Number((divisa * latestRate.value.equiv_13).toFixed(2));
-};
-
 const calcBolivares = divisa => {
   if (!divisa || !latestRate.value) return null;
-  const montoBs = divisa * latestRate.value.equiv_13;
+  return Math.round(divisa * latestRate.value.equiv_13);
+};
+
+const calcCostBs = divisa => {
+  const bolivares = calcBolivares(divisa);
+  if (bolivares === null) return null;
   const tasaBcv = latestRate.value.equiv_13 / 1.13;
-  return Number((montoBs / tasaBcv).toFixed(2));
+  return Number((bolivares * tasaBcv).toFixed(2));
 };
 
 const fetchPrices = async () => {

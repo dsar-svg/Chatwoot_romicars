@@ -50,6 +50,9 @@ class ExchangeRate < ApplicationRecord
 
   # Repricing the whole catalogue used to be a `find_each` + one UPDATE per row, run
   # inline inside the web request. This is a single statement instead.
+  #
+  # bolivares = divisa * equiv_13 (whole number - the column is an integer)
+  # monto_bs  = bolivares * tasa_bcv, rounded to 2 decimals
   def self.recalculate_prices!(account, equiv_13)
     equiv_13 = equiv_13.to_d
     return 0 unless equiv_13.positive?
@@ -57,7 +60,7 @@ class ExchangeRate < ApplicationRecord
     tasa_bcv = equiv_13 / IVA_MULTIPLIER
 
     account.vehicle_prices.where.not(divisa: nil).update_all([
-      'monto_bs = ROUND(divisa * ?, 2), bolivares = ROUND(ROUND(divisa * ?, 2) / ?, 2), updated_at = ?',
+      'bolivares = ROUND(divisa * ?), monto_bs = ROUND(ROUND(divisa * ?) * ?, 2), updated_at = ?',
       equiv_13, equiv_13, tasa_bcv, Time.current
     ])
   end

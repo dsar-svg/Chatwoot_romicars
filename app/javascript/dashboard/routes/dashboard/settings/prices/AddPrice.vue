@@ -53,15 +53,16 @@ export default {
     latestRate() {
       return this.$store.getters['exchangeRates/getLatestRate'];
     },
-    calculatedCostBs() {
-      if (!this.divisa || !this.latestRate) return null;
-      return Number((this.divisa * this.latestRate.equiv_13).toFixed(2));
-    },
     calculatedBolivares() {
       if (!this.divisa || !this.latestRate) return null;
-      const montoBs = this.divisa * this.latestRate.equiv_13;
+      return Math.round(this.divisa * this.latestRate.equiv_13);
+    },
+    calculatedCostBs() {
+      if (!this.divisa || !this.latestRate || this.calculatedBolivares === null) {
+        return null;
+      }
       const tasaBcv = this.latestRate.equiv_13 / 1.13;
-      return Number((montoBs / tasaBcv).toFixed(2));
+      return Number((this.calculatedBolivares * tasaBcv).toFixed(2));
     },
   },
   watch: {
