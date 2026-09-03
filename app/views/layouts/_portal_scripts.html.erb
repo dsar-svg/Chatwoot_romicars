@@ -1,5 +1,5 @@
 <% if @article.present? %>
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   (function() {
     let viewTracked = false;
     const trackView = function() {
@@ -74,7 +74,7 @@ html.light {
 }
 </style>
 
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   window.portalConfig = {
     portalSlug: '<%= @portal.slug %>',
     portalColor: '<%= @portal.color %>',
@@ -94,7 +94,7 @@ html.light {
   };
 </script>
 <% if @portal.channel_web_widget.present? && !@is_plain_layout_enabled %>
-<script>
+<script nonce="<%= content_security_policy_nonce %>">
   window.chatwootSettings = window.chatwootSettings || {};
   window.chatwootSettings.locale = '<%= @locale %>';
 </script>
