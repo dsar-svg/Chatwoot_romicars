@@ -132,15 +132,23 @@ services:
   # just the labeled containers below (rails, sidekiq) - the same pull/stop/rm/up cycle
   # done by hand today. Scoped via --label-enable so it never touches postgres/redis or
   # any other stack on this host.
+  #
+  # containrrr/watchtower is archived/stale (last published 2023) and speaks an old
+  # Docker API version - it fails outright ("client version 1.25 is too old") against
+  # current Docker engines. nickfedor/watchtower is the actively maintained fork.
+  #
+  # WATCHTOWER_ROLLING_RESTART is intentionally omitted: rails depends_on postgres/redis,
+  # which aren't watchtower-labeled, and rolling-restart mode refuses to update a
+  # container whose dependency graph it doesn't fully manage ("Rolling restart
+  # compatibility validation failed").
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower:latest
     restart: always
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - WATCHTOWER_LABEL_ENABLE=true
       - WATCHTOWER_POLL_INTERVAL=60
-      - WATCHTOWER_ROLLING_RESTART=true
       - WATCHTOWER_CLEANUP=true
     networks:
       - default
