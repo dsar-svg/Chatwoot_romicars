@@ -57,7 +57,9 @@ const actions = {
         params.assigneeType
       );
     } catch (error) {
-      // Handle error
+      // Without this the list keeps the loading spinner forever on a failed
+      // request, and the infinite-scroll observer never gets a chance to retry.
+      commit(types.CLEAR_LIST_LOADING_STATUS);
     }
   },
 
@@ -73,6 +75,13 @@ const actions = {
       );
     } catch (error) {
       commit(types.CLEAR_LIST_LOADING_STATUS);
+      // Mark the page as exhausted so the intersection observer stops re-firing
+      // loadMore against a failing request (which produced a toast per retry).
+      dispatch(
+        'conversationPage/setEndReached',
+        { filter: 'appliedFilters' },
+        { root: true }
+      );
       throw error;
     }
   },

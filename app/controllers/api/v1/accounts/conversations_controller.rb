@@ -49,6 +49,8 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   end
 
   def filter
+    return render_could_not_create_error('Filter payload is missing or malformed') unless filter_params[:payload].is_a?(Array)
+
     result = ::Conversations::FilterService.new(filter_params, current_user, current_account).perform
     @conversations = result[:conversations]
     @conversations_count = result[:count]
@@ -156,10 +158,14 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
     params.permit(:priority)
   end
 
+  # The filter endpoint is driven entirely by :page and the :payload array of conditions.
+  # Dropping :payload here made every advanced filter / saved folder blow up in
+  # FilterService#validate_query_operator with NoMethodError on nil.
   def filter_params
-    params.permit(:page, :label, :status, :assignee_type, :assignee_id, :inbox_id, :team_id,
-      :contact_id, :conversation_type, :channel_id, :before, :after, :sort, :meta,
-      custom_attributes: {}, additional_attributes: {}, filters: [:attribute_key, :filter_operator, :filter_value, :values])
+    params.permit(
+      :page,
+      payload: [:attribute_key, :filter_operator, :query_operator, :custom_attribute_type, { values: [] }]
+    )
   end
 
   def attachment_params

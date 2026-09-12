@@ -223,10 +223,12 @@ const conversationCustomAttributes = useFunctionGetter(
 );
 
 const activeAssigneeTabCount = computed(() => {
-  const count = assigneeTabItems.value.find(
-    item => item.key === activeAssigneeTab.value
-  ).count;
-  return count;
+  // A restricted custom role can leave the active tab out of the permitted list,
+  // and reading .count off undefined took the whole list down.
+  return (
+    assigneeTabItems.value.find(item => item.key === activeAssigneeTab.value)
+      ?.count ?? 0
+  );
 });
 
 const conversationListPagination = computed(() => {

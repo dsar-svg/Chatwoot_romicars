@@ -164,7 +164,12 @@ class ConversationFinder
   def filter_by_status
     return if params[:status] == 'all'
 
-    @conversations = @conversations.where(status: params[:status] || DEFAULT_STATUS)
+    status = params[:status].presence || DEFAULT_STATUS
+    # An unknown value here makes the enum raise ArgumentError, which surfaced as a
+    # 500 and an endless "Couldn't load conversations" on the list.
+    return unless Conversation.statuses.key?(status.to_s)
+
+    @conversations = @conversations.where(status: status)
   end
 
   def filter_by_team
