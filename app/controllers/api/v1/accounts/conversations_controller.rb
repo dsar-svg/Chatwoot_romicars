@@ -164,7 +164,10 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   def filter_params
     params.permit(
       :page,
-      payload: [:attribute_key, :filter_operator, :query_operator, :custom_attribute_type, { values: [] }]
+      # :values is listed twice on purpose. permit skips the bare symbol for array
+      # values and the nested filter for scalars, so both shapes survive; saved folders
+      # written by older versions can still carry a scalar here.
+      payload: [:attribute_key, :filter_operator, :query_operator, :custom_attribute_type, :values, { values: [] }]
     )
   end
 

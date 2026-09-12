@@ -85,6 +85,13 @@ describe('#ConversationAPI', () => {
         {
           status: 'online',
           snoozed_until: null,
+          resolution_type: null,
+          resolution_reason: null,
+          resolution_notes: null,
+          sale_amount: null,
+          sale_date: null,
+          sale_invoice: null,
+          requested_product: null,
         }
       );
     });

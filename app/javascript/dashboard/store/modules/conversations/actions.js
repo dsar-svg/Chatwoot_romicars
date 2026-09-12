@@ -277,62 +277,66 @@ const actions = {
       requestedProduct = null,
     }
   ) => {
-    try {
-      // Update custom attributes first if provided
-      if (customAttributes) {
-        await ConversationApi.updateCustomAttributes({
-          conversationId,
-          customAttributes,
-        });
-        commit(types.UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES, {
-          conversationId,
-          customAttributes,
-        });
-      }
-
-      const {
-        data: {
-          payload: {
-            current_status: updatedStatus,
-            snoozed_until: updatedSnoozedUntil,
-            resolution_type: apiResolutionType,
-            resolution_reason: apiResolutionReason,
-            resolution_notes: apiResolutionNotes,
-            resolved_at: apiResolvedAt,
-            sale_amount: apiSaleAmount,
-            sale_date: apiSaleDate,
-            sale_invoice: apiSaleInvoice,
-            requested_product: apiRequestedProduct,
-          } = {},
-        } = {},
-      } = await ConversationApi.toggleStatus({
+    // Errors are intentionally not caught here: the caller alerts the agent, and
+    // swallowing them made every failed resolve show the success toast.
+    // Update custom attributes first if provided
+    if (customAttributes) {
+      await ConversationApi.updateCustomAttributes({
         conversationId,
-        status,
-        snoozedUntil,
-        resolutionType,
-        resolutionReason,
-        resolutionNotes,
-        saleAmount,
-        saleDate,
-        saleInvoice,
-        requestedProduct,
+        customAttributes,
       });
-      commit(types.CHANGE_CONVERSATION_STATUS, {
+      commit(types.UPDATE_CONVERSATION_CUSTOM_ATTRIBUTES, {
         conversationId,
-        status: updatedStatus,
-        snoozedUntil: updatedSnoozedUntil,
-        resolutionType: apiResolutionType,
-        resolutionReason: apiResolutionReason,
-        resolutionNotes: apiResolutionNotes,
-        resolvedAt: apiResolvedAt,
-        saleAmount: apiSaleAmount,
-        saleDate: apiSaleDate,
-        saleInvoice: apiSaleInvoice,
-        requestedProduct: apiRequestedProduct,
+        customAttributes,
       });
-    } catch (error) {
-      // Handle error
     }
+
+    const {
+      data: {
+        payload: {
+          success: didSucceed,
+          current_status: updatedStatus,
+          snoozed_until: updatedSnoozedUntil,
+          resolution_type: apiResolutionType,
+          resolution_reason: apiResolutionReason,
+          resolution_notes: apiResolutionNotes,
+          resolved_at: apiResolvedAt,
+          sale_amount: apiSaleAmount,
+          sale_date: apiSaleDate,
+          sale_invoice: apiSaleInvoice,
+          requested_product: apiRequestedProduct,
+        } = {},
+      } = {},
+    } = await ConversationApi.toggleStatus({
+      conversationId,
+      status,
+      snoozedUntil,
+      resolutionType,
+      resolutionReason,
+      resolutionNotes,
+      saleAmount,
+      saleDate,
+      saleInvoice,
+      requestedProduct,
+    });
+    // The endpoint answers 200 with success:false when the record fails to save,
+    // so the status has to be checked explicitly or a lost sale looks like a win.
+    if (didSucceed === false) {
+      throw new Error('Conversation status change was rejected');
+    }
+    commit(types.CHANGE_CONVERSATION_STATUS, {
+      conversationId,
+      status: updatedStatus,
+      snoozedUntil: updatedSnoozedUntil,
+      resolutionType: apiResolutionType,
+      resolutionReason: apiResolutionReason,
+      resolutionNotes: apiResolutionNotes,
+      resolvedAt: apiResolvedAt,
+      saleAmount: apiSaleAmount,
+      saleDate: apiSaleDate,
+      saleInvoice: apiSaleInvoice,
+      requestedProduct: apiRequestedProduct,
+    });
   },
 
   createPendingMessageAndSend: async ({ dispatch }, data) => {

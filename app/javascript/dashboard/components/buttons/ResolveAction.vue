@@ -112,10 +112,17 @@ const toggleStatus = (
     payload.requestedProduct = resolutionData.requestedProduct;
   }
 
-  store.dispatch('toggleStatus', payload).then(() => {
-    useAlert(t('CONVERSATION.CHANGE_STATUS'));
-    isLoading.value = false;
-  });
+  store
+    .dispatch('toggleStatus', payload)
+    .then(() => {
+      useAlert(t('CONVERSATION.CHANGE_STATUS'));
+    })
+    .catch(() => {
+      useAlert(t('CONVERSATION.CHANGE_STATUS_FAILED'));
+    })
+    .finally(() => {
+      isLoading.value = false;
+    });
 };
 
 const handleResolveWithAttributes = ({ attributes, context }) => {
@@ -165,20 +172,15 @@ const handleResolveWithOutcome = ({
   requestedProduct,
 }) => {
   resolutionModalRef.value = false;
-  toggleStatus(
-    wootConstants.STATUS_TYPE.RESOLVED,
-    null,
-    null,
-    {
-      resolutionType,
-      resolutionReason,
-      resolutionNotes,
-      saleAmount,
-      saleDate,
-      saleInvoice,
-      requestedProduct,
-    }
-  );
+  toggleStatus(wootConstants.STATUS_TYPE.RESOLVED, null, null, {
+    resolutionType,
+    resolutionReason,
+    resolutionNotes,
+    saleAmount,
+    saleDate,
+    saleInvoice,
+    requestedProduct,
+  });
 };
 
 const keyboardEvents = {

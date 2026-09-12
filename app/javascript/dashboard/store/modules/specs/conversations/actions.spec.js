@@ -403,6 +403,36 @@ describe('#actions', () => {
         ],
       ]);
     });
+
+    it('throws and does not commit when the API reports success false', async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          payload: {
+            success: false,
+            conversation_id: 1,
+            current_status: 'resolved',
+            snoozed_until: null,
+          },
+        },
+      });
+      await expect(
+        actions.toggleStatus(
+          { commit },
+          { conversationId: 1, status: 'resolved' }
+        )
+      ).rejects.toThrow();
+      expect(commit).not.toHaveBeenCalled();
+    });
+
+    it('rethrows when the request fails so the caller can alert the agent', async () => {
+      axios.post.mockRejectedValue(new Error('Request failed'));
+      await expect(
+        actions.toggleStatus(
+          { commit },
+          { conversationId: 1, status: 'resolved' }
+        )
+      ).rejects.toThrow('Request failed');
+    });
   });
 
   describe('#assignTeam', () => {
@@ -456,12 +486,18 @@ describe('#actions', () => {
     it('clears the loading state and rethrows if the request fails', async () => {
       axios.post.mockRejectedValue(new Error('Request failed'));
       await expect(
-        actions.fetchFilteredConversations({ commit }, dataToSend)
+        actions.fetchFilteredConversations({ commit, dispatch }, dataToSend)
       ).rejects.toThrow('Request failed');
       expect(commit.mock.calls).toEqual([
         ['SET_LIST_LOADING_STATUS'],
         ['CLEAR_LIST_LOADING_STATUS'],
       ]);
+      // Stops the intersection observer from re-firing loadMore forever
+      expect(dispatch).toHaveBeenCalledWith(
+        'conversationPage/setEndReached',
+        { filter: 'appliedFilters' },
+        { root: true }
+      );
     });
   });
 

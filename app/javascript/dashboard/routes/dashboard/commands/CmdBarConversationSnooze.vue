@@ -19,13 +19,17 @@ const selectedChat = computed(() => getters.getSelectedChat.value);
 const contextMenuChatId = computed(() => getters.getContextMenuChatId.value);
 
 const toggleStatus = async (status, snoozedUntil) => {
-  await store.dispatch('toggleStatus', {
-    conversationId: selectedChat.value?.id || contextMenuChatId.value,
-    status,
-    snoozedUntil,
-  });
-  store.dispatch('setContextMenuChatId', null);
-  useAlert(t('CONVERSATION.CHANGE_STATUS'));
+  try {
+    await store.dispatch('toggleStatus', {
+      conversationId: selectedChat.value?.id || contextMenuChatId.value,
+      status,
+      snoozedUntil,
+    });
+    store.dispatch('setContextMenuChatId', null);
+    useAlert(t('CONVERSATION.CHANGE_STATUS'));
+  } catch (error) {
+    useAlert(t('CONVERSATION.CHANGE_STATUS_FAILED'));
+  }
 };
 
 const onCmdSnoozeConversation = snoozeType => {
