@@ -28,6 +28,18 @@ module.exports = {
         'no-console': 'off',
       },
     },
+    {
+      // Romicars-only screens. This is a single-tenant Spanish deployment and these
+      // views are never localised, so routing their copy through i18n keys would add
+      // indirection with no translation behind it.
+      files: [
+        'app/javascript/dashboard/routes/dashboard/analytics/**/*.vue',
+        'app/javascript/dashboard/routes/dashboard/settings/prices/**/*.vue',
+      ],
+      rules: {
+        'vue/no-bare-strings-in-template': 'off',
+      },
+    },
   ],
   plugins: ['html', 'prettier'],
   parserOptions: {
