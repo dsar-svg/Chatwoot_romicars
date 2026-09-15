@@ -21,7 +21,7 @@ class ProductInquiry < ApplicationRecord
 
   def self.top_repuestos(limit = 20)
     with_repuesto
-      .group(:repuesto_buscado)
+      .group(:repuesto_buscado, :marca_buscada, :modelo_buscado)
       .order(COUNT_DESC)
       .limit(limit)
       .count

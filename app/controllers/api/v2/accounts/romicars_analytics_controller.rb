@@ -141,7 +141,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     # arrive without a repuesto or canal; those scopes drop them so the dashboard stops
     # rendering an unlabelled bar.
     top_products = inquiries.top_repuestos(8)
-                            .map { |name, count| { name: name, count: count } }
+                            .map { |(name, marca, modelo), count| { name: name, brand: marca, model: modelo, count: count } }
 
     channel_breakdown = inquiries.by_canal_stats
                                  .map { |canal, count| { channel: canal.to_s.split('::').last.downcase, count: count } }
@@ -447,7 +447,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       consultas_registradas: total,
       no_encontrados: missing,
       pct_no_encontrado: percentage_of(missing, total),
-      mas_buscados: inquiries.top_repuestos(10),
+      mas_buscados: inquiries.top_repuestos(10).map do |(repuesto, marca, modelo), count|
+        { repuesto: repuesto, marca: marca, modelo: modelo, veces: count }
+      end,
       no_encontrados_mas_buscados: inquiries.not_found_repuestos(10).map do |(repuesto, marca, modelo), count|
         { repuesto: repuesto, marca: marca, modelo: modelo, veces: count }
       end

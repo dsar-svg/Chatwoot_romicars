@@ -47,14 +47,22 @@ function barWidth(count) {
 function iconForChannel(ch) {
   return channelIcon[ch] || 'i-lucide-message-square';
 }
+
+function vehicleLabel(product) {
+  return [product.brand, product.model].filter(Boolean).join(' ');
+}
 </script>
 
 <template>
   <div class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5">
     <div class="flex items-center gap-2 mb-5">
-      <span class="i-lucide-bar-chart-2 size-4 text-[#1A365D] dark:text-blue-11" />
+      <span
+        class="i-lucide-bar-chart-2 size-4 text-[#1A365D] dark:text-blue-11"
+      />
       <h2 class="text-sm font-semibold text-n-slate-12">Demanda e Interés</h2>
-      <span class="ml-auto text-[10px] text-n-slate-9">{{ demand.total_inquiries || 0 }} consultas · 30 días</span>
+      <span class="ml-auto text-[10px] text-n-slate-9"
+        >{{ demand.total_inquiries || 0 }} consultas · 30 días</span
+      >
     </div>
 
     <div v-if="loading" class="space-y-3 animate-pulse">
@@ -64,38 +72,65 @@ function iconForChannel(ch) {
     <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Popular products -->
       <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
+        <p
+          class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3"
+        >
           Repuestos más buscados
         </p>
         <div v-if="products.length" class="space-y-2">
-          <div v-for="product in products" :key="product.name" class="flex items-center gap-2">
+          <div
+            v-for="product in products"
+            :key="`${product.name}-${product.brand}-${product.model}`"
+            class="flex items-center gap-2"
+          >
             <span class="size-3.5 text-n-slate-10 flex-shrink-0 i-lucide-car" />
-            <span class="text-xs text-n-slate-11 w-28 truncate flex-shrink-0">
-              {{ product.name }}
-            </span>
+            <div class="w-28 flex-shrink-0 min-w-0">
+              <p class="text-xs text-n-slate-11 truncate">{{ product.name }}</p>
+              <p
+                v-if="vehicleLabel(product)"
+                class="text-[10px] text-n-slate-9 truncate"
+              >
+                {{ vehicleLabel(product) }}
+              </p>
+            </div>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
               <div
                 class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
                 :style="{ width: barWidth(product.count) }"
               />
             </div>
-            <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
+            <span
+              class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0"
+            >
               {{ product.count }}
             </span>
           </div>
         </div>
-        <p v-else class="text-xs text-n-slate-9">Sin consultas de productos aún.</p>
+        <p v-else class="text-xs text-n-slate-9">
+          Sin consultas de productos aún.
+        </p>
       </div>
 
       <!-- Channels breakdown -->
       <div>
-        <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3">
+        <p
+          class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-3"
+        >
           Consultas por canal
         </p>
         <div v-if="channels.length" class="space-y-2.5">
-          <div v-for="ch in channels" :key="ch.channel" class="flex items-center gap-2">
-            <span class="size-3.5 text-n-slate-10 flex-shrink-0" :class="iconForChannel(ch.channel)" />
-            <span class="text-xs text-n-slate-11 w-28 truncate capitalize flex-shrink-0">
+          <div
+            v-for="ch in channels"
+            :key="ch.channel"
+            class="flex items-center gap-2"
+          >
+            <span
+              class="size-3.5 text-n-slate-10 flex-shrink-0"
+              :class="iconForChannel(ch.channel)"
+            />
+            <span
+              class="text-xs text-n-slate-11 w-28 truncate capitalize flex-shrink-0"
+            >
               {{ ch.channel }}
             </span>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
@@ -104,7 +139,9 @@ function iconForChannel(ch) {
                 :style="{ width: barWidth(ch.count) }"
               />
             </div>
-            <span class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0">
+            <span
+              class="text-xs font-medium text-n-slate-12 tabular-nums w-8 text-right flex-shrink-0"
+            >
               {{ ch.count }}
             </span>
           </div>
