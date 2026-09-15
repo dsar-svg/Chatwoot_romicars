@@ -38,6 +38,9 @@ module.exports = {
         'app/javascript/dashboard/routes/dashboard/settings/faqs/**/*.vue',
         'app/javascript/dashboard/routes/dashboard/settings/vehicles/**/*.vue',
         'app/javascript/dashboard/routes/dashboard/settings/reports/BotLogs.vue',
+        'app/javascript/dashboard/routes/dashboard/settings/reports/ResolutionReports.vue',
+        'app/javascript/dashboard/routes/dashboard/conversation/ConversationInfo.vue',
+        'app/javascript/dashboard/components-next/ConversationWorkflow/**/*.vue',
       ],
       rules: {
         'vue/no-bare-strings-in-template': 'off',

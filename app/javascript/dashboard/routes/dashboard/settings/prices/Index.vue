@@ -224,7 +224,7 @@ const formatCurrency = value => {
 
 const formatBs = value => {
   if (!value) return '—';
-  return `Bs.${Number(value).toFixed(2)}`;
+  return `Bs. ${Number(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 const deleteMessage = computed(() => `"${activePrice.value.description}"?`);
@@ -394,7 +394,7 @@ const goToPage = p => {
               </BaseTableCell>
 
               <BaseTableCell class="w-20">
-                <span class="text-sm font-medium text-n-green-11">
+                <span class="text-sm font-medium text-n-teal-11">
                   {{ formatCurrency(price.cost_usd) }}
                 </span>
               </BaseTableCell>

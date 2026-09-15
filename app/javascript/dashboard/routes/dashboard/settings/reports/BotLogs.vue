@@ -127,9 +127,9 @@ const formatTime = ts => {
             {{ meta.by_severidad?.warning || 0 }}
           </div>
         </div>
-        <div class="p-3 rounded-lg bg-n-green-2">
-          <div class="text-xs text-n-green-11 mb-1">Info</div>
-          <div class="text-xl font-bold text-n-green-12">
+        <div class="p-3 rounded-lg bg-n-teal-2">
+          <div class="text-xs text-n-teal-11 mb-1">Info</div>
+          <div class="text-xl font-bold text-n-teal-12">
             {{ meta.by_severidad?.info || 0 }}
           </div>
         </div>

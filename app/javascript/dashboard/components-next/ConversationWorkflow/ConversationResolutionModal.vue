@@ -21,9 +21,9 @@ const outcomes = [
   {
     value: 'ganado',
     label: 'Cierre Ganado (Venta)',
-    activeClass: 'border-n-green-9 bg-n-green-3 text-n-green-12',
-    dotClass: 'border-n-green-9',
-    fillClass: 'bg-n-green-9',
+    activeClass: 'border-n-teal-9 bg-n-teal-3 text-n-teal-12',
+    dotClass: 'border-n-teal-9',
+    fillClass: 'bg-n-teal-9',
   },
   {
     value: 'perdido',
@@ -63,7 +63,8 @@ const canSubmit = computed(() => {
   if (!resolutionType.value) return false;
   if (isWon.value && !hasSaleAmount.value) return false;
   if (isLost.value && !resolutionReason.value) return false;
-  if (needsRequestedProduct.value && !requestedProduct.value.trim()) return false;
+  if (needsRequestedProduct.value && !requestedProduct.value.trim())
+    return false;
   return true;
 });
 

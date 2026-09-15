@@ -5,7 +5,6 @@ import EditFaq from './EditFaq.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import { computed, onMounted, ref } from 'vue';
-import { useI18n } from 'vue-i18n';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
 import { picoSearch } from '@scmmishra/pico-search';
 
@@ -23,7 +22,6 @@ defineOptions({
 
 const getters = useStoreGetters();
 const store = useStore();
-const { t } = useI18n();
 
 const showAddPopup = ref(false);
 const loading = ref({});
@@ -131,16 +129,16 @@ const tableHeaders = computed(() => [
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    :loading-message="'Cargando FAQs...'"
+    loading-message="Cargando FAQs..."
     :no-records-found="!records.length"
-    :no-records-message="'No hay FAQs creadas'"
+    no-records-message="No hay FAQs creadas"
   >
     <template #header>
       <BaseSettingsHeader
         v-model:search-query="searchQuery"
         title="FAQs"
         description="Gestiona las preguntas frecuentes que el bot usará para responder a los clientes"
-        :search-placeholder="'Buscar FAQs...'"
+        search-placeholder="Buscar FAQs..."
       >
         <template v-if="records?.length" #count>
           <span class="text-body-main text-n-slate-11">
@@ -209,11 +207,7 @@ const tableHeaders = computed(() => [
 
               <BaseTableCell class="w-16">
                 <span
-                  :class="
-                    faq.active
-                      ? 'text-n-green-11'
-                      : 'text-n-slate-11'
-                  "
+                  :class="faq.active ? 'text-n-teal-11' : 'text-n-slate-11'"
                   class="text-sm"
                 >
                   {{ faq.active ? 'Sí' : 'No' }}

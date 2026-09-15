@@ -1,5 +1,4 @@
 <script setup>
-import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper.js';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -19,10 +18,10 @@ const emit = defineEmits(['close']);
 const router = useRouter();
 
 const statusColors = {
-  'Abierta': 'bg-n-green-3 text-n-green-11',
-  'Pendiente': 'bg-n-amber-3 text-n-amber-11',
-  'Resuelta': 'bg-n-blue-3 text-n-blue-11',
-  'Nuevo': 'bg-n-blue-3 text-n-blue-11',
+  Abierta: 'bg-n-teal-3 text-n-teal-11',
+  Pendiente: 'bg-n-amber-3 text-n-amber-11',
+  Resuelta: 'bg-n-blue-3 text-n-blue-11',
+  Nuevo: 'bg-n-blue-3 text-n-blue-11',
 };
 
 function getStatusClass(status) {
@@ -36,9 +35,7 @@ function goToItem(item) {
     const path = `/app/accounts/${accountId}/contacts/${item.id}`;
     router.push({ path });
   } else {
-    const path = frontendURL(
-      conversationUrl({ accountId, id: item.id })
-    );
+    const path = frontendURL(conversationUrl({ accountId, id: item.id }));
     router.push({ path });
   }
   emit('close');
@@ -47,7 +44,12 @@ function goToItem(item) {
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('es-VE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString('es-VE', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 </script>
 
@@ -59,13 +61,24 @@ function formatDate(dateStr) {
         class="fixed inset-0 z-50 flex items-center justify-center p-4"
         @click.self="emit('close')"
       >
-        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" @click="emit('close')" />
-        <div class="relative bg-n-solid-1 rounded-xl border border-n-strong shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col z-10">
+        <div
+          class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+          @click="emit('close')"
+        />
+        <div
+          class="relative bg-n-solid-1 rounded-xl border border-n-strong shadow-2xl w-full max-w-lg max-h-[70vh] flex flex-col z-10"
+        >
           <!-- Header -->
-          <div class="flex items-center justify-between px-5 py-4 border-b border-n-weak">
+          <div
+            class="flex items-center justify-between px-5 py-4 border-b border-n-weak"
+          >
             <div>
-              <h3 class="text-base font-semibold text-n-slate-12">{{ label }}</h3>
-              <p class="text-xs text-n-slate-10 mt-0.5">{{ total }} resultado{{ total !== 1 ? 's' : '' }}</p>
+              <h3 class="text-base font-semibold text-n-slate-12">
+                {{ label }}
+              </h3>
+              <p class="text-xs text-n-slate-10 mt-0.5">
+                {{ total }} resultado{{ total !== 1 ? 's' : '' }}
+              </p>
             </div>
             <button
               class="flex items-center justify-center size-8 rounded-lg hover:bg-n-alpha-2 transition-colors"
@@ -83,7 +96,10 @@ function formatDate(dateStr) {
             </div>
 
             <!-- Empty -->
-            <div v-else-if="items.length === 0" class="flex flex-col items-center justify-center py-12 gap-2">
+            <div
+              v-else-if="items.length === 0"
+              class="flex flex-col items-center justify-center py-12 gap-2"
+            >
               <Icon icon="i-lucide-inbox" class="size-8 text-n-slate-8" />
               <span class="text-sm text-n-slate-10">Sin resultados</span>
             </div>
@@ -92,13 +108,20 @@ function formatDate(dateStr) {
             <table v-else class="w-full">
               <thead>
                 <tr class="border-b border-n-weak">
-                  <th class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5">
+                  <th
+                    class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5"
+                  >
                     {{ type === 'new_today' ? 'Contacto' : 'Contacto' }}
                   </th>
-                  <th class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5">
+                  <th
+                    class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5"
+                  >
                     {{ type === 'new_today' ? 'Registrado' : 'Estado' }}
                   </th>
-                  <th v-if="type !== 'new_today'" class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5">
+                  <th
+                    v-if="type !== 'new_today'"
+                    class="text-left text-[10px] font-semibold uppercase tracking-wide text-n-slate-10 px-5 py-2.5"
+                  >
                     Agente
                   </th>
                 </tr>
@@ -114,10 +137,15 @@ function formatDate(dateStr) {
                     <span class="text-sm font-medium text-n-slate-12">
                       {{ item.contact_name || '—' }}
                     </span>
-                    <span class="text-[10px] text-n-slate-10 ml-1.5">#{{ item.id }}</span>
+                    <span class="text-[10px] text-n-slate-10 ml-1.5"
+                      >#{{ item.id }}</span
+                    >
                   </td>
                   <td class="px-5 py-3">
-                    <span v-if="type === 'new_today'" class="text-xs text-n-slate-11">
+                    <span
+                      v-if="type === 'new_today'"
+                      class="text-xs text-n-slate-11"
+                    >
                       {{ formatDate(item.created_at) }}
                     </span>
                     <span
@@ -140,12 +168,7 @@ function formatDate(dateStr) {
 
           <!-- Footer -->
           <div class="flex justify-end px-5 py-3 border-t border-n-weak">
-            <Button
-              slate
-              ghost
-              label="Cerrar"
-              @click="emit('close')"
-            />
+            <Button slate ghost label="Cerrar" @click="emit('close')" />
           </div>
         </div>
       </div>

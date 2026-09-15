@@ -71,7 +71,7 @@ const resolutionBadge = computed(() => {
   if (resolutionType.value === 'ganado') {
     return {
       label: 'Ganado',
-      class: 'bg-n-green-3 text-n-green-11',
+      class: 'bg-n-teal-3 text-n-teal-11',
     };
   }
   if (resolutionType.value === 'perdido') {

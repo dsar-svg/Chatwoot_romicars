@@ -1,10 +1,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useStoreGetters, useStore } from 'dashboard/composables/store';
+import { useStore } from 'dashboard/composables/store';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
-import Icon from 'dashboard/components-next/icon/Icon.vue';
 import {
   BaseTable,
   BaseTableRow,
@@ -15,7 +14,6 @@ defineOptions({
   name: 'ResolutionReports',
 });
 
-const getters = useStoreGetters();
 const store = useStore();
 
 const loading = ref(true);
@@ -45,14 +43,22 @@ onMounted(() => {
 const ganadoCount = computed(() => resolutionData.value?.ganado?.count || 0);
 const ganadoPct = computed(() => resolutionData.value?.ganado?.percentage || 0);
 const perdidoCount = computed(() => resolutionData.value?.perdido?.count || 0);
-const perdidoPct = computed(() => resolutionData.value?.perdido?.percentage || 0);
-const consultaCount = computed(() => resolutionData.value?.consulta?.count || 0);
-const consultaPct = computed(() => resolutionData.value?.consulta?.percentage || 0);
+const perdidoPct = computed(
+  () => resolutionData.value?.perdido?.percentage || 0
+);
+const consultaCount = computed(
+  () => resolutionData.value?.consulta?.count || 0
+);
+const consultaPct = computed(
+  () => resolutionData.value?.consulta?.percentage || 0
+);
 const totalResolved = computed(() => resolutionData.value?.total_resolved || 0);
 const totalSalesAmount = computed(
   () => resolutionData.value?.ganado?.total_sales_amount || 0
 );
-const averageSale = computed(() => resolutionData.value?.ganado?.average_sale || 0);
+const averageSale = computed(
+  () => resolutionData.value?.ganado?.average_sale || 0
+);
 const recentSales = computed(() => resolutionData.value?.ganado?.sales || []);
 
 const formatCurrency = value => {
@@ -75,7 +81,12 @@ const agentStats = computed(() => {
   const grouped = {};
   data.forEach(item => {
     if (!grouped[item.agent]) {
-      grouped[item.agent] = { agent: item.agent, ganado: 0, perdido: 0, consulta: 0 };
+      grouped[item.agent] = {
+        agent: item.agent,
+        ganado: 0,
+        perdido: 0,
+        consulta: 0,
+      };
     }
     grouped[item.agent][item.type] = item.count;
   });
@@ -87,7 +98,12 @@ const dailyStats = computed(() => {
   const grouped = {};
   data.forEach(item => {
     if (!grouped[item.date]) {
-      grouped[item.date] = { date: item.date, ganado: 0, perdido: 0, consulta: 0 };
+      grouped[item.date] = {
+        date: item.date,
+        ganado: 0,
+        perdido: 0,
+        consulta: 0,
+      };
     }
     grouped[item.date][item.type] = item.count;
   });
@@ -110,9 +126,9 @@ const requestedProductsList = computed(
 <template>
   <SettingsLayout
     :is-loading="loading"
-    :loading-message="'Cargando reportes de resolución...'"
+    loading-message="Cargando reportes de resolución..."
     :no-records-found="!loading && !resolutionData"
-    :no-records-message="'No hay datos de resolución disponibles'"
+    no-records-message="No hay datos de resolución disponibles"
   >
     <template #header>
       <BaseSettingsHeader title="Reportes de Resolución">
@@ -138,11 +154,11 @@ const requestedProductsList = computed(
             {{ totalResolved }}
           </div>
         </div>
-        <div class="p-4 rounded-lg bg-n-green-2">
-          <div class="text-sm text-n-green-11 mb-1">Ganadas (Ventas)</div>
-          <div class="text-2xl font-bold text-n-green-12">
+        <div class="p-4 rounded-lg bg-n-teal-2">
+          <div class="text-sm text-n-teal-11 mb-1">Ganadas (Ventas)</div>
+          <div class="text-2xl font-bold text-n-teal-12">
             {{ ganadoCount }}
-            <span class="text-sm font-normal text-n-green-11">
+            <span class="text-sm font-normal text-n-teal-11">
               ({{ formatPct(ganadoPct) }})
             </span>
           </div>
@@ -181,9 +197,7 @@ const requestedProductsList = computed(
 
       <!-- Ventas recientes -->
       <div v-if="recentSales.length" class="mb-6">
-        <h3 class="text-heading-3 text-n-slate-12 mb-3">
-          Ventas recientes
-        </h3>
+        <h3 class="text-heading-3 text-n-slate-12 mb-3">Ventas recientes</h3>
         <BaseTable
           :headers="['Conversación', 'Contacto', 'Fecha', 'Monto', 'Factura']"
           :items="recentSales"
@@ -203,7 +217,7 @@ const requestedProductsList = computed(
                   <span class="text-sm text-n-slate-11">{{ sale.date }}</span>
                 </BaseTableCell>
                 <BaseTableCell class="w-28">
-                  <span class="text-sm font-medium text-n-green-11">
+                  <span class="text-sm font-medium text-n-teal-11">
                     {{ formatCurrency(sale.amount) }}
                   </span>
                 </BaseTableCell>
@@ -220,9 +234,7 @@ const requestedProductsList = computed(
 
       <!-- Perdidos por motivo -->
       <div v-if="perdidoReasons.length" class="mb-6">
-        <h3 class="text-heading-3 text-n-slate-12 mb-3">
-          Motivos de pérdida
-        </h3>
+        <h3 class="text-heading-3 text-n-slate-12 mb-3">Motivos de pérdida</h3>
         <div class="grid grid-cols-4 gap-3">
           <div
             v-for="item in perdidoReasons"
@@ -299,11 +311,7 @@ const requestedProductsList = computed(
           :items="agentStats"
         >
           <template #row="{ items }">
-            <BaseTableRow
-              v-for="stat in items"
-              :key="stat.agent"
-              :item="stat"
-            >
+            <BaseTableRow v-for="stat in items" :key="stat.agent" :item="stat">
               <template #default>
                 <BaseTableCell class="max-w-0">
                   <span class="text-sm font-medium text-n-slate-12">
@@ -311,7 +319,7 @@ const requestedProductsList = computed(
                   </span>
                 </BaseTableCell>
                 <BaseTableCell class="w-24">
-                  <span class="text-sm text-n-green-11 font-medium">
+                  <span class="text-sm text-n-teal-11 font-medium">
                     {{ stat.ganado }}
                   </span>
                 </BaseTableCell>
@@ -346,17 +354,13 @@ const requestedProductsList = computed(
           :items="dailyStats"
         >
           <template #row="{ items }">
-            <BaseTableRow
-              v-for="stat in items"
-              :key="stat.date"
-              :item="stat"
-            >
+            <BaseTableRow v-for="stat in items" :key="stat.date" :item="stat">
               <template #default>
                 <BaseTableCell class="w-32">
                   <span class="text-sm text-n-slate-12">{{ stat.date }}</span>
                 </BaseTableCell>
                 <BaseTableCell class="w-24">
-                  <span class="text-sm text-n-green-11 font-medium">
+                  <span class="text-sm text-n-teal-11 font-medium">
                     {{ stat.ganado }}
                   </span>
                 </BaseTableCell>

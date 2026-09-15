@@ -87,7 +87,7 @@ export default {
 
         <div
           v-if="result && result.success"
-          class="mb-4 p-3 rounded-lg bg-n-green-2 text-n-green-12 text-sm"
+          class="mb-4 p-3 rounded-lg bg-n-teal-2 text-n-teal-12 text-sm"
         >
           <p>✅ Importación exitosa</p>
           <p>

@@ -55,13 +55,14 @@ const hasResolution = computed(
 const resolutionTypeLabel = computed(() => {
   if (props.conversation?.resolution_type === 'ganado') return 'Ganado (Venta)';
   if (props.conversation?.resolution_type === 'perdido') return 'Perdido';
-  if (props.conversation?.resolution_type === 'consulta') return 'Consulta Resuelta';
+  if (props.conversation?.resolution_type === 'consulta')
+    return 'Consulta Resuelta';
   return '';
 });
 
 const resolutionTypeClass = computed(() => {
   if (props.conversation?.resolution_type === 'ganado')
-    return 'bg-n-green-3 text-n-green-11';
+    return 'bg-n-teal-3 text-n-teal-11';
   if (props.conversation?.resolution_type === 'perdido')
     return 'bg-n-ruby-3 text-n-ruby-11';
   if (props.conversation?.resolution_type === 'consulta')
@@ -159,9 +160,7 @@ const staticElements = computed(() =>
     </CustomAttributes>
 
     <div v-if="hasResolution" class="mt-3 px-4 pb-3">
-      <h4 class="text-sm font-medium text-n-slate-12 mb-2">
-        Resolución
-      </h4>
+      <h4 class="text-sm font-medium text-n-slate-12 mb-2">Resolución</h4>
       <div class="flex flex-col gap-2">
         <div class="flex items-center gap-2">
           <span class="text-xs text-n-slate-10 w-20">Resultado</span>
@@ -178,7 +177,9 @@ const staticElements = computed(() =>
         </div>
         <div v-if="requestedProduct" class="flex items-start gap-2">
           <span class="text-xs text-n-slate-10 w-20">Repuesto</span>
-          <span class="text-xs text-n-amber-11 font-medium">{{ requestedProduct }}</span>
+          <span class="text-xs text-n-amber-11 font-medium">{{
+            requestedProduct
+          }}</span>
         </div>
         <div v-if="saleAmount" class="flex items-center gap-2">
           <span class="text-xs text-n-slate-10 w-20">Monto</span>
