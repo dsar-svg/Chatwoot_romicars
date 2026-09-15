@@ -72,6 +72,14 @@ const toggleExpanded = id => {
 
 const isSelected = id => selectedIdsSet.value.has(id);
 
+const vehicleOf = contact =>
+  [
+    contact.customAttributes?.marcaVehiculo,
+    contact.customAttributes?.modeloVehiculo,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
 const shouldShowSelection = id => {
   return hoveredAvatarId.value === id || isSelected(id);
 };
@@ -96,6 +104,7 @@ const handleAvatarHover = (id, isHovered) => {
         :thumbnail="contact.thumbnail"
         :phone-number="contact.phoneNumber"
         :additional-attributes="contact.additionalAttributes"
+        :vehicle="vehicleOf(contact)"
         :availability-status="contact.availabilityStatus"
         :is-expanded="expandedCardId === contact.id"
         :is-updating="isUpdating"

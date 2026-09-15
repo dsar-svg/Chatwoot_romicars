@@ -17,6 +17,7 @@ const props = defineProps({
   email: { type: String, default: '' },
   companyId: { type: [Number, String], default: '' },
   additionalAttributes: { type: Object, default: () => ({}) },
+  vehicle: { type: String, default: '' },
   phoneNumber: { type: String, default: '' },
   thumbnail: { type: String, default: '' },
   availabilityStatus: { type: String, default: null },
@@ -148,6 +149,12 @@ const handleAvatarHover = isHovered => {
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
             <span class="text-base font-medium truncate text-n-slate-12">
               {{ name }}
+            </span>
+            <span
+              v-if="vehicle"
+              class="px-2 py-0.5 rounded-md bg-n-blue-3 text-n-blue-11 text-[11px] font-semibold tracking-wide uppercase whitespace-nowrap"
+            >
+              {{ vehicle }}
             </span>
             <span class="inline-flex items-center gap-1">
               <span

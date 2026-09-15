@@ -18,6 +18,11 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import VoiceCallButton from 'dashboard/components-next/Contacts/VoiceCallButton.vue';
 import InlineInput from 'dashboard/components-next/inline-input/InlineInput.vue';
 
+// Written by the n8n bot flow when a customer confirms their vehicle.
+const VEHICLE_BRAND_KEY = 'marca_vehiculo';
+const VEHICLE_MODEL_KEY = 'modelo_vehiculo';
+const VEHICLE_KEYS = [VEHICLE_BRAND_KEY, VEHICLE_MODEL_KEY];
+
 export default {
   components: {
     NextButton,
@@ -96,10 +101,20 @@ export default {
         telegram,
       };
     },
+    vehicle() {
+      const ca = this.contact.custom_attributes || {};
+      const brand = ca[VEHICLE_BRAND_KEY];
+      const model = ca[VEHICLE_MODEL_KEY];
+      return brand || model ? { brand, model } : null;
+    },
     contactCustomAttributes() {
       const ca = this.contact.custom_attributes || {};
       return this.contactAttributes
-        .filter(attr => ca[attr.attributeKey] !== undefined && ca[attr.attributeKey] !== '')
+        .filter(attr => !VEHICLE_KEYS.includes(attr.attributeKey))
+        .filter(
+          attr =>
+            ca[attr.attributeKey] !== undefined && ca[attr.attributeKey] !== ''
+        )
         .map(attr => ({
           key: attr.attributeKey,
           label: attr.attributeDisplayName,
@@ -249,6 +264,31 @@ export default {
         <p v-if="additionalAttributes.description" class="break-words mb-0.5">
           {{ additionalAttributes.description }}
         </p>
+        <div
+          v-if="vehicle"
+          class="flex flex-col gap-2 w-full p-3 rounded-xl bg-n-blue-2 border border-n-blue-4"
+        >
+          <span
+            class="flex items-center gap-1.5 text-[11px] font-semibold tracking-widest uppercase text-n-slate-11"
+          >
+            <span class="i-lucide-car size-3.5 text-n-blue-11" />
+            {{ $t('CONTACT_PANEL.VEHICLE') }}
+          </span>
+          <div class="flex items-center gap-2 min-w-0">
+            <span
+              v-if="vehicle.brand"
+              class="px-2 py-0.5 rounded-md bg-n-brand text-white text-xs font-semibold tracking-wide"
+            >
+              {{ vehicle.brand }}
+            </span>
+            <span
+              v-if="vehicle.model"
+              class="text-sm font-semibold text-n-slate-12 truncate"
+            >
+              {{ vehicle.model }}
+            </span>
+          </div>
+        </div>
         <div class="flex flex-col items-start w-full gap-2">
           <ContactInfoRow
             :href="contact.email ? `mailto:${contact.email}` : ''"

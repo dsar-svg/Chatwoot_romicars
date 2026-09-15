@@ -1,5 +1,6 @@
 {
-  "CONTACT_PANEL": {
+  "CONTACT_PANEL": {
+    "VEHICLE": "Vehicle",
     "NOT_AVAILABLE": "Not Available",
     "EMAIL_ADDRESS": "Email Address",
     "PHONE_NUMBER": "Phone number",
