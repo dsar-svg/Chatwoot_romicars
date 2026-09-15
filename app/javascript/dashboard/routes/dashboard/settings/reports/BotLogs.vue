@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useStoreGetters, useStore } from 'dashboard/composables/store';
+import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -49,7 +50,7 @@ const fetchData = async () => {
       days: filterDays.value,
     });
   } catch (error) {
-    // Ignore
+    useAlert('No se pudieron cargar los logs del bot');
   } finally {
     loading.value = false;
   }
@@ -78,9 +79,9 @@ const formatTime = ts => {
 <template>
   <SettingsLayout
     :is-loading="loading"
-    :loading-message="'Cargando logs del bot...'"
+    loading-message="Cargando logs del bot..."
     :no-records-found="!loading && !logs.length"
-    :no-records-message="'No hay logs del bot en este período'"
+    no-records-message="No hay logs del bot en este período"
   >
     <template #header>
       <BaseSettingsHeader title="Logs del Bot">
@@ -102,7 +103,9 @@ const formatTime = ts => {
       <div class="grid grid-cols-4 gap-3 mb-6">
         <div class="p-3 rounded-lg bg-n-alpha-2">
           <div class="text-xs text-n-slate-11 mb-1">Total</div>
-          <div class="text-xl font-bold text-n-slate-12">{{ meta.total || 0 }}</div>
+          <div class="text-xl font-bold text-n-slate-12">
+            {{ meta.total || 0 }}
+          </div>
         </div>
         <div class="p-3 rounded-lg bg-n-ruby-2">
           <div class="text-xs text-n-ruby-11 mb-1">Errors</div>
@@ -126,13 +129,26 @@ const formatTime = ts => {
 
       <!-- Filtros -->
       <div class="flex items-center gap-3 mb-4">
-        <select v-model="filterSeveridad" class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12">
-          <option v-for="s in severidades" :key="s.value" :value="s.value">{{ s.label }}</option>
+        <select
+          v-model="filterSeveridad"
+          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
+        >
+          <option v-for="s in severidades" :key="s.value" :value="s.value">
+            {{ s.label }}
+          </option>
         </select>
-        <select v-model="filterTipo" class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12">
-          <option v-for="t in tipos" :key="t.value" :value="t.value">{{ t.label }}</option>
+        <select
+          v-model="filterTipo"
+          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
+        >
+          <option v-for="t in tipos" :key="t.value" :value="t.value">
+            {{ t.label }}
+          </option>
         </select>
-        <select v-model="filterDays" class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12">
+        <select
+          v-model="filterDays"
+          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
+        >
           <option :value="1">Último día</option>
           <option :value="7">Últimos 7 días</option>
           <option :value="30">Últimos 30 días</option>
@@ -160,7 +176,10 @@ const formatTime = ts => {
                 </span>
               </BaseTableCell>
               <BaseTableCell class="w-20">
-                <span class="text-xs font-medium" :class="severityColor(log.severidad)">
+                <span
+                  class="text-xs font-medium"
+                  :class="severityColor(log.severidad)"
+                >
                   {{ log.severidad }}
                 </span>
               </BaseTableCell>

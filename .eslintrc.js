@@ -35,6 +35,7 @@ module.exports = {
       files: [
         'app/javascript/dashboard/routes/dashboard/analytics/**/*.vue',
         'app/javascript/dashboard/routes/dashboard/settings/prices/**/*.vue',
+        'app/javascript/dashboard/routes/dashboard/settings/reports/BotLogs.vue',
       ],
       rules: {
         'vue/no-bare-strings-in-template': 'off',
