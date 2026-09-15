@@ -1,10 +1,10 @@
 class BotLogPolicy < ApplicationPolicy
   def index?
-    account_user.admin?
+    account_user.administrator?
   end
 
   def show?
-    account_user.admin?
+    account_user.administrator?
   end
 
   def create?
@@ -16,6 +16,6 @@ class BotLogPolicy < ApplicationPolicy
   end
 
   def destroy?
-    account_user.admin?
+    account_user.administrator?
   end
 end

@@ -8,14 +8,14 @@ class FaqPolicy < ApplicationPolicy
   end
 
   def create?
-    account_user.admin? || account_user.agent?
+    account_user.administrator? || account_user.agent?
   end
 
   def update?
-    account_user.admin? || account_user.agent?
+    account_user.administrator? || account_user.agent?
   end
 
   def destroy?
-    account_user.admin?
+    account_user.administrator?
   end
 end
