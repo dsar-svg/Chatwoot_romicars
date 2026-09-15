@@ -4,12 +4,14 @@ import { required } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import Modal from '../../../../components/Modal.vue';
 
 export default {
   name: 'EditVehiclePrice',
   components: {
     NextButton,
+    ComboBox,
     Modal,
   },
   props: {
@@ -55,6 +57,15 @@ export default {
         m => m.brand?.id === Number(this.vehicle_brand_id)
       );
     },
+    brandOptions() {
+      return this.brands.map(b => ({ value: b.id, label: b.name }));
+    },
+    modelOptions() {
+      return [
+        { value: null, label: 'Sin modelo específico' },
+        ...this.filteredModels.map(m => ({ value: m.id, label: m.name })),
+      ];
+    },
     latestRate() {
       return this.$store.getters['exchangeRates/getLatestRate'];
     },
@@ -69,6 +80,9 @@ export default {
     },
   },
   watch: {
+    vehicle_brand_id() {
+      this.vehicle_model_id = null;
+    },
     divisa() {
       this.monto_bs = this.calculatedCostBs;
       this.bolivares = this.calculatedBolivares;
@@ -130,36 +144,29 @@ export default {
           </label>
         </div>
 
-        <div class="w-full">
-          <label :class="{ error: v$.vehicle_brand_id.$error }">
-            Marca *
-            <select
-              v-model="vehicle_brand_id"
-              class="w-full"
-              @blur="v$.vehicle_brand_id.$touch"
-            >
-              <option :value="null">Seleccionar marca</option>
-              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
-                {{ brand.name }}
-              </option>
-            </select>
-          </label>
+        <div class="w-full mb-4">
+          <label :class="{ error: v$.vehicle_brand_id.$error }">Marca *</label>
+          <ComboBox
+            v-model="vehicle_brand_id"
+            :options="brandOptions"
+            :has-error="v$.vehicle_brand_id.$error"
+            placeholder="Seleccionar marca"
+            search-placeholder="Buscar marca..."
+            empty-state="Sin marcas"
+            @update:model-value="v$.vehicle_brand_id.$touch()"
+          />
         </div>
 
-        <div class="w-full">
-          <label>
-            Modelo
-            <select v-model="vehicle_model_id" class="w-full">
-              <option :value="null">Sin modelo específico</option>
-              <option
-                v-for="model in filteredModels"
-                :key="model.id"
-                :value="model.id"
-              >
-                {{ model.name }}
-              </option>
-            </select>
-          </label>
+        <div class="w-full mb-4">
+          <label>Modelo</label>
+          <ComboBox
+            v-model="vehicle_model_id"
+            :options="modelOptions"
+            :disabled="!vehicle_brand_id"
+            placeholder="Sin modelo específico"
+            search-placeholder="Buscar modelo..."
+            empty-state="Sin modelos para esta marca"
+          />
         </div>
 
         <div class="w-full">

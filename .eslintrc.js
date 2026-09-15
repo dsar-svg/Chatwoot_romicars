@@ -35,6 +35,8 @@ module.exports = {
       files: [
         'app/javascript/dashboard/routes/dashboard/analytics/**/*.vue',
         'app/javascript/dashboard/routes/dashboard/settings/prices/**/*.vue',
+        'app/javascript/dashboard/routes/dashboard/settings/faqs/**/*.vue',
+        'app/javascript/dashboard/routes/dashboard/settings/vehicles/**/*.vue',
         'app/javascript/dashboard/routes/dashboard/settings/reports/BotLogs.vue',
       ],
       rules: {

@@ -5,6 +5,7 @@ import { useAlert } from 'dashboard/composables';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import {
   BaseTable,
   BaseTableRow,
@@ -29,6 +30,13 @@ const severidades = [
   { value: 'error', label: 'Error' },
   { value: 'warning', label: 'Warning' },
   { value: 'info', label: 'Info' },
+];
+
+const periodos = [
+  { value: 1, label: 'Último día' },
+  { value: 7, label: 'Últimos 7 días' },
+  { value: 30, label: 'Últimos 30 días' },
+  { value: 90, label: 'Últimos 90 días' },
 ];
 
 const tipos = [
@@ -129,31 +137,22 @@ const formatTime = ts => {
 
       <!-- Filtros -->
       <div class="flex items-center gap-3 mb-4">
-        <select
+        <ComboBox
           v-model="filterSeveridad"
-          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
-        >
-          <option v-for="s in severidades" :key="s.value" :value="s.value">
-            {{ s.label }}
-          </option>
-        </select>
-        <select
+          :options="severidades"
+          placeholder="Todas las severidades"
+        />
+        <ComboBox
           v-model="filterTipo"
-          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
-        >
-          <option v-for="t in tipos" :key="t.value" :value="t.value">
-            {{ t.label }}
-          </option>
-        </select>
-        <select
+          :options="tipos"
+          placeholder="Todos los tipos"
+          search-placeholder="Buscar tipo..."
+        />
+        <ComboBox
           v-model="filterDays"
-          class="text-sm px-3 py-1.5 rounded-lg border border-n-slate-6 bg-transparent text-n-slate-12"
-        >
-          <option :value="1">Último día</option>
-          <option :value="7">Últimos 7 días</option>
-          <option :value="30">Últimos 30 días</option>
-          <option :value="90">Últimos 90 días</option>
-        </select>
+          :options="periodos"
+          placeholder="Últimos 30 días"
+        />
         <Button label="Buscar" size="sm" slate @click="fetchData" />
       </div>
 

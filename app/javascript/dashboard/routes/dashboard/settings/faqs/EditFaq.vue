@@ -4,6 +4,7 @@ import { required } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import Modal from '../../../../components/Modal.vue';
 
 const CATEGORIES = [
@@ -18,6 +19,7 @@ export default {
   name: 'EditFaq',
   components: {
     NextButton,
+    ComboBox,
     Modal,
   },
   props: {
@@ -96,9 +98,7 @@ export default {
         </div>
 
         <div class="w-full">
-          <label :class="{ error: v$.answer.$error }">
-            Respuesta *
-          </label>
+          <label :class="{ error: v$.answer.$error }"> Respuesta * </label>
           <textarea
             v-model="answer"
             rows="4"
@@ -110,24 +110,18 @@ export default {
         </div>
 
         <div class="w-full">
-          <label>
-            Categoría
-          </label>
-          <select v-model="category" class="w-full">
-            <option
-              v-for="cat in categories"
-              :key="cat.value"
-              :value="cat.value"
-            >
-              {{ cat.label }}
-            </option>
-          </select>
+          <label> Categoría </label>
+          <ComboBox
+            v-model="category"
+            class="mb-4"
+            :options="categories"
+            placeholder="Seleccionar categoría"
+            search-placeholder="Buscar categoría..."
+          />
         </div>
 
         <div class="w-full">
-          <label>
-            Palabras clave (separadas por coma)
-          </label>
+          <label> Palabras clave (separadas por coma) </label>
           <input
             v-model="keywords"
             type="text"
@@ -137,27 +131,18 @@ export default {
 
         <div class="flex gap-4">
           <div class="w-full">
-            <label>
-              Prioridad (0-10)
-            </label>
-            <input
-              v-model.number="priority"
-              type="number"
-              min="0"
-              max="10"
-            />
+            <label> Prioridad (0-10) </label>
+            <input v-model.number="priority" type="number" min="0" max="10" />
           </div>
 
           <div class="w-full flex items-center gap-2 pt-5">
             <input
+              id="faq-active-edit"
               v-model="active"
               type="checkbox"
-              id="faq-active-edit"
               class="!w-auto"
             />
-            <label for="faq-active-edit" class="!mb-0 !pb-0">
-              Activa
-            </label>
+            <label for="faq-active-edit" class="!mb-0 !pb-0"> Activa </label>
           </div>
         </div>
 

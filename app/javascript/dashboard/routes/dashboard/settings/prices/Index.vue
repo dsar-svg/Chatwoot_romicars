@@ -11,6 +11,7 @@ import ImportPrices from './ImportPrices.vue';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import {
   BaseTable,
   BaseTableRow,
@@ -49,6 +50,16 @@ const filteredModels = computed(() => {
   if (!filterBrand.value) return [];
   return models.value.filter(m => m.brand?.id === Number(filterBrand.value));
 });
+
+const brandOptions = computed(() => [
+  { value: '', label: 'Todas las marcas' },
+  ...brands.value.map(b => ({ value: b.id, label: b.name })),
+]);
+
+const modelOptions = computed(() => [
+  { value: '', label: 'Todos los modelos' },
+  ...filteredModels.value.map(m => ({ value: m.id, label: m.name })),
+]);
 
 const filteredRecords = computed(() => {
   let items = records.value;
@@ -311,18 +322,21 @@ const goToPage = p => {
 
       <!-- Filters -->
       <div class="flex items-center gap-3 mb-4">
-        <select v-model="filterBrand" class="text-sm">
-          <option value="">Todas las marcas</option>
-          <option v-for="brand in brands" :key="brand.id" :value="brand.id">
-            {{ brand.name }}
-          </option>
-        </select>
-        <select v-model="filterModel" class="text-sm">
-          <option value="">Todos los modelos</option>
-          <option v-for="m in filteredModels" :key="m.id" :value="m.id">
-            {{ m.name }}
-          </option>
-        </select>
+        <ComboBox
+          v-model="filterBrand"
+          :options="brandOptions"
+          placeholder="Todas las marcas"
+          search-placeholder="Buscar marca..."
+          empty-state="Sin marcas"
+        />
+        <ComboBox
+          v-model="filterModel"
+          :options="modelOptions"
+          :disabled="!filterBrand"
+          placeholder="Todos los modelos"
+          search-placeholder="Buscar modelo..."
+          empty-state="Sin modelos"
+        />
         <span v-if="filteredRecords.length" class="text-xs text-n-slate-11">
           {{ filteredRecords.length }} resultados
         </span>
