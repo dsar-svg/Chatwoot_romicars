@@ -53,16 +53,14 @@ export default {
     latestRate() {
       return this.$store.getters['exchangeRates/getLatestRate'];
     },
-    calculatedBolivares() {
-      if (!this.divisa || !this.latestRate) return null;
-      return Math.round(this.divisa * this.latestRate.equiv_13);
-    },
     calculatedCostBs() {
-      if (!this.divisa || !this.latestRate || this.calculatedBolivares === null) {
-        return null;
-      }
+      if (!this.divisa || !this.latestRate) return null;
+      return Number((this.divisa * this.latestRate.equiv_13).toFixed(2));
+    },
+    calculatedBolivares() {
+      if (this.calculatedCostBs === null) return null;
       const tasaBcv = this.latestRate.equiv_13 / 1.13;
-      return Number((this.calculatedBolivares * tasaBcv).toFixed(2));
+      return Math.round(this.calculatedCostBs / tasaBcv);
     },
   },
   watch: {
@@ -134,11 +132,7 @@ export default {
               @blur="v$.vehicle_brand_id.$touch"
             >
               <option :value="null">Seleccionar marca</option>
-              <option
-                v-for="brand in brands"
-                :key="brand.id"
-                :value="brand.id"
-              >
+              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
                 {{ brand.name }}
               </option>
             </select>
@@ -198,11 +192,7 @@ export default {
           <div class="w-full">
             <label>
               Divisa
-              <input
-                v-model.number="divisa"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="divisa" type="number" min="0" />
             </label>
           </div>
         </div>
@@ -244,9 +234,7 @@ export default {
             type="submit"
             label="Crear Precio"
             :disabled="
-              v$.description.$invalid ||
-              v$.vehicle_brand_id.$invalid ||
-              loading
+              v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading
             "
             :is-loading="loading"
           />

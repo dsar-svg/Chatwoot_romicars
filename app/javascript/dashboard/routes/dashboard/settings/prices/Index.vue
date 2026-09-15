@@ -47,9 +47,7 @@ const latestRate = computed(() => getters['exchangeRates/getLatestRate'].value);
 
 const filteredModels = computed(() => {
   if (!filterBrand.value) return [];
-  return models.value.filter(
-    m => m.brand?.id === Number(filterBrand.value)
-  );
+  return models.value.filter(m => m.brand?.id === Number(filterBrand.value));
 });
 
 const filteredRecords = computed(() => {
@@ -79,16 +77,16 @@ const pagedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + perPage);
 });
 
-const calcBolivares = divisa => {
+const calcCostBs = divisa => {
   if (!divisa || !latestRate.value) return null;
-  return Math.round(divisa * latestRate.value.equiv_13);
+  return Number((divisa * latestRate.value.equiv_13).toFixed(2));
 };
 
-const calcCostBs = divisa => {
-  const bolivares = calcBolivares(divisa);
-  if (bolivares === null) return null;
+const calcBolivares = divisa => {
+  const montoBs = calcCostBs(divisa);
+  if (montoBs === null) return null;
   const tasaBcv = latestRate.value.equiv_13 / 1.13;
-  return Number((bolivares * tasaBcv).toFixed(2));
+  return Math.round(montoBs / tasaBcv);
 };
 
 const fetchPrices = async () => {
@@ -241,16 +239,16 @@ const goToPage = p => {
 <template>
   <SettingsLayout
     :is-loading="uiFlags.fetchingList"
-    :loading-message="'Cargando precios...'"
+    loading-message="Cargando precios..."
     :no-records-found="!records.length"
-    :no-records-message="'No hay precios cargados'"
+    no-records-message="No hay precios cargados"
   >
     <template #header>
       <BaseSettingsHeader
         v-model:search-query="searchQuery"
         title="Lista de Precios"
         description="Gestiona los precios de repuestos por marca y modelo"
-        :search-placeholder="'Buscar por descripción...'"
+        search-placeholder="Buscar por descripción..."
       >
         <template v-if="records?.length" #count>
           <span class="text-body-main text-n-slate-11">
@@ -461,7 +459,9 @@ const goToPage = p => {
             :key="p"
             size="sm"
             :label="String(p)"
-            :class="p === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'"
+            :class="
+              p === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'
+            "
             slate
             ghost
             @click="goToPage(p)"
@@ -480,7 +480,11 @@ const goToPage = p => {
             :label="String(totalPages)"
             slate
             ghost
-            :class="totalPages === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'"
+            :class="
+              totalPages === page
+                ? 'text-n-brand-11 font-bold'
+                : 'text-n-slate-11'
+            "
             @click="goToPage(totalPages)"
           />
           <Button

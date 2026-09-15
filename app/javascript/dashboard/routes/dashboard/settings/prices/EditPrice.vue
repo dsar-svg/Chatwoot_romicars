@@ -58,16 +58,14 @@ export default {
     latestRate() {
       return this.$store.getters['exchangeRates/getLatestRate'];
     },
-    calculatedBolivares() {
-      if (!this.divisa || !this.latestRate) return null;
-      return Math.round(this.divisa * this.latestRate.equiv_13);
-    },
     calculatedCostBs() {
-      if (!this.divisa || !this.latestRate || this.calculatedBolivares === null) {
-        return null;
-      }
+      if (!this.divisa || !this.latestRate) return null;
+      return Number((this.divisa * this.latestRate.equiv_13).toFixed(2));
+    },
+    calculatedBolivares() {
+      if (this.calculatedCostBs === null) return null;
       const tasaBcv = this.latestRate.equiv_13 / 1.13;
-      return Number((this.calculatedBolivares * tasaBcv).toFixed(2));
+      return Math.round(this.calculatedCostBs / tasaBcv);
     },
   },
   watch: {
@@ -141,11 +139,7 @@ export default {
               @blur="v$.vehicle_brand_id.$touch"
             >
               <option :value="null">Seleccionar marca</option>
-              <option
-                v-for="brand in brands"
-                :key="brand.id"
-                :value="brand.id"
-              >
+              <option v-for="brand in brands" :key="brand.id" :value="brand.id">
                 {{ brand.name }}
               </option>
             </select>
@@ -205,11 +199,7 @@ export default {
           <div class="w-full">
             <label>
               Divisa
-              <input
-                v-model.number="divisa"
-                type="number"
-                min="0"
-              />
+              <input v-model.number="divisa" type="number" min="0" />
             </label>
           </div>
         </div>
@@ -241,14 +231,12 @@ export default {
 
         <div class="flex items-center gap-2 pt-2 pb-4">
           <input
+            id="price-active"
             v-model="active"
             type="checkbox"
-            id="price-active"
             class="!w-auto"
           />
-          <label for="price-active" class="!mb-0 !pb-0">
-            Activo
-          </label>
+          <label for="price-active" class="!mb-0 !pb-0"> Activo </label>
         </div>
 
         <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">
@@ -263,9 +251,7 @@ export default {
             type="submit"
             label="Guardar cambios"
             :disabled="
-              v$.description.$invalid ||
-              v$.vehicle_brand_id.$invalid ||
-              loading
+              v$.description.$invalid || v$.vehicle_brand_id.$invalid || loading
             "
             :is-loading="loading"
           />
