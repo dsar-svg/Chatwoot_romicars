@@ -217,28 +217,55 @@ const refreshRate = async () => {
   }
 };
 
+const toVE = (value, decimals) =>
+  Number(value).toLocaleString('es-VE', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
 const formatCurrency = value => {
   if (!value) return '—';
-  return `$${Number(value).toFixed(2)}`;
+  return `${toVE(value, 2)}`;
+};
+
+const formatUsd = value => {
+  if (!value) return '—';
+  return `${toVE(value, 0)}`;
+};
+
+const formatDate = value => (value ? value.split('-').reverse().join('/') : '');
+
+const synonymsOf = price =>
+  (price.synonyms || '')
+    .split(',')
+    .map(word => word.trim())
+    .filter(Boolean);
+
+const compact = text => text.replace(/\s/g, '').toUpperCase();
+
+const vehicleDetail = price => {
+  const model = price.model?.name;
+  const variant = price.variant;
+  if (model && variant && compact(variant) !== compact(model)) {
+    return `${model} · ${variant}`;
+  }
+  return model || variant || 'Todos los modelos';
 };
 
 const formatBs = value => {
   if (!value) return '—';
-  return `Bs. ${Number(value).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `Bs. ${toVE(value, 2)}`;
 };
 
 const deleteMessage = computed(() => `"${activePrice.value.description}"?`);
 
 const tableHeaders = computed(() => [
-  'Descripción',
-  'Marca',
-  'Modelo',
-  'Variante',
+  'Repuesto',
+  'Vehículo',
   'Costo USD',
   'Divisa',
   'Bolívares',
-  'Monto BS',
-  'Sinónimos',
+  'Monto Bs',
   'Acciones',
 ]);
 
@@ -262,21 +289,11 @@ const goToPage = p => {
         search-placeholder="Buscar por descripción..."
       >
         <template v-if="records?.length" #count>
-          <span class="text-body-main text-n-slate-11">
-            {{ records.length }} precios
+          <span class="text-body-main text-n-slate-11 tabular-nums">
+            {{ records.length.toLocaleString('es-VE') }} repuestos
           </span>
         </template>
         <template #actions>
-          <Button
-            label="Actualizar Tasa BCV"
-            size="sm"
-            slate
-            ghost
-            icon="i-lucide-refresh-cw"
-            class="mr-2"
-            :is-loading="rateFlags.fetchingCurrent"
-            @click="refreshRate"
-          />
           <Button
             label="Importar CSV/Excel"
             size="sm"
@@ -286,7 +303,12 @@ const goToPage = p => {
             class="mr-2"
             @click="openImportPopup"
           />
-          <Button label="Nuevo Precio" size="sm" @click="openAddPopup" />
+          <Button
+            label="Nuevo Precio"
+            size="sm"
+            icon="i-lucide-plus"
+            @click="openAddPopup"
+          />
         </template>
       </BaseSettingsHeader>
     </template>
@@ -294,36 +316,71 @@ const goToPage = p => {
     <template #body>
       <!-- Tasa BCV banner -->
       <div
-        class="flex items-center gap-3 px-4 py-2 mb-4 rounded-lg bg-n-alpha-2 text-n-slate-12"
+        class="flex flex-wrap items-center gap-x-7 gap-y-3 px-4 py-3 mb-4 rounded-xl bg-n-blue-2 border border-n-blue-4 text-n-slate-12"
       >
-        <Icon class="size-5 text-n-brand-11" icon="i-lucide-banknote" />
-        <template v-if="rateFlags.fetchingList || rateFlags.fetchingCurrent">
-          <span class="text-sm text-n-slate-11 animate-pulse">
+        <div class="flex items-center gap-2.5">
+          <span
+            class="size-8 rounded-lg bg-n-brand grid place-items-center flex-shrink-0"
+          >
+            <Icon class="size-4 text-white" icon="i-lucide-banknote" />
+          </span>
+          <span
+            v-if="rateFlags.fetchingList || rateFlags.fetchingCurrent"
+            class="text-sm text-n-slate-11 animate-pulse"
+          >
             Consultando tasa BCV...
           </span>
-        </template>
-        <template v-else-if="latestRate">
-          <span class="text-sm font-medium">
-            Tasa BCV: {{ formatCurrency(latestRate.rate) }} Bs/USD
-          </span>
-          <span class="text-xs text-n-slate-11">
-            ({{ formatBs(latestRate.equiv_13) }} equiv. 13%)
-          </span>
-          <span class="text-xs text-n-slate-11">
-            Actualizado: {{ latestRate.effective_date }}
-          </span>
-        </template>
-        <template v-else>
-          <span class="text-sm text-n-ruby-11">
+          <div v-else-if="latestRate" class="flex flex-col">
+            <span
+              class="text-[11px] font-semibold tracking-widest text-n-slate-11"
+            >
+              TASA BCV
+            </span>
+            <span class="text-base font-semibold tabular-nums">
+              {{ formatBs(latestRate.rate) }}
+              <span class="text-xs font-normal text-n-slate-11">/ USD</span>
+            </span>
+          </div>
+          <span v-else class="text-sm text-n-ruby-11">
             No hay tasa BCV disponible
           </span>
+        </div>
+        <template
+          v-if="
+            latestRate && !rateFlags.fetchingList && !rateFlags.fetchingCurrent
+          "
+        >
+          <div class="flex flex-col">
+            <span
+              class="text-[11px] font-semibold tracking-widest text-n-slate-11"
+            >
+              EQUIV. 13%
+            </span>
+            <span class="text-base font-semibold tabular-nums">
+              {{ formatBs(latestRate.equiv_13) }}
+            </span>
+          </div>
+          <span class="text-xs text-n-slate-11">
+            Actualizada {{ formatDate(latestRate.effective_date) }} · se
+            recalcula sola cada 6 horas
+          </span>
         </template>
+        <Button
+          label="Actualizar ahora"
+          size="sm"
+          link
+          icon="i-lucide-refresh-cw"
+          class="ltr:ml-auto rtl:mr-auto"
+          :is-loading="rateFlags.fetchingCurrent"
+          @click="refreshRate"
+        />
       </div>
 
       <!-- Filters -->
       <div class="flex items-center gap-3 mb-4">
         <ComboBox
           v-model="filterBrand"
+          class="!w-56"
           :options="brandOptions"
           placeholder="Todas las marcas"
           search-placeholder="Buscar marca..."
@@ -331,14 +388,18 @@ const goToPage = p => {
         />
         <ComboBox
           v-model="filterModel"
+          class="!w-56"
           :options="modelOptions"
           :disabled="!filterBrand"
           placeholder="Todos los modelos"
           search-placeholder="Buscar modelo..."
           empty-state="Sin modelos"
         />
-        <span v-if="filteredRecords.length" class="text-xs text-n-slate-11">
-          {{ filteredRecords.length }} resultados
+        <span
+          v-if="filteredRecords.length"
+          class="ltr:ml-auto rtl:mr-auto text-xs text-n-slate-11 tabular-nums whitespace-nowrap"
+        >
+          {{ filteredRecords.length.toLocaleString('es-VE') }} resultados
         </span>
       </div>
 
@@ -355,71 +416,90 @@ const goToPage = p => {
       >
         <template #header-0>{{ tableHeaders[0] }}</template>
         <template #header-1>{{ tableHeaders[1] }}</template>
-        <template #header-2>{{ tableHeaders[2] }}</template>
-        <template #header-3>{{ tableHeaders[3] }}</template>
-        <template #header-4>{{ tableHeaders[4] }}</template>
-        <template #header-5>{{ tableHeaders[5] }}</template>
-        <template #header-6>{{ tableHeaders[6] }}</template>
-        <template #header-7>{{ tableHeaders[7] }}</template>
-        <template #header-8>{{ tableHeaders[8] }}</template>
-        <template #header-9>{{ tableHeaders[9] }}</template>
+        <template #header-2>
+          <span class="block text-end">{{ tableHeaders[2] }}</span>
+        </template>
+        <template #header-3>
+          <span class="block text-end">{{ tableHeaders[3] }}</span>
+        </template>
+        <template #header-4>
+          <span class="block text-end">{{ tableHeaders[4] }}</span>
+        </template>
+        <template #header-5>
+          <span class="block text-end">{{ tableHeaders[5] }}</span>
+        </template>
+        <template #header-6>
+          <span class="sr-only">{{ tableHeaders[6] }}</span>
+        </template>
 
         <template #row="{ items }">
           <BaseTableRow v-for="price in items" :key="price.id" :item="price">
             <template #default>
-              <BaseTableCell class="w-64">
-                <span class="text-sm text-n-slate-12 whitespace-normal">
-                  {{ price.description }}
-                </span>
+              <BaseTableCell class="min-w-56">
+                <div class="flex flex-col gap-1.5">
+                  <span
+                    class="text-sm font-medium text-n-slate-12 whitespace-normal"
+                  >
+                    {{ price.description }}
+                  </span>
+                  <div
+                    v-if="synonymsOf(price).length"
+                    class="flex flex-wrap gap-1"
+                  >
+                    <span
+                      v-for="word in synonymsOf(price).slice(0, 3)"
+                      :key="word"
+                      class="px-1.5 py-px rounded-full bg-n-alpha-2 text-[11px] text-n-slate-11"
+                    >
+                      {{ word }}
+                    </span>
+                    <span
+                      v-if="synonymsOf(price).length > 3"
+                      v-tooltip.top="synonymsOf(price).slice(3).join(', ')"
+                      class="px-1.5 py-px rounded-full bg-n-alpha-2 text-[11px] text-n-slate-11"
+                    >
+                      +{{ synonymsOf(price).length - 3 }}
+                    </span>
+                  </div>
+                </div>
               </BaseTableCell>
 
-              <BaseTableCell class="w-24">
-                <span
-                  class="text-xs font-medium px-2 py-0.5 rounded-full bg-n-alpha-2 text-n-slate-12"
-                >
-                  {{ price.brand?.name || '—' }}
-                </span>
+              <BaseTableCell class="w-56">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span
+                    class="px-2 py-0.5 rounded-md bg-n-blue-3 text-n-blue-11 text-xs font-semibold tracking-wide whitespace-nowrap"
+                  >
+                    {{ price.brand?.name || '—' }}
+                  </span>
+                  <span class="text-xs text-n-slate-11 truncate">
+                    {{ vehicleDetail(price) }}
+                  </span>
+                </div>
               </BaseTableCell>
 
-              <BaseTableCell class="w-24">
-                <span class="text-xs text-n-slate-11">
-                  {{ price.model?.name || '—' }}
-                </span>
-              </BaseTableCell>
-
-              <BaseTableCell class="w-28">
-                <span class="text-xs text-n-slate-11">
-                  {{ price.variant || '—' }}
-                </span>
-              </BaseTableCell>
-
-              <BaseTableCell class="w-20">
-                <span class="text-sm font-medium text-n-teal-11">
+              <BaseTableCell align="end" class="w-24">
+                <span class="text-sm text-n-slate-11 tabular-nums">
                   {{ formatCurrency(price.cost_usd) }}
                 </span>
               </BaseTableCell>
 
-              <BaseTableCell class="w-16">
-                <span class="text-sm text-n-slate-11">
-                  {{ price.divisa || '—' }}
+              <BaseTableCell align="end" class="w-20">
+                <span class="text-sm text-n-slate-12 tabular-nums">
+                  {{ formatUsd(price.divisa) }}
                 </span>
               </BaseTableCell>
 
-              <BaseTableCell class="w-16">
-                <span class="text-sm text-n-slate-11">
-                  {{ calcBolivares(price.divisa) || '—' }}
+              <BaseTableCell align="end" class="w-24">
+                <span class="text-sm text-n-slate-12 tabular-nums">
+                  {{ formatUsd(calcBolivares(price.divisa)) }}
                 </span>
               </BaseTableCell>
 
-              <BaseTableCell class="w-24">
-                <span class="text-sm text-n-blue-11">
+              <BaseTableCell align="end" class="w-32">
+                <span
+                  class="text-sm font-semibold text-n-slate-12 tabular-nums whitespace-nowrap"
+                >
                   {{ formatBs(calcCostBs(price.divisa)) }}
-                </span>
-              </BaseTableCell>
-
-              <BaseTableCell class="w-48">
-                <span class="text-xs text-n-slate-11 whitespace-normal">
-                  {{ price.synonyms || '—' }}
                 </span>
               </BaseTableCell>
 
@@ -474,7 +554,9 @@ const goToPage = p => {
             size="sm"
             :label="String(p)"
             :class="
-              p === page ? 'text-n-brand-11 font-bold' : 'text-n-slate-11'
+              p === page
+                ? '!bg-n-brand !text-white font-semibold'
+                : 'text-n-slate-11'
             "
             slate
             ghost
@@ -496,7 +578,7 @@ const goToPage = p => {
             ghost
             :class="
               totalPages === page
-                ? 'text-n-brand-11 font-bold'
+                ? '!bg-n-brand !text-white font-semibold'
                 : 'text-n-slate-11'
             "
             @click="goToPage(totalPages)"
