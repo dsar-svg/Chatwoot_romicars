@@ -16,50 +16,35 @@ defineProps({
 
 const emit = defineEmits(['cardClick']);
 
+// `alert` is the colour a non-zero value takes; zero stays neutral so an idle
+// shop does not show amber and red cards for nothing.
 const cards = [
-  {
-    key: 'new_today',
-    label: 'Nuevos Hoy',
-    icon: 'i-lucide-user-plus',
-    color: 'text-blue-600 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-500/10',
-  },
+  { key: 'new_today', label: 'Nuevos Hoy', icon: 'i-lucide-user-plus' },
   {
     key: 'pending',
     label: 'Pendientes',
     icon: 'i-lucide-clock',
-    color: 'text-amber-600 dark:text-amber-400',
-    bg: 'bg-amber-50 dark:bg-amber-500/10',
+    alert: 'text-n-amber-11',
   },
   {
     key: 'high_urgency',
     label: 'Alta Urgencia',
     icon: 'i-lucide-alert-triangle',
-    color: 'text-red-600 dark:text-red-400',
-    bg: 'bg-red-50 dark:bg-red-500/10',
+    alert: 'text-n-ruby-11',
   },
-  {
-    key: 'bot',
-    label: 'En Bot',
-    icon: 'i-lucide-bot',
-    color: 'text-violet-600 dark:text-violet-400',
-    bg: 'bg-violet-50 dark:bg-violet-500/10',
-  },
-  {
-    key: 'agent',
-    label: 'En Agente',
-    icon: 'i-lucide-user-check',
-    color: 'text-cyan-600 dark:text-cyan-400',
-    bg: 'bg-cyan-50 dark:bg-cyan-500/10',
-  },
+  { key: 'bot', label: 'En Bot', icon: 'i-lucide-bot' },
+  { key: 'agent', label: 'En Agente', icon: 'i-lucide-user-check' },
   {
     key: 'resolved_today',
     label: 'Resueltos Hoy',
     icon: 'i-lucide-check-circle',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-500/10',
+    alert: 'text-n-teal-11',
   },
 ];
+
+function colorFor(card, metrics) {
+  return card.alert && (metrics[card.key] ?? 0) > 0 ? card.alert : '';
+}
 
 function handleCardClick(key) {
   emit('cardClick', key);
@@ -68,27 +53,28 @@ function handleCardClick(key) {
 
 <template>
   <div class="grid grid-cols-2 sm:grid-cols-6 gap-3">
-    <div
+    <button
       v-for="card in cards"
       :key="card.key"
-      class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-4 flex flex-col items-center text-center gap-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-n-strong"
+      type="button"
+      class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-4 flex flex-col items-start text-left gap-2 transition-colors duration-200 hover:border-n-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-n-brand"
       @click="handleCardClick(card.key)"
     >
-      <div
-        class="flex items-center justify-center size-9 rounded-lg"
-        :class="card.bg"
-      >
-        <span class="size-4" :class="[card.icon, card.color]" />
-      </div>
+      <span
+        class="size-4"
+        :class="[card.icon, colorFor(card, metrics) || 'text-n-blue-11']"
+      />
       <div v-if="loading" class="h-7 w-10 bg-n-alpha-2 rounded animate-pulse" />
-      <p v-else class="text-2xl font-bold tabular-nums" :class="card.color">
+      <p
+        v-else
+        class="text-[26px] font-bold tabular-nums leading-none"
+        :class="colorFor(card, metrics) || 'text-n-slate-12'"
+      >
         {{ metrics[card.key] ?? 0 }}
       </p>
-      <p
-        class="text-[10px] font-semibold uppercase tracking-wide text-n-slate-9 leading-tight"
-      >
+      <p class="text-xs text-n-slate-11 leading-tight">
         {{ card.label }}
       </p>
-    </div>
+    </button>
   </div>
 </template>

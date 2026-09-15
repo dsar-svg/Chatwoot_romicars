@@ -77,11 +77,20 @@ function vehicleLabel(product) {
         </p>
         <div v-if="products.length" class="space-y-2">
           <div
-            v-for="product in products"
+            v-for="(product, index) in products"
             :key="`${product.name}-${product.brand}-${product.model}`"
             class="flex items-center gap-2"
           >
-            <span class="size-3.5 text-n-slate-10 flex-shrink-0 i-lucide-car" />
+            <span
+              class="size-5 rounded-md flex-shrink-0 grid place-items-center text-[11px] font-bold tabular-nums"
+              :class="
+                index === 0
+                  ? 'bg-n-accent text-white'
+                  : 'bg-n-alpha-2 text-n-slate-11'
+              "
+            >
+              {{ index + 1 }}
+            </span>
             <div class="w-28 flex-shrink-0 min-w-0">
               <p class="text-xs text-n-slate-11 truncate">{{ product.name }}</p>
               <p
@@ -93,7 +102,8 @@ function vehicleLabel(product) {
             </div>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
               <div
-                class="h-full rounded-full bg-n-brand transition-all duration-500"
+                class="h-full rounded-full transition-all duration-500"
+                :class="index === 0 ? 'bg-n-accent' : 'bg-n-brand'"
                 :style="{ width: barWidth(product.count) }"
               />
             </div>
