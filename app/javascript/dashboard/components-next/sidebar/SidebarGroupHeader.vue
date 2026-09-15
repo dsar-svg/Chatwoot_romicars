@@ -32,7 +32,7 @@ const count = computed(() =>
     :to="to"
     :title="label"
     :class="{
-      'text-n-slate-12 bg-[#361E2C]/20 font-semibold': isActive && !hasActiveChild,
+      'text-white bg-n-brand font-semibold': isActive && !hasActiveChild,
       'text-n-slate-12 font-semibold': hasActiveChild,
       'text-n-slate-11 hover:bg-n-alpha-2': !isActive && !hasActiveChild,
     }"
@@ -40,23 +40,20 @@ const count = computed(() =>
   >
     <span
       v-if="isActive && !hasActiveChild"
-      class="absolute left-0 top-1 bottom-1 w-0.5 bg-[#361E2C] rounded-r-sm"
+      class="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-n-accent rounded-r-sm"
     />
     <div v-if="icon" class="relative flex items-center gap-2">
       <span
         class="flex items-center justify-center size-5 rounded-md transition-all duration-200"
-        :class="{ 'bg-[#1A365D]/20': isActive || hasActiveChild }"
       >
         <Icon
           v-if="icon"
           :icon="icon"
           class="size-4"
-          :class="{ 'text-blue-11': isActive || hasActiveChild }"
-          :style="
-            isActive || hasActiveChild
-              ? 'filter: drop-shadow(0 0 5px rgba(26,54,93,0.5))'
-              : ''
-          "
+          :class="{
+            'text-white': isActive && !hasActiveChild,
+            'text-n-blue-11': hasActiveChild,
+          }"
         />
       </span>
       <span

@@ -13,7 +13,8 @@ const cards = [
     label: 'Total Leads',
     icon: 'i-lucide-users',
     format: v => v.toLocaleString(),
-    gradient: 'from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5',
+    gradient:
+      'from-blue-500/10 to-blue-500/5 dark:from-blue-500/20 dark:to-blue-500/5',
     iconBg: 'bg-blue-100 dark:bg-blue-500/20',
     iconColor: 'text-blue-600 dark:text-blue-400',
     border: 'group-hover:border-blue-300 dark:group-hover:border-blue-500/40',
@@ -23,17 +24,20 @@ const cards = [
     label: 'Conversión',
     icon: 'i-lucide-trending-up',
     format: v => `${v}%`,
-    gradient: 'from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/5',
+    gradient:
+      'from-emerald-500/10 to-emerald-500/5 dark:from-emerald-500/20 dark:to-emerald-500/5',
     iconBg: 'bg-emerald-100 dark:bg-emerald-500/20',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
-    border: 'group-hover:border-emerald-300 dark:group-hover:border-emerald-500/40',
+    border:
+      'group-hover:border-emerald-300 dark:group-hover:border-emerald-500/40',
   },
   {
     key: 'active_chats',
     label: 'Chats Activos',
     icon: 'i-lucide-message-circle',
     format: v => v.toLocaleString(),
-    gradient: 'from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/5',
+    gradient:
+      'from-amber-500/10 to-amber-500/5 dark:from-amber-500/20 dark:to-amber-500/5',
     iconBg: 'bg-amber-100 dark:bg-amber-500/20',
     iconColor: 'text-amber-600 dark:text-amber-400',
     border: 'group-hover:border-amber-300 dark:group-hover:border-amber-500/40',
@@ -57,11 +61,19 @@ const cards = [
 
       <div class="relative flex items-start justify-between">
         <div>
-          <p class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-2">
+          <p
+            class="text-[10px] font-semibold uppercase tracking-widest text-n-slate-9 mb-2"
+          >
             {{ card.label }}
           </p>
-          <div v-if="loading" class="h-8 w-24 bg-n-alpha-2 rounded animate-pulse" />
-          <p v-else class="text-3xl font-bold text-n-slate-12 tabular-nums tracking-tight">
+          <div
+            v-if="loading"
+            class="h-8 w-24 bg-n-alpha-2 rounded animate-pulse"
+          />
+          <p
+            v-else
+            class="text-3xl font-bold text-n-slate-12 tabular-nums tracking-tight"
+          >
             {{ card.format(kpis[card.key] ?? 0) }}
           </p>
         </div>

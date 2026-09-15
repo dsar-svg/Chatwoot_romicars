@@ -14,7 +14,7 @@ defineProps({
   loading: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['card-click']);
+const emit = defineEmits(['cardClick']);
 
 const cards = [
   {
@@ -62,7 +62,7 @@ const cards = [
 ];
 
 function handleCardClick(key) {
-  emit('card-click', key);
+  emit('cardClick', key);
 }
 </script>
 
@@ -84,7 +84,9 @@ function handleCardClick(key) {
       <p v-else class="text-2xl font-bold tabular-nums" :class="card.color">
         {{ metrics[card.key] ?? 0 }}
       </p>
-      <p class="text-[10px] font-semibold uppercase tracking-wide text-n-slate-9 leading-tight">
+      <p
+        class="text-[10px] font-semibold uppercase tracking-wide text-n-slate-9 leading-tight"
+      >
         {{ card.label }}
       </p>
     </div>

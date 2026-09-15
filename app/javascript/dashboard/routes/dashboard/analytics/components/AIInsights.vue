@@ -1,14 +1,25 @@
 <script setup>
-const props = defineProps({
+defineProps({
   insights: { type: Array, default: () => [] },
   source: { type: String, default: 'rules' },
   loading: { type: Boolean, default: false },
 });
 
 const priorityConfig = {
-  alta: { label: 'Alta', classes: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
-  media: { label: 'Media', classes: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  baja: { label: 'Baja', classes: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+  alta: {
+    label: 'Alta',
+    classes: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  },
+  media: {
+    label: 'Media',
+    classes:
+      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  },
+  baja: {
+    label: 'Baja',
+    classes:
+      'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  },
 };
 
 function priorityCfg(p) {
@@ -36,14 +47,18 @@ function categoryLabel(c) {
   <section>
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
-        <span class="i-lucide-sparkles size-4 text-[#1A365D] dark:text-blue-11" />
-        <h2 class="text-sm font-semibold text-n-slate-12">Insights Estratégicos</h2>
+        <span class="i-lucide-sparkles size-4 text-n-blue-11" />
+        <h2 class="text-sm font-semibold text-n-slate-12">
+          Insights Estratégicos
+        </h2>
       </div>
       <span
         class="text-[10px] font-medium px-2 py-0.5 rounded-full"
-        :class="source === 'ai'
-          ? 'bg-[#1A365D]/10 text-[#1A365D] dark:bg-blue-11/10 dark:text-blue-11'
-          : 'bg-n-alpha-2 text-n-slate-9'"
+        :class="
+          source === 'ai'
+            ? 'bg-n-blue-3 text-n-blue-11'
+            : 'bg-n-alpha-2 text-n-slate-9'
+        "
       >
         {{ source === 'ai' ? 'GPT-4o-mini' : 'Reglas' }}
       </span>
@@ -71,7 +86,7 @@ function categoryLabel(c) {
       <div
         v-for="(insight, idx) in insights"
         :key="idx"
-        class="group bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#1A365D]/30 dark:hover:border-blue-11/20"
+        class="group bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-n-blue-6"
       >
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2 min-w-0">
@@ -102,8 +117,10 @@ function categoryLabel(c) {
         </p>
 
         <div class="flex items-start gap-1.5 pt-1 border-t border-n-weak">
-          <span class="i-lucide-zap size-3.5 text-[#1A365D] dark:text-blue-11 flex-shrink-0 mt-0.5" />
-          <p class="text-xs text-[#1A365D] dark:text-blue-11 leading-relaxed">
+          <span
+            class="i-lucide-zap size-3.5 text-n-blue-11 flex-shrink-0 mt-0.5"
+          />
+          <p class="text-xs text-n-blue-11 leading-relaxed">
             {{ insight.action }}
           </p>
         </div>

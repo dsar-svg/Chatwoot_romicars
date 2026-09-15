@@ -10,20 +10,20 @@ const {
 } = require('@radix-ui/colors');
 
 export const colors = {
-  // RomiCars brand blue palette anchored at #1A365D
+  // RomiCars logo blue palette anchored at #1F2188
   woot: {
-    25:  '#FAFCFF',
-    50:  '#F3F7FE',
-    75:  '#E5EDFA',
-    100: '#D5E2F5',
-    200: '#B0C7E7',
-    300: '#96AFD8',
-    400: '#728ABA',
-    500: '#1A365D',
-    600: '#162E50',
-    700: '#112441',
-    800: '#0B192D',
-    900: '#06111F',
+    25:  '#FDFDFF',
+    50:  '#F8F8FF',
+    75:  '#F0F1FE',
+    100: '#E6E7FF',
+    200: '#CBCDFF',
+    300: '#9B9EF0',
+    400: '#5559E0',
+    500: '#1F2188',
+    600: '#1A1C74',
+    700: '#141650',
+    800: '#0E1030',
+    900: '#080A1E',
   },
   green: {
     50: greenDark.green12,
@@ -225,6 +225,7 @@ export const colors = {
 
     black: '#000000',
     brand: 'rgb(var(--brand-color) / <alpha-value>)',
+    accent: 'rgb(var(--accent-color) / <alpha-value>)',
     portal: 'var(--dynamic-portal-color)',
     'portal-soft': 'var(--dynamic-portal-color-soft)',
     'portal-faint': 'var(--dynamic-portal-color-faint)',

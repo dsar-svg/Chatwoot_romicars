@@ -56,9 +56,7 @@ function vehicleLabel(product) {
 <template>
   <div class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5">
     <div class="flex items-center gap-2 mb-5">
-      <span
-        class="i-lucide-bar-chart-2 size-4 text-[#1A365D] dark:text-blue-11"
-      />
+      <span class="i-lucide-bar-chart-2 size-4 text-n-blue-11" />
       <h2 class="text-sm font-semibold text-n-slate-12">Demanda e Interés</h2>
       <span class="ml-auto text-[10px] text-n-slate-9"
         >{{ demand.total_inquiries || 0 }} consultas · 30 días</span
@@ -95,7 +93,7 @@ function vehicleLabel(product) {
             </div>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
               <div
-                class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
+                class="h-full rounded-full bg-n-brand transition-all duration-500"
                 :style="{ width: barWidth(product.count) }"
               />
             </div>
@@ -135,7 +133,7 @@ function vehicleLabel(product) {
             </span>
             <div class="flex-1 bg-n-alpha-2 rounded-full h-1.5 overflow-hidden">
               <div
-                class="h-full rounded-full bg-[#1A365D] dark:bg-blue-11 transition-all duration-500"
+                class="h-full rounded-full bg-n-brand transition-all duration-500"
                 :style="{ width: barWidth(ch.count) }"
               />
             </div>

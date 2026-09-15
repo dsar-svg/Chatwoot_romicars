@@ -5,13 +5,16 @@ defineProps({
 });
 
 function badgeClass(conversion) {
-  if (conversion >= 20) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
-  if (conversion >= 10) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+  if (conversion >= 20)
+    return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+  if (conversion >= 10)
+    return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
   return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
 }
 
 function avatarGradient(name) {
-  const hue = (name.charCodeAt(0) * 37 + name.charCodeAt(1 % name.length) * 17) % 360;
+  const hue =
+    (name.charCodeAt(0) * 37 + name.charCodeAt(1 % name.length) * 17) % 360;
   return `background: linear-gradient(135deg, hsl(${hue},60%,40%), hsl(${(hue + 40) % 360},60%,30%))`;
 }
 
@@ -35,7 +38,9 @@ function formatMinutes(mins) {
   <div class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5">
     <div class="flex items-center gap-2 mb-5">
       <span class="i-lucide-trophy size-4 text-amber-500" />
-      <h2 class="text-sm font-semibold text-n-slate-12">Rendimiento por Agente</h2>
+      <h2 class="text-sm font-semibold text-n-slate-12">
+        Rendimiento por Agente
+      </h2>
       <span class="ml-auto text-[10px] text-n-slate-9">Últimos 30 días</span>
     </div>
 
@@ -63,7 +68,9 @@ function formatMinutes(mins) {
         class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-n-alpha-1 transition-colors"
       >
         <!-- Rank -->
-        <span class="text-[10px] font-bold text-n-slate-9 w-4 text-center flex-shrink-0">
+        <span
+          class="text-[10px] font-bold text-n-slate-9 w-4 text-center flex-shrink-0"
+        >
           {{ idx + 1 }}
         </span>
 
@@ -77,9 +84,12 @@ function formatMinutes(mins) {
 
         <!-- Info -->
         <div class="flex-1 min-w-0">
-          <p class="text-sm font-medium text-n-slate-12 truncate">{{ agent.name }}</p>
+          <p class="text-sm font-medium text-n-slate-12 truncate">
+            {{ agent.name }}
+          </p>
           <p class="text-xs text-n-slate-9">
-            {{ agent.assigned }} asignados · {{ agent.resolved }} resueltos · {{ formatMinutes(agent.avg_response_minutes) }} resp.
+            {{ agent.assigned }} asignados · {{ agent.resolved }} resueltos ·
+            {{ formatMinutes(agent.avg_response_minutes) }} resp.
           </p>
         </div>
 

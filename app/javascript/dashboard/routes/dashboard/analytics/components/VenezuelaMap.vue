@@ -38,7 +38,11 @@ const tooltipPos = ref({ x: 0, y: 0 });
 const dots = computed(() => {
   return props.customers
     .filter(c => c.lat && c.lng)
-    .map(c => ({ ...toSvg(Number(c.lat), Number(c.lng)), name: c.nombre || c.name || 'Cliente', city: c.ciudad || c.city || '' }));
+    .map(c => ({
+      ...toSvg(Number(c.lat), Number(c.lng)),
+      name: c.nombre || c.name || 'Cliente',
+      city: c.ciudad || c.city || '',
+    }));
 });
 
 function showTooltip(evt, dot) {
@@ -54,47 +58,40 @@ function hideTooltip() {
 <template>
   <div class="bg-white dark:bg-n-solid-2 rounded-xl border border-n-weak p-5">
     <div class="flex items-center gap-2 mb-4">
-      <span class="i-lucide-map-pin size-4 text-[#361E2C] dark:text-ruby-9" />
-      <h2 class="text-sm font-semibold text-n-slate-12">Ubicación de Clientes</h2>
-      <span class="ml-auto text-xs text-n-slate-9">{{ customers.length }} clientes</span>
+      <span class="i-lucide-map-pin size-4 text-n-accent" />
+      <h2 class="text-sm font-semibold text-n-slate-12">
+        Ubicación de Clientes
+      </h2>
+      <span class="ml-auto text-xs text-n-slate-9"
+        >{{ customers.length }} clientes</span
+      >
     </div>
 
     <div v-if="loading" class="h-64 bg-n-alpha-1 rounded-lg animate-pulse" />
 
-    <div v-else class="relative overflow-hidden rounded-lg bg-gradient-to-br from-[#1A365D]/5 to-[#1A365D]/10 dark:from-[#1A365D]/20 dark:to-[#0F1923]">
+    <div v-else class="relative overflow-hidden rounded-lg bg-n-blue-2">
       <svg
         :viewBox="`0 0 ${MAP_W} ${MAP_H}`"
-        class="w-full h-auto"
-        style="max-height: 280px"
+        class="w-full h-auto max-h-[280px]"
         @mouseleave="hideTooltip"
       >
         <!-- Country outline -->
         <path
           :d="venezuelaPath"
-          class="fill-[#1A365D]/15 dark:fill-[#1A365D]/30 stroke-[#1A365D]/40 dark:stroke-blue-11/30"
+          class="fill-n-blue-4 stroke-n-blue-7"
           stroke-width="1.5"
           stroke-linejoin="round"
         />
 
         <!-- Customer dots -->
         <g v-for="(dot, i) in dots" :key="i">
-          <circle
-            :cx="dot.x"
-            :cy="dot.y"
-            r="8"
-            class="fill-[#361E2C]/10 dark:fill-ruby-9/10"
-          />
-          <circle
-            :cx="dot.x"
-            :cy="dot.y"
-            r="5"
-            class="fill-[#361E2C]/30 dark:fill-ruby-9/30"
-          />
+          <circle :cx="dot.x" :cy="dot.y" r="8" class="fill-n-accent/10" />
+          <circle :cx="dot.x" :cy="dot.y" r="5" class="fill-n-accent/30" />
           <circle
             :cx="dot.x"
             :cy="dot.y"
             r="2.5"
-            class="fill-[#361E2C] dark:fill-ruby-9 cursor-pointer"
+            class="fill-n-accent cursor-pointer"
             @mouseenter="showTooltip($event, dot)"
           />
         </g>
@@ -110,20 +107,38 @@ function hideTooltip() {
             class="fill-n-solid-3"
             opacity="0.95"
           />
-          <text :x="tooltipPos.x + 14" :y="tooltipPos.y - 6" font-size="9" class="fill-n-slate-12" font-weight="600">
+          <text
+            :x="tooltipPos.x + 14"
+            :y="tooltipPos.y - 6"
+            font-size="9"
+            class="fill-n-slate-12"
+            font-weight="600"
+          >
             {{ tooltip.name }}
           </text>
-          <text :x="tooltipPos.x + 14" :y="tooltipPos.y + 8" font-size="8" class="fill-n-slate-10">
+          <text
+            :x="tooltipPos.x + 14"
+            :y="tooltipPos.y + 8"
+            font-size="8"
+            class="fill-n-slate-10"
+          >
             {{ tooltip.city }}
           </text>
         </g>
       </svg>
 
       <!-- No customers placeholder -->
-      <div v-if="!dots.length" class="absolute inset-0 flex flex-col items-center justify-center">
+      <div
+        v-if="!dots.length"
+        class="absolute inset-0 flex flex-col items-center justify-center"
+      >
         <span class="i-lucide-map size-10 text-n-slate-9 mb-2" />
         <p class="text-xs text-n-slate-9">
-          {{ customers.length ? 'Los clientes no tienen coordenadas' : 'Sin datos de clientes (Profit API)' }}
+          {{
+            customers.length
+              ? 'Los clientes no tienen coordenadas'
+              : 'Sin datos de clientes (Profit API)'
+          }}
         </p>
       </div>
     </div>

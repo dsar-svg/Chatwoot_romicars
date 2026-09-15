@@ -46,12 +46,12 @@ const TREE_CONNECTOR =
       :title="label"
       class="flex h-8 items-center gap-2 px-2 py-1 rounded-lg ltr:hover:bg-gradient-to-r rtl:hover:bg-gradient-to-l from-transparent via-n-slate-3/70 to-n-slate-3/70 group min-w-0 relative"
       :class="{
-        'text-n-slate-12 bg-[#361E2C]/20 active font-medium': active,
+        'text-white bg-n-brand active font-medium': active,
       }"
     >
       <span
         v-if="active"
-        class="absolute left-0 top-1 bottom-1 w-0.5 bg-[#361E2C] rounded-r-sm"
+        class="absolute left-0 top-1.5 bottom-1.5 w-[3px] bg-n-accent rounded-r-sm"
       />
       <component
         :is="component"
@@ -63,7 +63,7 @@ const TREE_CONNECTOR =
           <Icon
             :icon="icon"
             class="size-4 inline-block"
-            :class="{ 'text-blue-11': active }"
+            :class="{ 'text-white': active }"
           />
         </span>
         <div class="flex-1 truncate min-w-0 text-sm">{{ label }}</div>
