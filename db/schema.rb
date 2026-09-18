@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
+ActiveRecord::Schema[7.2].define(version: 2026_08_27_000003) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -315,6 +315,28 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.index ["account_id"], name: "index_automation_rules_on_account_id"
   end
 
+  create_table "bot_logs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "contact_id"
+    t.string "tipo_evento", limit: 50, null: false
+    t.string "severidad", limit: 10, default: "info", null: false
+    t.text "detalle"
+    t.string "accion_intentada", limit: 100
+    t.jsonb "contexto"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_bot_logs_on_account_id_and_created_at"
+    t.index ["account_id", "severidad"], name: "index_bot_logs_on_account_id_and_severidad"
+    t.index ["account_id", "tipo_evento"], name: "index_bot_logs_on_account_id_and_tipo_evento"
+    t.index ["account_id"], name: "index_bot_logs_on_account_id"
+    t.index ["contact_id"], name: "index_bot_logs_on_contact_id"
+    t.index ["conversation_id"], name: "index_bot_logs_on_conversation_id"
+    t.index ["created_at"], name: "index_bot_logs_on_created_at"
+    t.index ["severidad"], name: "index_bot_logs_on_severidad"
+    t.index ["tipo_evento"], name: "index_bot_logs_on_tipo_evento"
+  end
+
   create_table "calls", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "inbox_id", null: false
@@ -471,8 +493,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.integer "status", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["account_id"], name: "index_captain_faq_suggestions_on_account_id"
     t.index ["account_id", "assistant_id", "status", "language"], name: "idx_cap_faq_suggestions_on_account_assistant_status_language"
+    t.index ["account_id"], name: "index_captain_faq_suggestions_on_account_id"
     t.index ["assistant_id"], name: "index_captain_faq_suggestions_on_assistant_id"
     t.index ["embedding"], name: "vector_idx_captain_faq_suggestions_embedding", opclass: :vector_cosine_ops, using: :ivfflat
   end
@@ -701,7 +723,6 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
 
   create_table "channel_whatsapp", force: :cascade do |t|
     t.integer "account_id", null: false
-    t.text "business_management_token"
     t.string "phone_number", null: false
     t.string "provider", default: "default"
     t.jsonb "provider_config", default: {}
@@ -712,8 +733,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.jsonb "phone_number_health", default: {}, null: false
     t.datetime "phone_number_health_checked_at"
     t.string "phone_number_health_error", limit: 500
-    t.index ["phone_number_health_checked_at"], name: "index_channel_whatsapp_on_phone_number_health_checked_at"
+    t.text "business_management_token"
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
+    t.index ["phone_number_health_checked_at"], name: "index_channel_whatsapp_on_phone_number_health_checked_at"
   end
 
   create_table "companies", force: :cascade do |t|
@@ -850,9 +872,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.text "cached_label_list"
     t.bigint "assignee_agent_bot_id"
     t.datetime "status_changed_at"
+    t.string "resolution_type"
+    t.string "resolution_reason"
+    t.text "resolution_notes"
+    t.datetime "resolved_at"
+    t.decimal "sale_amount", precision: 12, scale: 2
+    t.date "sale_date"
+    t.string "sale_invoice"
+    t.string "requested_product"
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
+    t.index ["account_id", "resolution_reason"], name: "index_conversations_on_account_id_and_resolution_reason"
+    t.index ["account_id", "resolution_type"], name: "index_conversations_on_account_id_and_resolution_type"
+    t.index ["account_id", "resolved_at"], name: "index_conversations_on_account_id_and_resolved_at", where: "(status = 1)"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_conversations_on_assignee_id_and_account_id"
     t.index ["campaign_id"], name: "index_conversations_on_campaign_id"
@@ -1051,10 +1084,37 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.integer "inbox_id"
-    t.index ["account_id", "name", "template_type", "locale"], name: "index_email_templates_on_account_scope", unique: true, where: "(account_id IS NOT NULL) AND (inbox_id IS NULL)"
+    t.index ["account_id", "name", "template_type", "locale"], name: "index_email_templates_on_account_scope", unique: true, where: "((account_id IS NOT NULL) AND (inbox_id IS NULL))"
     t.index ["inbox_id", "name", "template_type", "locale"], name: "index_email_templates_on_inbox_scope", unique: true, where: "(inbox_id IS NOT NULL)"
     t.index ["inbox_id"], name: "index_email_templates_on_inbox_id"
-    t.index ["name", "template_type", "locale"], name: "index_email_templates_on_installation_scope", unique: true, where: "(account_id IS NULL) AND (inbox_id IS NULL)"
+    t.index ["name", "template_type", "locale"], name: "index_email_templates_on_installation_scope", unique: true, where: "((account_id IS NULL) AND (inbox_id IS NULL))"
+  end
+
+  create_table "exchange_rates", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.decimal "rate", precision: 10, scale: 2, null: false
+    t.decimal "equiv_13", precision: 10, scale: 2
+    t.date "effective_date", null: false
+    t.string "source"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "effective_date"], name: "index_exchange_rates_on_account_id_and_effective_date", unique: true
+    t.index ["account_id"], name: "index_exchange_rates_on_account_id"
+  end
+
+  create_table "faqs", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "question", null: false
+    t.text "answer", null: false
+    t.string "category"
+    t.string "keywords"
+    t.boolean "active", default: true, null: false
+    t.integer "priority", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_faqs_on_account_id_and_active"
+    t.index ["account_id", "category"], name: "index_faqs_on_account_id_and_category"
+    t.index ["account_id"], name: "index_faqs_on_account_id"
   end
 
   create_table "folders", force: :cascade do |t|
@@ -1342,6 +1402,24 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.index ["user_id"], name: "index_portals_members_on_user_id"
   end
 
+  create_table "product_inquiries", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.bigint "account_id", null: false
+    t.string "canal", limit: 50
+    t.string "marca_buscada", limit: 100
+    t.string "modelo_buscado", limit: 100
+    t.text "repuesto_buscado"
+    t.boolean "encontrado", default: false, null: false
+    t.text "descripcion_encontrada"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_product_inquiries_on_account_id"
+    t.index ["canal"], name: "idx_product_inquiries_canal"
+    t.index ["conversation_id"], name: "index_product_inquiries_on_conversation_id"
+    t.index ["marca_buscada", "modelo_buscado"], name: "idx_product_inquiries_marca_modelo"
+    t.index ["repuesto_buscado"], name: "idx_product_inquiries_repuesto"
+  end
+
   create_table "related_categories", force: :cascade do |t|
     t.bigint "category_id"
     t.bigint "related_category_id"
@@ -1520,12 +1598,64 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
     t.integer "consumed_timestep"
     t.boolean "otp_required_for_login", default: false
     t.text "otp_backup_codes"
+    t.integer "failed_attempts", default: 0, null: false
+    t.datetime "locked_at"
+    t.string "unlock_token"
     t.index ["email"], name: "index_users_on_email"
     t.index ["otp_required_for_login"], name: "index_users_on_otp_required_for_login"
     t.index ["otp_secret"], name: "index_users_on_otp_secret", unique: true
     t.index ["pubsub_token"], name: "index_users_on_pubsub_token", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["uid", "provider"], name: "index_users_on_uid_and_provider", unique: true
+    t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
+  end
+
+  create_table "vehicle_brands", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_vehicle_brands_on_account_id_and_active"
+    t.index ["account_id", "name"], name: "index_vehicle_brands_on_account_id_and_name", unique: true
+    t.index ["account_id"], name: "index_vehicle_brands_on_account_id"
+  end
+
+  create_table "vehicle_models", force: :cascade do |t|
+    t.bigint "vehicle_brand_id", null: false
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_vehicle_models_on_account_id_and_active"
+    t.index ["account_id"], name: "index_vehicle_models_on_account_id"
+    t.index ["vehicle_brand_id", "name"], name: "index_vehicle_models_on_vehicle_brand_id_and_name", unique: true
+    t.index ["vehicle_brand_id"], name: "index_vehicle_models_on_vehicle_brand_id"
+  end
+
+  create_table "vehicle_prices", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "vehicle_brand_id", null: false
+    t.bigint "vehicle_model_id"
+    t.text "description", null: false
+    t.string "variant"
+    t.decimal "cost_usd", precision: 10, scale: 2
+    t.integer "divisa"
+    t.decimal "monto_bs", precision: 12, scale: 2
+    t.integer "bolivares"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "synonyms"
+    t.index ["account_id", "active"], name: "index_vehicle_prices_on_account_id_and_active"
+    t.index ["account_id", "vehicle_brand_id"], name: "index_vehicle_prices_on_account_id_and_vehicle_brand_id"
+    t.index ["account_id", "vehicle_model_id"], name: "index_vehicle_prices_on_account_id_and_vehicle_model_id"
+    t.index ["account_id"], name: "index_vehicle_prices_on_account_id"
+    t.index ["description"], name: "index_vehicle_prices_on_description_trgm", opclass: :gin_trgm_ops, using: :gin
+    t.index ["synonyms"], name: "index_vehicle_prices_on_synonyms_trgm", opclass: :gin_trgm_ops, using: :gin
+    t.index ["vehicle_brand_id"], name: "index_vehicle_prices_on_vehicle_brand_id"
+    t.index ["vehicle_model_id"], name: "index_vehicle_prices_on_vehicle_model_id"
   end
 
   create_table "webhooks", force: :cascade do |t|
@@ -1559,8 +1689,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_08_04_000003) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "bot_logs", "accounts", on_delete: :cascade
+  add_foreign_key "bot_logs", "contacts", on_delete: :nullify
+  add_foreign_key "bot_logs", "conversations", on_delete: :cascade
+  add_foreign_key "exchange_rates", "accounts", on_delete: :cascade
+  add_foreign_key "faqs", "accounts", on_delete: :cascade
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "product_inquiries", "accounts", on_delete: :cascade
+  add_foreign_key "product_inquiries", "conversations", on_delete: :cascade
   add_foreign_key "user_sessions", "users"
+  add_foreign_key "vehicle_brands", "accounts", on_delete: :cascade
+  add_foreign_key "vehicle_models", "accounts", on_delete: :cascade
+  add_foreign_key "vehicle_models", "vehicle_brands", on_delete: :cascade
+  add_foreign_key "vehicle_prices", "accounts", on_delete: :cascade
+  add_foreign_key "vehicle_prices", "vehicle_brands", on_delete: :cascade
+  add_foreign_key "vehicle_prices", "vehicle_models", on_delete: :nullify
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).
