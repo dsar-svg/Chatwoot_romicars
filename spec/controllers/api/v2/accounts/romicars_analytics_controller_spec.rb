@@ -117,6 +117,24 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
         expect(canal['practica']).to eq('Practica IA')
         expect(canal['accion']).to eq('Repetir IA')
       end
+
+      # `refresh` skips the response cache, so without the read memory this second call
+      # would send the very same transcripts to the model again.
+      it 'does not send conversations it already read' do
+        with_modified_env OPENAI_API_KEY: 'test-key' do
+          get "/api/v2/accounts/#{account.id}/romicars_analytics/win_loss",
+              headers: admin.create_new_auth_token, as: :json
+          get "/api/v2/accounts/#{account.id}/romicars_analytics/win_loss",
+              params: { refresh: 1 }, headers: admin.create_new_auth_token, as: :json
+        end
+
+        expect(openai_client).to have_received(:chat).once
+
+        body = response.parsed_body
+        expect(body['conversaciones_nuevas']).to eq(0)
+        expect(body['conversaciones_analizadas']).to eq(4)
+        expect(body['perdidas']['patrones'].first['hallazgo']).to eq('Se cae por precio')
+      end
     end
   end
 end

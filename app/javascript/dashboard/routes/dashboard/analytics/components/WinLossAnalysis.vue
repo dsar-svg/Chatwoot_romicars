@@ -27,6 +27,7 @@ const props = defineProps({
     }),
   },
   analizadas: { type: Number, default: 0 },
+  nuevas: { type: Number, default: 0 },
   source: { type: String, default: 'rules' },
   loading: { type: Boolean, default: false },
 });
@@ -82,6 +83,9 @@ function money(value) {
           Últimos 30 días · cifras del CRM
           <template v-if="analizadas">
             · {{ analizadas }} conversaciones leídas por la IA
+          </template>
+          <template v-if="nuevas">
+            · {{ nuevas }} nuevas en esta corrida
           </template>
         </p>
       </div>

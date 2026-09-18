@@ -68,6 +68,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
        En `conversaciones` pon los `id` exactos que trae el JSON y que sustentan el
        patrón. No inventes un id que no esté en la entrada.
 
+    `conversaciones` solo trae los chats que NO habías leído antes. Los patrones que ya
+    sacaste vienen aparte, en `patrones_ya_detectados`. Con los chats nuevos: confirma
+    los que siguen vigentes, corrígelos si cambiaron, y reemplaza los que ya no se
+    sostienen. Devuelve siempre la lista consolidada, no solo lo nuevo.
+
     Devuelve EXACTAMENTE este objeto JSON:
     {"perdidas":{"resumen":"1 o 2 frases","causas":{"<motivo>":{"diagnostico":"","accion":""}},
                  "patrones":[{"hallazgo":"","evidencia":"","accion":"","conversaciones":[1,2]}]},
@@ -107,6 +112,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   SAMPLE_MESSAGES = 6
   SAMPLE_MESSAGE_CHARS = 240
   SAMPLE_PATTERNS = 3
+  # What the account has already had read, so a refresh spends tokens on new chats only.
+  WIN_LOSS_MEMORY_TTL = 30.days
+  WIN_LOSS_MEMORY_IDS = 300
 
   PRIORITY_LABELS = {
     'urgent' => 'urgente',
@@ -757,47 +765,104 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def build_win_loss(account)
+    memory = win_loss_memory(account)
     facts = win_loss_facts(insights_context(account))
     # Transcripts go to the model only. They are not part of the response: the panel
     # shows conclusions and links, not the customer's messages.
-    samples = conversation_samples(account)
-    narrative = win_loss_narrative(facts, samples)
+    samples = conversation_samples(account, memory)
+    narrative = win_loss_narrative(facts, samples, memory)
 
-    apply_win_loss_narrative(facts, narrative[:body], samples)
-      .merge(source: narrative[:source], generated_at: Time.current)
+    payload = apply_win_loss_narrative(facts, narrative[:body], samples, memory)
+              .merge(source: narrative[:source],
+                     conversaciones_nuevas: narrative[:read] ? samples.values.sum(&:size) : 0,
+                     generated_at: Time.current)
+
+    store_win_loss_memory(account, memory, samples, payload, narrative) if narrative[:source] == 'ai'
+    payload
   end
 
   # The numbers already live in `facts`; a failed or missing AI call only costs the
   # narrative, which `apply_win_loss_narrative` then fills from the static copy.
-  def win_loss_narrative(facts, samples)
+  def win_loss_narrative(facts, samples, memory)
     key = openai_api_key
     raise 'No OpenAI API key configured' if key.blank?
 
-    payload = facts.merge(conversaciones: samples)
+    # Nothing left to read: reuse the last answer instead of paying to re-read the same
+    # chats. The counts around it are recomputed on every request either way.
+    stored = memory['narrative']
+    return { body: stored, source: 'ai', read: false } if samples.values.all?(&:empty?) && stored.present?
+
+    payload = facts.merge(conversaciones: samples, patrones_ya_detectados: stored_patterns(memory))
     body = parse_json_object(
       request_ai_json(key, WIN_LOSS_SYSTEM_PROMPT,
                       "Cifras y conversaciones del CRM (últimos 30 días):\n#{JSON.pretty_generate(payload)}")
     )
     raise 'AI returned no usable narrative' if body.blank?
 
-    { body: body, source: 'ai' }
+    { body: body, source: 'ai', read: true }
   rescue StandardError => e
     Rails.logger.error "RomicarsDashboard win/loss error: #{e.class}: #{e.message}"
-    { body: {}, source: 'rules' }
+    { body: {}, source: 'rules', read: false }
   end
 
-  def conversation_samples(account)
+  def win_loss_memory_key(account)
+    "romicars:win_loss:memory:v1:#{account.id}"
+  end
+
+  # { 'perdidas' => { 'ids' => [], 'patrones' => [] }, 'ganadas' => {...}, 'narrative' => {} }
+  def win_loss_memory(account)
+    stored = JSON.parse(Redis::Alfred.get(win_loss_memory_key(account)).presence || '{}')
+    stored = {} unless stored.is_a?(Hash)
+
+    {
+      'perdidas' => stored['perdidas'].is_a?(Hash) ? stored['perdidas'] : {},
+      'ganadas' => stored['ganadas'].is_a?(Hash) ? stored['ganadas'] : {},
+      'narrative' => stored['narrative'].is_a?(Hash) ? stored['narrative'] : nil
+    }
+  rescue JSON::ParserError
+    { 'perdidas' => {}, 'ganadas' => {}, 'narrative' => nil }
+  end
+
+  def stored_patterns(memory)
+    {
+      perdidas: Array(memory.dig('perdidas', 'patrones')),
+      ganadas: Array(memory.dig('ganadas', 'patrones'))
+    }
+  end
+
+  def store_win_loss_memory(account, memory, samples, payload, narrative)
+    updated = {
+      'perdidas' => side_memory(memory['perdidas'], samples[:perdidas], payload[:perdidas][:patrones]),
+      'ganadas' => side_memory(memory['ganadas'], samples[:ganadas], payload[:ganadas][:patrones]),
+      'narrative' => narrative[:body]
+    }
+
+    Redis::Alfred.setex(win_loss_memory_key(account), updated.to_json, WIN_LOSS_MEMORY_TTL)
+  end
+
+  # Newest ids first and capped: anything past the cap is older than the 30-day window
+  # the panel reports on anyway.
+  def side_memory(previous, sample, patterns)
+    {
+      'ids' => (sample.pluck(:id) + Array(previous['ids'])).uniq.first(WIN_LOSS_MEMORY_IDS),
+      'patrones' => patterns
+    }
+  end
+
+  def conversation_samples(account, memory)
     scope = account.conversations
                    .where(status: :resolved, resolved_at: 30.days.ago..)
                    .includes(:messages, :assignee, :inbox)
 
     {
-      perdidas: transcripts(scope.where(resolution_type: 'perdido'), SAMPLE_LOST),
-      ganadas: transcripts(scope.where(resolution_type: 'ganado'), SAMPLE_WON)
+      perdidas: transcripts(scope.where(resolution_type: 'perdido'), SAMPLE_LOST, memory.dig('perdidas', 'ids')),
+      ganadas: transcripts(scope.where(resolution_type: 'ganado'), SAMPLE_WON, memory.dig('ganadas', 'ids'))
     }
   end
 
-  def transcripts(scope, limit)
+  def transcripts(scope, limit, seen_ids)
+    scope = scope.where.not(display_id: seen_ids) if seen_ids.present?
+
     scope.order(resolved_at: :desc).limit(limit).map do |conversation|
       {
         id: conversation.display_id,
@@ -906,7 +971,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     end.max_by { |row| [row[:pct], row[:total]] }
   end
 
-  def apply_win_loss_narrative(facts, narrative, samples)
+  def apply_win_loss_narrative(facts, narrative, samples, memory)
     causas    = narrative.dig('perdidas', 'causas') || {}
     practicas = narrative.dig('ganadas', 'practicas') || {}
 
@@ -925,14 +990,23 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     facts[:perdidas][:resumen] = narrative.dig('perdidas', 'resumen').presence || default_loss_summary(facts)
     facts[:ganadas][:resumen]  = narrative.dig('ganadas', 'resumen').presence || default_win_summary(facts)
 
-    facts[:perdidas][:patrones] = read_patterns(narrative.dig('perdidas', 'patrones'), samples[:perdidas])
-    facts[:ganadas][:patrones]  = read_patterns(narrative.dig('ganadas', 'patrones'), samples[:ganadas])
-    facts[:conversaciones_analizadas] = samples[:perdidas].size + samples[:ganadas].size
+    stored = stored_patterns(memory)
+    facts[:perdidas][:patrones] = read_patterns(narrative.dig('perdidas', 'patrones'), samples[:perdidas], stored[:perdidas])
+    facts[:ganadas][:patrones]  = read_patterns(narrative.dig('ganadas', 'patrones'), samples[:ganadas], stored[:ganadas])
+    facts[:conversaciones_analizadas] = analysed_count(memory, samples)
     facts
   end
 
-  def read_patterns(raw, sample)
-    valid_ids = sample.pluck(:id)
+  def analysed_count(memory, samples)
+    %w[perdidas ganadas].sum do |side|
+      (Array(memory.dig(side, 'ids')) + samples[side.to_sym].pluck(:id)).uniq.size
+    end
+  end
+
+  def read_patterns(raw, sample, stored)
+    # A pattern carried over from an earlier run cites conversations that are no longer
+    # in the sample; those ids were already validated when they were first stored.
+    valid_ids = sample.pluck(:id) | Array(stored).flat_map { |pattern| Array(pattern['conversaciones']) }
 
     Array(raw).filter_map do |pattern|
       next unless pattern.is_a?(Hash) && pattern['hallazgo'].present?

@@ -30,6 +30,7 @@ const winLoss = ref({
   perdidas: { total: 0, causas: [], patrones: [], repuestos_sin_stock: [] },
   ganadas: { total: 0, practicas: [], patrones: [] },
   conversaciones_analizadas: 0,
+  conversaciones_nuevas: 0,
   source: 'rules',
 });
 const profit = ref({
@@ -220,6 +221,7 @@ onUnmounted(() => {
         :perdidas="winLoss.perdidas"
         :ganadas="winLoss.ganadas"
         :analizadas="winLoss.conversaciones_analizadas"
+        :nuevas="winLoss.conversaciones_nuevas"
         :source="winLoss.source"
         :loading="loading.winLoss"
       />
