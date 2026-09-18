@@ -154,7 +154,10 @@ gem 'geocoder'
 gem 'maxminddb'
 
 # to create db triggers
-gem 'hairtrigger'
+# 1.2.0 is the first release that knows about Rails 7.2: before it, hairtrigger asked the
+# connection for its schema_migration, which 7.2 moved to the pool, and every schema dump
+# died halfway through with a NoMethodError.
+gem 'hairtrigger', '>= 1.2.0'
 
 gem 'procore-sift'
 
