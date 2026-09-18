@@ -46,6 +46,82 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     Al menos 2 de los 6 deben ser de categoría `perdidas`, analizando causas raíz.
   PROMPT
 
+  # The win/loss panel never lets the model produce a number: every count comes from
+  # SQL and the AI only fills the narrative fields, keyed by the same motivo/clave.
+  WIN_LOSS_SYSTEM_PROMPT = <<~PROMPT
+    Eres analista comercial de RomiCars, tienda venezolana de repuestos automotrices.
+    Recibes cifras YA CALCULADAS del CRM. No recalcules ni inventes números: usa solo
+    los que vienen en el JSON, y si citas uno, cítalo exacto.
+
+    Además de las cifras recibes `conversaciones`: transcripciones reales de chats
+    ganados y perdidos, con lo que escribió el cliente y lo que respondió el agente.
+    LÉELAS. De ahí salen los patrones, no de los totales.
+
+    Tu trabajo tiene tres partes:
+    1. `perdidas.causas`: por cada motivo, explica la causa raíz probable (qué falla en
+       el proceso, no qué dice el número) y una acción ejecutable esta semana.
+    2. `ganadas.practicas`: por cada señal, escribe la práctica concreta que el equipo
+       debe repetir y cómo aplicarla más seguido.
+    3. `patrones`: hasta 3 por lado, deducidos de leer las transcripciones. Di qué pasó
+       de verdad en el chat: qué pidió el cliente, qué contestó el agente, en qué
+       momento se cayó o se cerró la venta. En `evidencia` parafrasea lo que se dijo.
+       En `conversaciones` pon los `id` exactos que trae el JSON y que sustentan el
+       patrón. No inventes un id que no esté en la entrada.
+
+    Devuelve EXACTAMENTE este objeto JSON:
+    {"perdidas":{"resumen":"1 o 2 frases","causas":{"<motivo>":{"diagnostico":"","accion":""}},
+                 "patrones":[{"hallazgo":"","evidencia":"","accion":"","conversaciones":[1,2]}]},
+     "ganadas":{"resumen":"1 o 2 frases","practicas":{"<clave>":{"practica":"","accion":""}},
+                "patrones":[{"hallazgo":"","evidencia":"","accion":"","conversaciones":[3]}]}}
+
+    Usa como claves exactamente los `motivo` y `clave` que trae el JSON de entrada.
+    Español de Venezuela, directo, sin relleno.
+  PROMPT
+
+  LOSS_LABELS = {
+    'sin_stock' => 'Sin stock',
+    'precio' => 'Precio',
+    'sin_respuesta' => 'Sin respuesta',
+    'otro' => 'Otro'
+  }.freeze
+
+  # Used when OpenAI is unavailable, and per field when the model omits one.
+  LOSS_DIAGNOSIS = {
+    'sin_stock' => 'El cliente pidió un repuesto que no estaba en inventario y no se le ofreció alternativa ni fecha de reposición.',
+    'precio' => 'El precio quedó fuera de lo que el cliente esperaba y la conversación cerró sin negociar ni mostrar una opción más económica.',
+    'sin_respuesta' => 'El cliente dejó de contestar. Casi siempre es falta de seguimiento después del primer mensaje.',
+    'otro' => 'Cierres sin motivo tipificado. Sin la nota del agente no se puede atacar la causa.'
+  }.freeze
+
+  LOSS_ACTION = {
+    'sin_stock' => 'Cotizar reposición de los repuestos más pedidos sin stock: son demanda ya confirmada.',
+    'precio' => 'Definir un rango de descuento que el agente pueda dar sin consultar y una alternativa equivalente más barata.',
+    'sin_respuesta' => 'Fijar un segundo contacto a las 24 h y un tercero a las 72 h antes de dar la conversación por perdida.',
+    'otro' => 'Exigir nota de cierre al marcar "Otro" para poder tipificar el motivo el mes que viene.'
+  }.freeze
+
+  # Transcripts sent to the model. Capped on every axis: the prompt has to stay cheap
+  # and the conversations carry customer text.
+  SAMPLE_LOST = 12
+  SAMPLE_WON = 8
+  SAMPLE_MESSAGES = 6
+  SAMPLE_MESSAGE_CHARS = 240
+  SAMPLE_PATTERNS = 3
+
+  PRIORITY_LABELS = {
+    'urgent' => 'urgente',
+    'high' => 'alta',
+    'medium' => 'media',
+    'low' => 'baja'
+  }.freeze
+
+  WIN_ACTION = {
+    'respuesta' => 'Fijar como meta del equipo ese tiempo de primera respuesta y revisarlo cada semana.',
+    'canal' => 'Empujar más tráfico a ese canal y replicar en los demás el guion que se usa allí.',
+    'agente' => 'Que ese agente muestre su flujo al resto y usar sus chats ganados como plantilla.',
+    'prioridad' => 'Marcar la prioridad al abrir la conversación, no al cerrarla: es lo que dispara el seguimiento.'
+  }.freeze
+
   before_action :check_authorization
 
   def overview
@@ -280,6 +356,20 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
+  # "Por qué perdimos / qué nos hizo ganar". Same 30-day context as ai_insights, but the
+  # counts are rendered as they come out of SQL and the model only writes around them.
+  def win_loss
+    account = Current.account
+
+    cached = params[:refresh].blank? ? Redis::Alfred.get(win_loss_cache_key(account)) : nil
+    return render(json: JSON.parse(cached)) if cached.present?
+
+    payload = build_win_loss(account)
+    Redis::Alfred.setex(win_loss_cache_key(account), payload.to_json, AI_INSIGHTS_CACHE_TTL) if payload[:source] == 'ai'
+
+    render json: payload
+  end
+
   private
 
   def check_authorization
@@ -331,17 +421,26 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def request_ai_insights(key, context)
+    request_ai_json(key, AI_SYSTEM_PROMPT, "Datos del CRM (últimos 30 días):\n#{JSON.pretty_generate(context)}")
+  end
+
+  def request_ai_json(key, system_prompt, user_content)
     OpenAI::Client.new(access_token: key, request_timeout: AI_REQUEST_TIMEOUT).chat(
       parameters: {
         model: 'gpt-4o-mini',
         response_format: { type: 'json_object' },
         messages: [
-          { role: 'system', content: AI_SYSTEM_PROMPT },
-          { role: 'user', content: "Datos del CRM (últimos 30 días):\n#{JSON.pretty_generate(context)}" }
+          { role: 'system', content: system_prompt },
+          { role: 'user', content: user_content }
         ],
         max_tokens: 2500
       }
     ).dig('choices', 0, 'message', 'content').to_s
+  end
+
+  def parse_json_object(content)
+    parsed = JSON.parse(content.to_s.strip.gsub(/\A```json?\s*|\s*```\z/, ''))
+    parsed.is_a?(Hash) ? parsed : {}
   end
 
   def parse_ai_response(content)
@@ -651,5 +750,217 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
            .group(:resolution_type)
            .count
            .map { |(name, type), count| { agent: name, type: type, count: count } }
+  end
+
+  def win_loss_cache_key(account)
+    "romicars:win_loss:v1:#{account.id}"
+  end
+
+  def build_win_loss(account)
+    facts = win_loss_facts(insights_context(account))
+    # Transcripts go to the model only. They are not part of the response: the panel
+    # shows conclusions and links, not the customer's messages.
+    samples = conversation_samples(account)
+    narrative = win_loss_narrative(facts, samples)
+
+    apply_win_loss_narrative(facts, narrative[:body], samples)
+      .merge(source: narrative[:source], generated_at: Time.current)
+  end
+
+  # The numbers already live in `facts`; a failed or missing AI call only costs the
+  # narrative, which `apply_win_loss_narrative` then fills from the static copy.
+  def win_loss_narrative(facts, samples)
+    key = openai_api_key
+    raise 'No OpenAI API key configured' if key.blank?
+
+    payload = facts.merge(conversaciones: samples)
+    body = parse_json_object(
+      request_ai_json(key, WIN_LOSS_SYSTEM_PROMPT,
+                      "Cifras y conversaciones del CRM (últimos 30 días):\n#{JSON.pretty_generate(payload)}")
+    )
+    raise 'AI returned no usable narrative' if body.blank?
+
+    { body: body, source: 'ai' }
+  rescue StandardError => e
+    Rails.logger.error "RomicarsDashboard win/loss error: #{e.class}: #{e.message}"
+    { body: {}, source: 'rules' }
+  end
+
+  def conversation_samples(account)
+    scope = account.conversations
+                   .where(status: :resolved, resolved_at: 30.days.ago..)
+                   .includes(:messages, :assignee, :inbox)
+
+    {
+      perdidas: transcripts(scope.where(resolution_type: 'perdido'), SAMPLE_LOST),
+      ganadas: transcripts(scope.where(resolution_type: 'ganado'), SAMPLE_WON)
+    }
+  end
+
+  def transcripts(scope, limit)
+    scope.order(resolved_at: :desc).limit(limit).map do |conversation|
+      {
+        id: conversation.display_id,
+        motivo: conversation.resolution_reason,
+        agente: conversation.assignee&.name,
+        canal: conversation.inbox&.channel_type.to_s.split('::').last,
+        nota_de_cierre: conversation.resolution_notes.presence,
+        mensajes: transcript_lines(conversation)
+      }
+    end
+  end
+
+  # First two messages and the last four: the opening tells what the customer asked for,
+  # the tail tells how it ended. The middle of a long chat rarely changes the diagnosis.
+  def transcript_lines(conversation)
+    chat = conversation.messages
+                       .reject { |message| message.private? || %w[incoming outgoing].exclude?(message.message_type) }
+                       .select { |message| message.content.present? }
+                       .sort_by(&:created_at)
+    chat = chat.first(2) + chat.last(SAMPLE_MESSAGES - 2) if chat.size > SAMPLE_MESSAGES
+
+    chat.map do |message|
+      "#{message.incoming? ? 'cliente' : 'agente'}: #{message.content.to_s.squish.truncate(SAMPLE_MESSAGE_CHARS)}"
+    end
+  end
+
+  # Every figure here comes from SQL. The AI never produces one.
+  def win_loss_facts(ctx)
+    perdidas = ctx[:perdidas]
+
+    {
+      periodo: ctx[:periodo],
+      perdidas: {
+        total: perdidas[:total],
+        resumen: nil,
+        patrones: [],
+        causas: loss_causes(perdidas),
+        repuestos_sin_stock: perdidas[:repuestos_pedidos_sin_stock].first(6).map do |producto, veces|
+          { producto: producto, veces: veces }
+        end
+      },
+      ganadas: {
+        total: ctx[:cierres][:ganado],
+        tasa_conversion_pct: ctx[:cierres][:tasa_conversion_pct],
+        monto_total_usd: ctx[:ventas][:monto_total_usd],
+        ticket_promedio_usd: ctx[:ventas][:ticket_promedio_usd],
+        resumen: nil,
+        patrones: [],
+        practicas: win_signals(ctx)
+      }
+    }
+  end
+
+  def loss_causes(perdidas)
+    perdidas[:por_motivo].filter_map do |motivo, data|
+      next if data[:cantidad].zero?
+
+      {
+        motivo: motivo,
+        etiqueta: LOSS_LABELS.fetch(motivo, motivo.tr('_', ' ')),
+        cantidad: data[:cantidad],
+        pct: data[:pct_de_las_perdidas]
+      }
+    end.sort_by { |causa| -causa[:cantidad] }
+  end
+
+  # A "signal" is a metric where the won conversations measurably did something the lost
+  # ones did not. Anything without a gap is left out rather than padded into a practice.
+  def win_signals(ctx)
+    comp = ctx[:ganado_vs_perdido]
+    tiempos = comp[:minutos_primera_respuesta]
+    signals = []
+
+    if tiempos['ganado'] && tiempos['perdido'] && tiempos['perdido'] > tiempos['ganado']
+      signals << { clave: 'respuesta', titulo: 'Contestar rápido el primer mensaje',
+                   evidencia: "Primera respuesta: #{tiempos['ganado']} min en las ganadas vs #{tiempos['perdido']} min en las perdidas." }
+    end
+
+    if (canal = best_win_rate(comp[:por_canal]))
+      signals << { clave: 'canal', titulo: "#{canal[:label].capitalize} es el canal que más cierra",
+                   evidencia: "#{canal[:pct]}% ganadas sobre #{canal[:total]} cierres por ese canal." }
+    end
+
+    if (agente = best_win_rate(comp[:por_agente]))
+      signals << { clave: 'agente', titulo: "#{agente[:label]} cierra mejor que el resto",
+                   evidencia: "#{agente[:ganado]} ganadas de #{agente[:total]} cierres (#{agente[:pct]}%)." }
+    end
+
+    if (prioridad = best_win_rate(comp[:por_prioridad]))
+      etiqueta = PRIORITY_LABELS.fetch(prioridad[:label], prioridad[:label])
+      signals << { clave: 'prioridad', titulo: "Las marcadas con prioridad #{etiqueta} cierran más",
+                   evidencia: "#{prioridad[:pct]}% ganadas sobre #{prioridad[:total]} cierres con esa prioridad." }
+    end
+
+    signals
+  end
+
+  # `min_closes` keeps a single lucky sale from being reported as "the best channel".
+  def best_win_rate(counts, min_closes = 3)
+    counts.filter_map do |label, by_type|
+      ganado = by_type['ganado'].to_i
+      total  = ganado + by_type['perdido'].to_i
+      next if total < min_closes || label == 'sin_definir' || ganado.zero?
+
+      { label: label, ganado: ganado, total: total, pct: percentage_of(ganado, total) }
+    end.max_by { |row| [row[:pct], row[:total]] }
+  end
+
+  def apply_win_loss_narrative(facts, narrative, samples)
+    causas    = narrative.dig('perdidas', 'causas') || {}
+    practicas = narrative.dig('ganadas', 'practicas') || {}
+
+    facts[:perdidas][:causas].each do |causa|
+      text = causas[causa[:motivo]] || {}
+      causa[:diagnostico] = text['diagnostico'].presence || LOSS_DIAGNOSIS.fetch(causa[:motivo], LOSS_DIAGNOSIS['otro'])
+      causa[:accion]      = text['accion'].presence || LOSS_ACTION.fetch(causa[:motivo], LOSS_ACTION['otro'])
+    end
+
+    facts[:ganadas][:practicas].each do |practica|
+      text = practicas[practica[:clave]] || {}
+      practica[:practica] = text['practica'].presence || practica[:titulo]
+      practica[:accion]   = text['accion'].presence || WIN_ACTION[practica[:clave]]
+    end
+
+    facts[:perdidas][:resumen] = narrative.dig('perdidas', 'resumen').presence || default_loss_summary(facts)
+    facts[:ganadas][:resumen]  = narrative.dig('ganadas', 'resumen').presence || default_win_summary(facts)
+
+    facts[:perdidas][:patrones] = read_patterns(narrative.dig('perdidas', 'patrones'), samples[:perdidas])
+    facts[:ganadas][:patrones]  = read_patterns(narrative.dig('ganadas', 'patrones'), samples[:ganadas])
+    facts[:conversaciones_analizadas] = samples[:perdidas].size + samples[:ganadas].size
+    facts
+  end
+
+  def read_patterns(raw, sample)
+    valid_ids = sample.pluck(:id)
+
+    Array(raw).filter_map do |pattern|
+      next unless pattern.is_a?(Hash) && pattern['hallazgo'].present?
+
+      {
+        hallazgo: pattern['hallazgo'],
+        evidencia: pattern['evidencia'],
+        accion: pattern['accion'],
+        # The model does invent display_ids. Only ids it was actually given survive, so a
+        # link in the panel always opens a conversation that exists.
+        conversaciones: Array(pattern['conversaciones']).map(&:to_i) & valid_ids
+      }
+    end.first(SAMPLE_PATTERNS)
+  end
+
+  def default_loss_summary(facts)
+    top = facts[:perdidas][:causas].first
+    return 'Sin cierres perdidos registrados en el período.' if top.blank?
+
+    "#{facts[:perdidas][:total]} conversaciones perdidas. El motivo que más pesa es " \
+      "#{top[:etiqueta].downcase} con #{top[:cantidad]} (#{top[:pct]}%)."
+  end
+
+  def default_win_summary(facts)
+    ganadas = facts[:ganadas]
+    return 'Sin cierres ganados registrados en el período.' unless ganadas[:total].positive?
+
+    "#{ganadas[:total]} conversaciones ganadas (#{ganadas[:tasa_conversion_pct]}% de los cierres) " \
+      "por #{ganadas[:monto_total_usd]} USD, con ticket promedio de #{ganadas[:ticket_promedio_usd]} USD."
   end
 end

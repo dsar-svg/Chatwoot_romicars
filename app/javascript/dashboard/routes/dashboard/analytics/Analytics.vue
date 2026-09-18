@@ -10,6 +10,7 @@ import ProductDemand from './components/ProductDemand.vue';
 import ProfitProducts from './components/ProfitProducts.vue';
 import VenezuelaMap from './components/VenezuelaMap.vue';
 import ResolutionBreakdown from './components/ResolutionBreakdown.vue';
+import WinLossAnalysis from './components/WinLossAnalysis.vue';
 import MetricDetailModal from './components/MetricDetailModal.vue';
 
 const loading = ref({
@@ -17,6 +18,7 @@ const loading = ref({
   agents: true,
   demand: true,
   aiInsights: true,
+  winLoss: true,
   profit: true,
 });
 
@@ -24,6 +26,12 @@ const overview = ref({ kpis: {}, mini_metrics: {} });
 const agents = ref([]);
 const demand = ref({});
 const aiInsights = ref({ insights: [], source: 'rules' });
+const winLoss = ref({
+  perdidas: { total: 0, causas: [], patrones: [], repuestos_sin_stock: [] },
+  ganadas: { total: 0, practicas: [], patrones: [] },
+  conversaciones_analizadas: 0,
+  source: 'rules',
+});
 const profit = ref({
   products_top: [],
   products_bottom: [],
@@ -77,6 +85,15 @@ async function loadAIInsights() {
   }
 }
 
+async function loadWinLoss() {
+  try {
+    const { data } = await api.getWinLoss();
+    winLoss.value = data;
+  } finally {
+    loading.value.winLoss = false;
+  }
+}
+
 async function loadProfit() {
   try {
     const { data } = await api.getProfit();
@@ -95,6 +112,7 @@ async function refresh() {
     loadAgents(),
     loadDemand(),
     loadAIInsights(),
+    loadWinLoss(),
     loadProfit(),
   ]);
   if (results.some(r => r.status === 'rejected')) {
@@ -196,6 +214,15 @@ onUnmounted(() => {
 
       <!-- Resolution Breakdown -->
       <ResolutionBreakdown />
+
+      <!-- Win / loss analysis -->
+      <WinLossAnalysis
+        :perdidas="winLoss.perdidas"
+        :ganadas="winLoss.ganadas"
+        :analizadas="winLoss.conversaciones_analizadas"
+        :source="winLoss.source"
+        :loading="loading.winLoss"
+      />
 
       <!-- Profit Products + Venezuela Map -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
