@@ -125,6 +125,8 @@ Rails.application.routes.draw do
           end
           resources :canned_responses, only: [:index, :create, :update, :destroy]
           resources :faqs, only: [:index, :show, :create, :update, :destroy]
+          resources :location_states, only: [:index]
+          resources :location_cities, only: [:index]
           resources :vehicle_brands, only: [:index, :show, :create, :update, :destroy]
           resources :vehicle_models, only: [:index, :show, :create, :update, :destroy]
           resources :vehicle_prices, only: [:index, :show, :create, :update, :destroy] do

@@ -120,7 +120,7 @@
           "AUDIENCE": {
             "LABEL": "Audiencia",
             "PLACEHOLDER": "Seleccione las etiquetas personalizadas",
-            "ERROR": "El público es requerido"
+            "ERROR": "Seleccione al menos un filtro de audiencia"
           },
           "SCHEDULED_AT": {
             "LABEL": "Programar tiempo",
@@ -185,7 +185,7 @@
           "AUDIENCE": {
             "LABEL": "Audiencia",
             "PLACEHOLDER": "Seleccione las etiquetas personalizadas",
-            "ERROR": "El público es requerido"
+            "ERROR": "Seleccione al menos un filtro de audiencia"
           },
           "SCHEDULED_AT": {
             "LABEL": "Programar tiempo",
@@ -210,6 +210,32 @@
       "API": {
         "SUCCESS_MESSAGE": "Campaña borrada satisfactoriamente",
         "ERROR_MESSAGE": "Se presentó un error. Por favor intente nuevamente."
+      }
+    },
+    "AUDIENCE_FIELDS": {
+      "LABELS": {
+        "LABEL": "Etiquetas",
+        "PLACEHOLDER": "Seleccione las etiquetas del cliente"
+      },
+      "BRANDS": {
+        "LABEL": "Marca del vehículo",
+        "PLACEHOLDER": "Seleccione una o varias marcas",
+        "EMPTY": "Todavía no hay marcas registradas"
+      },
+      "MODELS": {
+        "LABEL": "Modelo del vehículo",
+        "PLACEHOLDER": "Seleccione uno o varios modelos",
+        "EMPTY": "No hay modelos para las marcas seleccionadas"
+      },
+      "STATES": {
+        "LABEL": "Estado",
+        "PLACEHOLDER": "Seleccione uno o varios estados",
+        "EMPTY": "Todavía no hay estados registrados"
+      },
+      "CITIES": {
+        "LABEL": "Ciudad",
+        "PLACEHOLDER": "Seleccione una o varias ciudades",
+        "EMPTY": "No hay ciudades para los estados seleccionados"
       }
     }
   }

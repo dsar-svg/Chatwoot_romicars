@@ -9,7 +9,12 @@ import Input from 'dashboard/components-next/input/Input.vue';
 import TextArea from 'dashboard/components-next/textarea/TextArea.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
-import TagMultiSelectComboBox from 'dashboard/components-next/combobox/TagMultiSelectComboBox.vue';
+import CampaignAudienceFields from 'dashboard/components-next/Campaigns/CampaignAudienceFields.vue';
+import {
+  buildCampaignAudience,
+  emptyAudienceSelection,
+  hasAudienceSelection,
+} from 'dashboard/helper/campaignAudience';
 
 const emit = defineEmits(['submit', 'cancel']);
 
@@ -17,26 +22,25 @@ const { t } = useI18n();
 
 const formState = {
   uiFlags: useMapGetter('campaigns/getUIFlags'),
-  labels: useMapGetter('labels/getLabels'),
   inboxes: useMapGetter('inboxes/getSMSInboxes'),
 };
 
-const initialState = {
+const initialState = () => ({
   title: '',
   message: '',
   inboxId: null,
   scheduledAt: null,
-  selectedAudience: [],
-};
+  audience: emptyAudienceSelection(),
+});
 
-const state = reactive({ ...initialState });
+const state = reactive(initialState());
 
 const rules = {
   title: { required, minLength: minLength(1) },
   message: { required, minLength: minLength(1) },
   inboxId: { required },
   scheduledAt: { required },
-  selectedAudience: { required },
+  audience: { hasSelection: hasAudienceSelection },
 };
 
 const v$ = useVuelidate(rules, state);
@@ -56,10 +60,6 @@ const mapToOptions = (items, valueKey, labelKey) =>
     label: item[labelKey],
   })) ?? [];
 
-const audienceList = computed(() =>
-  mapToOptions(formState.labels.value, 'id', 'title')
-);
-
 const inboxOptions = computed(() =>
   mapToOptions(formState.inboxes.value, 'id', 'name')
 );
@@ -74,7 +74,7 @@ const formErrors = computed(() => ({
   message: getErrorMessage('message', 'MESSAGE'),
   inbox: getErrorMessage('inboxId', 'INBOX'),
   scheduledAt: getErrorMessage('scheduledAt', 'SCHEDULED_AT'),
-  audience: getErrorMessage('selectedAudience', 'AUDIENCE'),
+  audience: getErrorMessage('audience', 'AUDIENCE'),
 }));
 
 const isSubmitDisabled = computed(() => v$.value.$invalid);
@@ -83,7 +83,7 @@ const formatToUTCString = localDateTime =>
   localDateTime ? new Date(localDateTime).toISOString() : null;
 
 const resetState = () => {
-  Object.assign(state, initialState);
+  Object.assign(state, initialState());
 };
 
 const handleCancel = () => emit('cancel');
@@ -93,10 +93,7 @@ const prepareCampaignDetails = () => ({
   message: state.message,
   inbox_id: state.inboxId,
   scheduled_at: formatToUTCString(state.scheduledAt),
-  audience: state.selectedAudience?.map(id => ({
-    id,
-    type: 'Label',
-  })),
+  audience: buildCampaignAudience(state.audience),
 });
 
 const handleSubmit = async () => {
@@ -143,20 +140,11 @@ const handleSubmit = async () => {
       />
     </div>
 
-    <div class="flex flex-col gap-1">
-      <label for="audience" class="mb-0.5 text-sm font-medium text-n-slate-12">
-        {{ t('CAMPAIGN.SMS.CREATE.FORM.AUDIENCE.LABEL') }}
-      </label>
-      <TagMultiSelectComboBox
-        v-model="state.selectedAudience"
-        :options="audienceList"
-        :label="t('CAMPAIGN.SMS.CREATE.FORM.AUDIENCE.LABEL')"
-        :placeholder="t('CAMPAIGN.SMS.CREATE.FORM.AUDIENCE.PLACEHOLDER')"
-        :has-error="!!formErrors.audience"
-        :message="formErrors.audience"
-        class="[&>div>button]:bg-n-alpha-black2"
-      />
-    </div>
+    <CampaignAudienceFields
+      v-model="state.audience"
+      :has-error="!!formErrors.audience"
+      :message="formErrors.audience"
+    />
 
     <Input
       v-model="state.scheduledAt"

@@ -120,7 +120,7 @@
           "AUDIENCE": {
             "LABEL": "Audience",
             "PLACEHOLDER": "Select the customer labels",
-            "ERROR": "Audience is required"
+            "ERROR": "Select at least one audience filter"
           },
           "SCHEDULED_AT": {
             "LABEL": "Scheduled time",
@@ -185,7 +185,7 @@
           "AUDIENCE": {
             "LABEL": "Audience",
             "PLACEHOLDER": "Select the customer labels",
-            "ERROR": "Audience is required"
+            "ERROR": "Select at least one audience filter"
           },
           "SCHEDULED_AT": {
             "LABEL": "Scheduled time",
@@ -210,6 +210,32 @@
       "API": {
         "SUCCESS_MESSAGE": "Campaign deleted successfully",
         "ERROR_MESSAGE": "There was an error. Please try again."
+      }
+    },
+    "AUDIENCE_FIELDS": {
+      "LABELS": {
+        "LABEL": "Labels",
+        "PLACEHOLDER": "Select the customer labels"
+      },
+      "BRANDS": {
+        "LABEL": "Vehicle brand",
+        "PLACEHOLDER": "Select one or more brands",
+        "EMPTY": "No brands registered yet"
+      },
+      "MODELS": {
+        "LABEL": "Vehicle model",
+        "PLACEHOLDER": "Select one or more models",
+        "EMPTY": "No models for the selected brands"
+      },
+      "STATES": {
+        "LABEL": "State",
+        "PLACEHOLDER": "Select one or more states",
+        "EMPTY": "No states registered yet"
+      },
+      "CITIES": {
+        "LABEL": "City",
+        "PLACEHOLDER": "Select one or more cities",
+        "EMPTY": "No cities for the selected states"
       }
     }
   }

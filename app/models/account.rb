@@ -75,6 +75,8 @@ class Account < ApplicationRecord
   has_many :bot_logs, dependent: :destroy_async
   has_many :product_inquiries, dependent: :destroy_async
   has_many :faqs, dependent: :destroy_async
+  has_many :location_states, dependent: :destroy_async
+  has_many :location_cities, dependent: :destroy_async
   has_many :vehicle_brands, dependent: :destroy_async
   has_many :vehicle_models, dependent: :destroy_async
   has_many :vehicle_prices, dependent: :destroy_async

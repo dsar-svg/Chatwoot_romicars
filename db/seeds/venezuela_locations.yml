@@ -1,0 +1,232 @@
+# Catálogo de estados y ciudades de Venezuela para el selector de ubicación.
+#
+# Son las 23 entidades federales más el Distrito Capital, y por cada una las
+# ciudades y poblaciones principales — las que un cliente nombra al escribir.
+# NO es el registro completo de municipios y parroquias: si falta una localidad,
+# agregala a esta lista y volvé a correr `rake locations:seed`, que es idempotente.
+Amazonas:
+  - Puerto Ayacucho
+  - San Fernando de Atabapo
+  - La Esmeralda
+  - Maroa
+Anzoátegui:
+  - Barcelona
+  - Puerto La Cruz
+  - Lechería
+  - Guanta
+  - El Tigre
+  - San José de Guanipa
+  - Anaco
+  - Cantaura
+  - Pariaguán
+  - Puerto Píritu
+  - Clarines
+Apure:
+  - San Fernando de Apure
+  - Biruaca
+  - Guasdualito
+  - Achaguas
+  - Elorza
+  - Bruzual
+Aragua:
+  - Maracay
+  - Turmero
+  - La Victoria
+  - Cagua
+  - Villa de Cura
+  - Palo Negro
+  - El Limón
+  - San Mateo
+  - Santa Cruz de Aragua
+  - Las Tejerías
+  - Colonia Tovar
+  - Ocumare de la Costa
+Barinas:
+  - Barinas
+  - Barinitas
+  - Socopó
+  - Sabaneta
+  - Santa Bárbara de Barinas
+  - Ciudad Bolivia
+  - Libertad
+Bolívar:
+  - Ciudad Bolívar
+  - Ciudad Guayana
+  - Puerto Ordaz
+  - San Félix
+  - Upata
+  - El Callao
+  - Guasipati
+  - Tumeremo
+  - Caicara del Orinoco
+  - Santa Elena de Uairén
+Carabobo:
+  - Valencia
+  - Naguanagua
+  - San Diego
+  - Los Guayos
+  - Guacara
+  - Tocuyito
+  - Puerto Cabello
+  - Morón
+  - Mariara
+  - Güigüe
+  - Bejuma
+  - Montalbán
+Cojedes:
+  - San Carlos
+  - Tinaquillo
+  - Tinaco
+  - El Baúl
+  - Las Vegas
+  - El Pao
+Delta Amacuro:
+  - Tucupita
+  - Pedernales
+  - Curiapo
+Distrito Capital:
+  - Caracas
+Falcón:
+  - Coro
+  - La Vela de Coro
+  - Punto Fijo
+  - Pueblo Nuevo
+  - Puerto Cumarebo
+  - Dabajuro
+  - Churuguara
+  - Tucacas
+  - Chichiriviche
+  - Mene de Mauroa
+Guárico:
+  - San Juan de los Morros
+  - Calabozo
+  - Valle de la Pascua
+  - Zaraza
+  - Altagracia de Orituco
+  - Tucupido
+  - El Socorro
+  - Las Mercedes del Llano
+La Guaira:
+  - La Guaira
+  - Catia La Mar
+  - Maiquetía
+  - Macuto
+  - Caraballeda
+  - Naiguatá
+  - Carayaca
+Lara:
+  - Barquisimeto
+  - Cabudare
+  - Carora
+  - El Tocuyo
+  - Quíbor
+  - Duaca
+  - Sanare
+  - Siquisique
+Mérida:
+  - Mérida
+  - El Vigía
+  - Ejido
+  - Tovar
+  - Lagunillas
+  - Santa Cruz de Mora
+  - Bailadores
+  - Timotes
+  - Mucuchíes
+Miranda:
+  - Los Teques
+  - Guarenas
+  - Guatire
+  - Petare
+  - Baruta
+  - Chacao
+  - El Hatillo
+  - Carrizal
+  - San Antonio de los Altos
+  - Charallave
+  - Cúa
+  - Ocumare del Tuy
+  - Santa Teresa del Tuy
+  - Santa Lucía
+  - Higuerote
+  - Río Chico
+  - Caucagua
+Monagas:
+  - Maturín
+  - Punta de Mata
+  - Caripito
+  - Caripe
+  - Temblador
+  - Aguasay
+  - Quiriquire
+  - Barrancas del Orinoco
+Nueva Esparta:
+  - Porlamar
+  - La Asunción
+  - Pampatar
+  - Juan Griego
+  - El Valle del Espíritu Santo
+  - Punta de Piedras
+  - Boca de Río
+Portuguesa:
+  - Guanare
+  - Acarigua
+  - Araure
+  - Villa Bruzual
+  - Turén
+  - Biscucuy
+  - Ospino
+  - Píritu
+Sucre:
+  - Cumaná
+  - Carúpano
+  - Güiria
+  - Cariaco
+  - Araya
+  - Casanay
+  - Río Caribe
+  - Marigüitar
+Táchira:
+  - San Cristóbal
+  - Táriba
+  - San Antonio del Táchira
+  - Ureña
+  - Rubio
+  - La Fría
+  - San Juan de Colón
+  - Michelena
+  - Palmira
+  - Santa Ana del Táchira
+Trujillo:
+  - Trujillo
+  - Valera
+  - Boconó
+  - Carvajal
+  - Sabana de Mendoza
+  - Pampanito
+  - Escuque
+  - Motatán
+  - La Quebrada
+Yaracuy:
+  - San Felipe
+  - Yaritagua
+  - Chivacoa
+  - Nirgua
+  - Cocorote
+  - Aroa
+  - Urachiche
+Zulia:
+  - Maracaibo
+  - San Francisco
+  - Cabimas
+  - Ciudad Ojeda
+  - Lagunillas
+  - Santa Rita
+  - Bachaquero
+  - Mene Grande
+  - Machiques
+  - Villa del Rosario
+  - La Concepción
+  - Santa Bárbara del Zulia
+  - Los Puertos de Altagracia
+  - El Moján
