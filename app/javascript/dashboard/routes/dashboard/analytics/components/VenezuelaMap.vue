@@ -1,36 +1,16 @@
 <script setup>
 import { computed, ref } from 'vue';
+import {
+  MAP_W,
+  MAP_H,
+  toSvg,
+  VENEZUELA_PATH,
+} from 'dashboard/helper/venezuelaGeo';
 
 const props = defineProps({
   customers: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
 });
-
-// Simplified Venezuela GeoJSON bounding box:
-// Lat: 0.6 to 12.2 (N)  /  Lng: -73.4 to -59.8 (W)
-const MAP_W = 500;
-const MAP_H = 300;
-const LAT_MIN = 0.6;
-const LAT_MAX = 12.2;
-const LNG_MIN = -73.4;
-const LNG_MAX = -59.8;
-
-function toSvg(lat, lng) {
-  const x = ((lng - LNG_MIN) / (LNG_MAX - LNG_MIN)) * MAP_W;
-  const y = MAP_H - ((lat - LAT_MIN) / (LAT_MAX - LAT_MIN)) * MAP_H;
-  return { x, y };
-}
-
-// Simplified Venezuela outline (clockwise, major coastal points)
-const venezuelaPath = `
-  M 380,10 L 410,20 L 440,35 L 460,28 L 480,40 L 495,55 L 498,80 L 490,95
-  L 470,100 L 455,115 L 445,135 L 430,150 L 420,165 L 415,185 L 400,200
-  L 390,215 L 370,225 L 355,240 L 335,248 L 310,250 L 285,252 L 260,248
-  L 235,240 L 215,230 L 200,215 L 195,200 L 190,185 L 180,170 L 165,160
-  L 150,148 L 135,135 L 120,125 L 105,115 L 90,105 L 75,95 L 60,85
-  L 45,75 L 30,65 L 15,55 L 10,40 L 18,28 L 32,20 L 55,15 L 80,10
-  L 110,8 L 145,6 L 180,5 L 215,4 L 250,3 L 285,4 L 320,6 L 350,8 Z
-`;
 
 const tooltip = ref(null);
 const tooltipPos = ref({ x: 0, y: 0 });
@@ -72,12 +52,12 @@ function hideTooltip() {
     <div v-else class="relative overflow-hidden rounded-lg bg-n-blue-2">
       <svg
         :viewBox="`0 0 ${MAP_W} ${MAP_H}`"
-        class="w-full h-auto max-h-[280px]"
+        class="w-full h-auto max-h-[340px]"
         @mouseleave="hideTooltip"
       >
         <!-- Country outline -->
         <path
-          :d="venezuelaPath"
+          :d="VENEZUELA_PATH"
           class="fill-n-blue-4 stroke-n-blue-7"
           stroke-width="1.5"
           stroke-linejoin="round"
@@ -127,20 +107,18 @@ function hideTooltip() {
         </g>
       </svg>
 
-      <!-- No customers placeholder -->
-      <div
+      <!-- No customers: a caption along the bottom rather than a panel over the map. The
+           map is the point of the card even when there is nothing plotted on it yet. -->
+      <p
         v-if="!dots.length"
-        class="absolute inset-0 flex flex-col items-center justify-center"
+        class="absolute inset-x-0 bottom-0 py-2 text-center text-xs text-n-slate-11 bg-n-alpha-2 backdrop-blur-sm"
       >
-        <span class="i-lucide-map size-10 text-n-slate-9 mb-2" />
-        <p class="text-xs text-n-slate-9">
-          {{
-            customers.length
-              ? 'Los clientes no tienen coordenadas'
-              : 'Sin datos de clientes (Profit API)'
-          }}
-        </p>
-      </div>
+        {{
+          customers.length
+            ? 'Los clientes no tienen coordenadas'
+            : 'Sin datos de clientes (Profit API)'
+        }}
+      </p>
     </div>
   </div>
 </template>
