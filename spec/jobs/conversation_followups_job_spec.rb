@@ -5,6 +5,12 @@ require 'rails_helper'
 RSpec.describe ConversationFollowupsJob do
   subject(:job) { described_class.new }
 
+  # The job ships dormant so a bad eligibility query cannot message customers on deploy.
+  # Every example here runs it switched on; the off case is its own test below.
+  around do |example|
+    with_modified_env(FOLLOWUPS_ENABLED: 'true') { example.run }
+  end
+
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:contact) { create(:contact, account: account, name: 'Ricardo') }
@@ -184,6 +190,19 @@ RSpec.describe ConversationFollowupsJob do
 
       expect(ConversationFollowup.last.status).to eq('replied')
       expect(conversation.reload.status).to eq('open')
+    end
+  end
+
+  describe 'the kill switch' do
+    it 'does nothing at all while FOLLOWUPS_ENABLED is unset' do
+      with_modified_env(FOLLOWUPS_ENABLED: nil) do
+        travel_to(midday) do
+          quiet_conversation
+          job.perform
+        end
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
     end
   end
 end

@@ -22,13 +22,22 @@ class ConversationFollowupsJob < ApplicationJob
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
+  # Off unless switched on. This job writes to real customers on its own every fifteen
+  # minutes, so it ships dormant: deploy, migrate, watch one tick, then set the variable.
+  # It is also the fastest way to stop it if the eligibility query turns out to be wrong.
   def perform
+    return Rails.logger.info('[Followups] disabled (FOLLOWUPS_ENABLED is not true)') unless enabled?
+
     schedule_new
     send_due
     resolve_sent
   end
 
   private
+
+  def enabled?
+    ENV.fetch('FOLLOWUPS_ENABLED', 'false') == 'true'
+  end
 
   # Mirrors Chatwoot's own `resolvable_not_waiting` scope: `waiting_since IS NULL` means an
   # agent or the bot answered last, so the ball is in the customer's court. With it set, the
