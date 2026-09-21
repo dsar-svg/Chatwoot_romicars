@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_08_27_000003) do
+ActiveRecord::Schema[7.2].define(version: 2026_09_21_000001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -801,6 +801,26 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000003) do
     t.index ["phone_number", "account_id"], name: "index_contacts_on_phone_number_and_account_id"
   end
 
+  create_table "conversation_followups", force: :cascade do |t|
+    t.bigint "conversation_id", null: false
+    t.bigint "account_id", null: false
+    t.string "etapa", null: false
+    t.string "status", default: "pending", null: false
+    t.string "mode", default: "auto", null: false
+    t.integer "attempt", default: 1, null: false
+    t.text "motivo"
+    t.text "mensaje"
+    t.datetime "scheduled_at", null: false
+    t.datetime "sent_at"
+    t.datetime "cancelled_at"
+    t.string "cancel_reason"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_conversation_followups_on_account_id"
+    t.index ["conversation_id", "attempt"], name: "idx_followups_conversation_attempt", unique: true
+    t.index ["scheduled_at"], name: "idx_followups_pending_due", where: "((status)::text = 'pending'::text)"
+  end
+
   create_table "conversation_outcomes", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.bigint "assistant_id", null: false
@@ -1233,6 +1253,30 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000003) do
     t.index ["account_id"], name: "index_leaves_on_account_id"
     t.index ["approved_by_id"], name: "index_leaves_on_approved_by_id"
     t.index ["user_id"], name: "index_leaves_on_user_id"
+  end
+
+  create_table "location_cities", force: :cascade do |t|
+    t.bigint "location_state_id", null: false
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_location_cities_on_account_id_and_active"
+    t.index ["account_id"], name: "index_location_cities_on_account_id"
+    t.index ["location_state_id", "name"], name: "index_location_cities_on_location_state_id_and_name", unique: true
+    t.index ["location_state_id"], name: "index_location_cities_on_location_state_id"
+  end
+
+  create_table "location_states", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active"], name: "index_location_states_on_account_id_and_active"
+    t.index ["account_id", "name"], name: "index_location_states_on_account_id_and_name", unique: true
+    t.index ["account_id"], name: "index_location_states_on_account_id"
   end
 
   create_table "macros", force: :cascade do |t|
@@ -1692,9 +1736,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_27_000003) do
   add_foreign_key "bot_logs", "accounts", on_delete: :cascade
   add_foreign_key "bot_logs", "contacts", on_delete: :nullify
   add_foreign_key "bot_logs", "conversations", on_delete: :cascade
+  add_foreign_key "conversation_followups", "accounts", on_delete: :cascade
+  add_foreign_key "conversation_followups", "conversations", on_delete: :cascade
   add_foreign_key "exchange_rates", "accounts", on_delete: :cascade
   add_foreign_key "faqs", "accounts", on_delete: :cascade
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "location_cities", "accounts", on_delete: :cascade
+  add_foreign_key "location_cities", "location_states", on_delete: :cascade
+  add_foreign_key "location_states", "accounts", on_delete: :cascade
   add_foreign_key "product_inquiries", "accounts", on_delete: :cascade
   add_foreign_key "product_inquiries", "conversations", on_delete: :cascade
   add_foreign_key "user_sessions", "users"
