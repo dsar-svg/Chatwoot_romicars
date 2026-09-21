@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import api from 'dashboard/api/romicarsAnalytics';
 import { useAlert } from 'dashboard/composables';
+import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import AIInsights from './components/AIInsights.vue';
 import KPICards from './components/KPICards.vue';
 import LeadMetrics from './components/LeadMetrics.vue';
@@ -41,6 +42,15 @@ const profit = ref({
 });
 
 const lastUpdated = ref(null);
+
+// The two AI panels take seconds to come back and used to sit at the top, so the whole
+// dashboard looked like it was still loading while the numbers below were already there.
+const TABS = [{ label: 'Operación' }, { label: 'Insights IA' }];
+const activeTab = ref(0);
+
+function handleTabChange(tab) {
+  activeTab.value = TABS.findIndex(({ label }) => label === tab.label);
+}
 
 // Modal state
 const showModal = ref(false);
@@ -190,51 +200,66 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- AI Insights -->
-      <AIInsights
-        :insights="aiInsights.insights"
-        :source="aiInsights.source"
-        :loading="loading.aiInsights"
+      <TabBar
+        :tabs="TABS"
+        :initial-active-tab="activeTab"
+        @tab-changed="handleTabChange"
       />
 
-      <!-- KPI Cards -->
-      <KPICards :kpis="overview.kpis" :loading="loading.overview" />
+      <!-- v-show, not v-if: ResolutionBreakdown loads its own data on mount and would
+           refetch on every tab switch. -->
+      <div v-show="activeTab === 0" class="flex flex-col gap-6">
+        <!-- KPI Cards -->
+        <KPICards :kpis="overview.kpis" :loading="loading.overview" />
 
-      <!-- Mini metrics -->
-      <LeadMetrics
-        :metrics="overview.mini_metrics"
-        :loading="loading.overview"
-        @card-click="handleCardClick"
-      />
+        <!-- Mini metrics -->
+        <LeadMetrics
+          :metrics="overview.mini_metrics"
+          :loading="loading.overview"
+          @card-click="handleCardClick"
+        />
 
-      <!-- Agent + Demand -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AgentPerformance :agents="agents" :loading="loading.agents" />
-        <ProductDemand :demand="demand" :loading="loading.demand" />
+        <!-- Agent + Demand -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <AgentPerformance :agents="agents" :loading="loading.agents" />
+          <ProductDemand :demand="demand" :loading="loading.demand" />
+        </div>
+
+        <!-- Resolution Breakdown -->
+        <ResolutionBreakdown />
+
+        <!-- Profit Products + Venezuela Map -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ProfitProducts
+            :products-top="profit.products_top"
+            :products-bottom="profit.products_bottom"
+            :available="profit.available"
+            :loading="loading.profit"
+          />
+          <VenezuelaMap
+            :customers="profit.customers"
+            :loading="loading.profit"
+          />
+        </div>
       </div>
 
-      <!-- Resolution Breakdown -->
-      <ResolutionBreakdown />
-
-      <!-- Win / loss analysis -->
-      <WinLossAnalysis
-        :perdidas="winLoss.perdidas"
-        :ganadas="winLoss.ganadas"
-        :analizadas="winLoss.conversaciones_analizadas"
-        :nuevas="winLoss.conversaciones_nuevas"
-        :source="winLoss.source"
-        :loading="loading.winLoss"
-      />
-
-      <!-- Profit Products + Venezuela Map -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ProfitProducts
-          :products-top="profit.products_top"
-          :products-bottom="profit.products_bottom"
-          :available="profit.available"
-          :loading="loading.profit"
+      <div v-show="activeTab === 1" class="flex flex-col gap-6">
+        <!-- AI Insights -->
+        <AIInsights
+          :insights="aiInsights.insights"
+          :source="aiInsights.source"
+          :loading="loading.aiInsights"
         />
-        <VenezuelaMap :customers="profit.customers" :loading="loading.profit" />
+
+        <!-- Win / loss analysis -->
+        <WinLossAnalysis
+          :perdidas="winLoss.perdidas"
+          :ganadas="winLoss.ganadas"
+          :analizadas="winLoss.conversaciones_analizadas"
+          :nuevas="winLoss.conversaciones_nuevas"
+          :source="winLoss.source"
+          :loading="loading.winLoss"
+        />
       </div>
     </div>
   </div>
