@@ -1,0 +1,208 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe ConversationFollowupsJob do
+  subject(:job) { described_class.new }
+
+  # The job ships dormant so a bad eligibility query cannot message customers on deploy.
+  # Every example here runs it switched on; the off case is its own test below.
+  around do |example|
+    with_modified_env(FOLLOWUPS_ENABLED: 'true') { example.run }
+  end
+
+  let(:account) { create(:account) }
+  let(:inbox) { create(:inbox, account: account) }
+  let(:contact) { create(:contact, account: account, name: 'Ricardo') }
+  let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
+
+  # 2pm Caracas: inside the send window, so the window is never what makes a test pass.
+  let(:midday) { Time.zone.local(2026, 9, 21, 14, 0) }
+
+  # A conversation the customer opened, we answered, and then went quiet on.
+  def quiet_conversation(**attrs)
+    conversation = create(:conversation, account: account, inbox: inbox, contact: contact,
+                                         contact_inbox: contact_inbox, status: :open, **attrs)
+    create(:message, conversation: conversation, account: account, message_type: :incoming,
+                     created_at: 7.hours.ago)
+    create(:message, conversation: conversation, account: account, message_type: :outgoing,
+                     created_at: 6.hours.ago)
+    conversation.update!(waiting_since: nil, last_activity_at: 6.hours.ago)
+    conversation
+  end
+
+  describe 'scheduling' do
+    it 'schedules one follow-up for a conversation that went quiet' do
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+      end
+
+      followup = ConversationFollowup.find_by(conversation: conversation)
+      expect(followup).to have_attributes(status: 'pending', mode: 'auto', attempt: 1)
+    end
+
+    it 'leaves alone a conversation where we are the ones who owe a reply' do
+      travel_to(midday) do
+        quiet_conversation.update!(waiting_since: 6.hours.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'leaves alone a conversation that is still warm' do
+      travel_to(midday) do
+        quiet_conversation.update!(last_activity_at: 1.hour.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'leaves alone a conversation that already ended in a sale' do
+      travel_to(midday) do
+        quiet_conversation.update!(sale_amount: 120)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'never schedules a second one for the same conversation' do
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(1)
+    end
+
+    it 'skips a contact who opted out' do
+      travel_to(midday) do
+        quiet_conversation
+        contact.update!(custom_attributes: { 'followups_opt_out' => 'true' })
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'marks it assisted when a seller already owns the conversation' do
+      agent = create(:user, account: account)
+      travel_to(midday) do
+        quiet_conversation.update!(assignee: agent)
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mode).to eq('assisted')
+    end
+  end
+
+  describe 'sending' do
+    it 'sends the nudge and names the part the customer asked for' do
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        create(:product_inquiry, conversation: conversation, account: account,
+                                 repuesto_buscado: 'kit de clutch', encontrado: true)
+        job.perform
+      end
+
+      followup = ConversationFollowup.last
+      expect(followup.status).to eq('sent')
+      expect(followup.mensaje).to include('Ricardo', 'kit de clutch')
+      expect(conversation.messages.where(message_type: :outgoing).last.content).to eq(followup.mensaje)
+    end
+
+    it 'offers to warn the customer when the part was never in stock' do
+      travel_to(midday) do
+        conversation = quiet_conversation
+        create(:product_inquiry, conversation: conversation, account: account,
+                                 repuesto_buscado: 'bomba de agua', encontrado: false)
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mensaje).to include('apenas entre')
+    end
+
+    it 'cancels instead of sending when the customer came back during the wait' do
+      travel_to(midday) { quiet_conversation && job.perform }
+
+      followup = ConversationFollowup.last
+      create(:message, conversation: followup.conversation, account: account, message_type: :incoming)
+      travel_to(midday + 10.minutes) { job.perform }
+
+      expect(followup.reload).to have_attributes(status: 'cancelled', cancel_reason: 'cliente_respondio')
+    end
+
+    it 'holds everything outside the send window rather than writing at 3am' do
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) do
+        quiet_conversation
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.status).to eq('pending')
+    end
+
+    it 'leaves a private note for the seller instead of writing to the customer' do
+      agent = create(:user, account: account)
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        conversation.update!(assignee: agent)
+        job.perform
+      end
+
+      note = conversation.messages.where(private: true).last
+      expect(note.content).to include('Seguimiento sugerido')
+      expect(conversation.messages.where(private: false, message_type: :outgoing).count).to eq(1)
+    end
+  end
+
+  describe 'closing' do
+    it 'closes as perdido / sin_respuesta when the nudge went unanswered' do
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+      end
+      travel_to(midday + 49.hours) { job.perform }
+
+      expect(conversation.reload).to have_attributes(status: 'resolved', resolution_type: 'perdido',
+                                                     resolution_reason: 'sin_respuesta')
+      expect(ConversationFollowup.last.status).to eq('exhausted')
+    end
+
+    it 'records a reply and leaves the conversation open' do
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+      end
+
+      travel_to(midday + 2.hours) do
+        create(:message, conversation: conversation, account: account, message_type: :incoming)
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.status).to eq('replied')
+      expect(conversation.reload.status).to eq('open')
+    end
+  end
+
+  describe 'the kill switch' do
+    it 'does nothing at all while FOLLOWUPS_ENABLED is unset' do
+      with_modified_env(FOLLOWUPS_ENABLED: nil) do
+        travel_to(midday) do
+          quiet_conversation
+          job.perform
+        end
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+  end
+end

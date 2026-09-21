@@ -81,3 +81,11 @@ fetch_exchange_rates_job:
   cron: '0 */6 * * *'
   class: 'FetchExchangeRatesJob'
   queue: scheduled_jobs
+
+# executed every 15 minutes
+# schedules, sends and closes the single follow-up for conversations the customer
+# went quiet on. The job is idle outside 8am-8pm Caracas.
+conversation_followups_job:
+  cron: '*/15 * * * *'
+  class: 'ConversationFollowupsJob'
+  queue: scheduled_jobs
