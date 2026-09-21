@@ -59,6 +59,12 @@ module Chatwoot
     config.generators.javascripts = false
     config.generators.stylesheets = false
 
+    # Romicars runs a single shop in Venezuela, so Time.current has to mean local time.
+    # Without this the dashboard rolls over to a new day at 8pm, and every "today" count
+    # the shop reads in the evening belongs to tomorrow. Chatwoot native reports are not
+    # affected: they take a timezone_offset per request and call in_time_zone themselves.
+    config.time_zone = 'America/Caracas'
+
     # Custom chatwoot configurations
     config.x = config_for(:app).with_indifferent_access
 
