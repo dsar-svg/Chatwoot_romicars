@@ -2,12 +2,12 @@
 # use https://crontab.guru/ to validate
 # validations for this file exist in /spec/configs/schedule_spec.rb
 
-# executed daily at 0000 UTC
-# schedules daily deferred jobs at stable times for each installation
-internal_check_new_versions_job:
-  cron: '0 0 * * *'
-  class: 'Internal::TriggerDailyScheduledItemsJob'
-  queue: scheduled_jobs
+# Internal::TriggerDailyScheduledItemsJob used to run here, daily at 0000 UTC. Its only
+# work is Internal::CheckNewVersionsJob, which POSTs this instance's config and metrics to
+# Chatwoot's hub and stores the upstream version in Redis. This is a fork on its own release
+# cadence, so that version says nothing about whether this install is behind, and the panel
+# is white-labelled — the banner it fed offered to upgrade a product the shop has never
+# heard of. Dropping the entry also stops the daily telemetry about a client's instance.
 # # executed At every 5th minute..
 trigger_scheduled_items_job:
   cron: '*/5 * * * *'
