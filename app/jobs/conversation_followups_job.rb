@@ -12,8 +12,14 @@ class ConversationFollowupsJob < ApplicationJob
   # should not require touching the logic to do it. `%{repuesto}` is what the customer
   # actually asked for, which is the only reason the message earns a reply — "¿sigues ahí?"
   # earns none.
+  #
+  # None of these may claim the part is in stock. `vehicle_prices` carries a price, a
+  # variant and a currency, but no quantity: a hit on `encontrado` means the part is in the
+  # price list, not that a unit is on the shelf. Offering to hold one, or to warn the
+  # customer when it arrives, would be inventing. Only `sin_stock` speaks about
+  # availability, and it can, because `encontrado: false` is a recorded fact.
   MESSAGES = {
-    'cotizado' => '%<saludo>s¿seguís interesado en %<repuesto>s? Lo tengo disponible 🔧',
+    'cotizado' => '%<saludo>s¿seguís interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
     'sin_stock' => '%<saludo>stodavía no me llega %<repuesto>s. ¿Te aviso apenas entre?',
     'consulta' => '%<saludo>s¿estabas buscando algún repuesto en particular? Te lo reviso 🔧'
   }.freeze
