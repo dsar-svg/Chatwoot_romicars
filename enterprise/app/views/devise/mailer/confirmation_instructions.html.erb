@@ -4,7 +4,12 @@
   account_user = @resource&.account_users&.first
   inviter = account_user&.inviter
   account_name = account_user&.account&.name
-  is_saml_account = account_user&.account&.saml_enabled?
+  # `try` rather than `&.`: enterprise views are unconditionally first in the view path
+  # (config/application.rb), but the enterprise model extensions only load when enterprise
+  # is on. With DISABLE_ENTERPRISE=true this template still renders while Account has no
+  # `saml_enabled?`, so `&.` raised NoMethodError and every confirmation and invitation
+  # email died in the queue. `try` answers nil for a method the receiver does not have.
+  is_saml_account = account_user&.account.try(:saml_enabled?)
   invited_user = inviter.present? && @resource.unconfirmed_email.blank?
 
   eyebrow = 'Welcome'
