@@ -12,9 +12,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   COUNT_DESC = Arel.sql('COUNT(*) DESC')
   FIRST_RESPONSE_MINUTES = Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60')
+  # Same two places Campaigns::AudienceResolver reads: the contact's own city field, which
+  # writes to additional_attributes, and the `estado` custom attribute. City first because
+  # a town is worth more on a map than the state it sits in; `estado` last so a contact
+  # that only has the state still gets plotted, on its capital.
   CONTACT_CITY = Arel.sql(
-    "NULLIF(TRIM(COALESCE(NULLIF(contacts.custom_attributes->>'ciudad', ''), " \
-    "NULLIF(contacts.additional_attributes->>'city', ''), contacts.location, '')), '')"
+    "NULLIF(TRIM(COALESCE(NULLIF(contacts.additional_attributes->>'city', ''), " \
+    "NULLIF(contacts.location, ''), contacts.custom_attributes->>'estado', '')), '')"
   )
 
   AI_SYSTEM_PROMPT = <<~PROMPT
@@ -241,11 +245,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
-  # Where the people who write to us are. Chatwoot only fills `additional_attributes.city`
-  # for website widget contacts (ContactIpLookupJob), so for WhatsApp, Messenger and
-  # Instagram the city has to be asked for and written to `custom_attributes.ciudad`.
-  # `without_city` is reported so the map can say how much of the picture is missing
-  # instead of implying the shop only sells in four towns.
+  # Where the people who write to us are. `without_city` is reported so the map can say how
+  # much of the picture is missing instead of implying the shop only sells in four towns.
   def contact_locations
     account = Current.account
     counts = account.contacts
