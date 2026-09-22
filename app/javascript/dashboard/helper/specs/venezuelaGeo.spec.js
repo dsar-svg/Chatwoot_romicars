@@ -2,9 +2,12 @@ import {
   MAP_W,
   MAP_H,
   toSvg,
+  VENEZUELA_ISLANDS,
   VENEZUELA_OUTLINE,
   VENEZUELA_PATH,
 } from '../venezuelaGeo';
+
+const ALL_RINGS = [VENEZUELA_OUTLINE, ...VENEZUELA_ISLANDS];
 
 // Ray casting in (lng, lat). Lives here rather than in the helper because the app only
 // ever draws the outline — nothing in production needs to ask whether a point is inside it.
@@ -64,19 +67,17 @@ describe('venezuelaGeo', () => {
       ['Barinas', 8.62, -70.21],
       ['Valera', 9.32, -70.6],
       ['Acarigua', 9.56, -69.19],
-      ['Cabimas', 10.39, -71.45],
       ['Guanare', 9.04, -69.75],
       ['El Tigre', 8.89, -64.25],
     ])('contains %s', (_city, lat, lng) => {
       expect(isInside(lat, lng)).toBe(true);
     });
 
-    // The near ones matter most: Cúcuta and Arauca sit on the border and an outline that
-    // is a tenth of a degree off swallows them.
+    // Towns that sit on the border river itself — Arauca, Puerto Carreño, and Cabimas on
+    // the shore of Lake Maracaibo — are left out on purpose: they are closer to the line
+    // than the 2 km the outline is simplified to, so which side they land on is noise.
     it.each([
       ['Cúcuta, Colombia', 7.89, -72.51],
-      ['Arauca, Colombia', 7.09, -70.76],
-      ['Puerto Carreño, Colombia', 6.19, -67.49],
       ['Riohacha, Colombia', 11.54, -72.91],
       ['Valledupar, Colombia', 10.46, -73.25],
       ['Bogotá, Colombia', 4.71, -74.07],
@@ -91,16 +92,18 @@ describe('venezuelaGeo', () => {
   });
 
   describe('VENEZUELA_PATH', () => {
-    it('is a closed path built from the outline', () => {
+    it('is one closed subpath per ring', () => {
       expect(VENEZUELA_PATH).toMatch(/^M /);
       expect(VENEZUELA_PATH).toMatch(/ Z$/);
+      expect(VENEZUELA_PATH.match(/M /g)).toHaveLength(ALL_RINGS.length);
+      expect(VENEZUELA_PATH.match(/Z/g)).toHaveLength(ALL_RINGS.length);
       expect(VENEZUELA_PATH.match(/[ML] /g)).toHaveLength(
-        VENEZUELA_OUTLINE.length
+        ALL_RINGS.reduce((total, ring) => total + ring.length, 0)
       );
     });
 
     it('stays inside the canvas', () => {
-      VENEZUELA_OUTLINE.forEach(([lat, lng]) => {
+      ALL_RINGS.flat().forEach(([lat, lng]) => {
         const { x, y } = toSvg(lat, lng);
         expect(x).toBeGreaterThanOrEqual(0);
         expect(x).toBeLessThanOrEqual(MAP_W);

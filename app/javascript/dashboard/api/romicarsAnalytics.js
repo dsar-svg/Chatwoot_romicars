@@ -18,6 +18,10 @@ class RomicarsDashboardAPI extends ApiClient {
     return axios.get(`${this.url}/demand`);
   }
 
+  getContactLocations() {
+    return axios.get(`${this.url}/contact_locations`);
+  }
+
   getAIInsights() {
     return axios.get(`${this.url}/ai_insights`);
   }

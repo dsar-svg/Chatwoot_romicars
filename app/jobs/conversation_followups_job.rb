@@ -125,6 +125,7 @@ class ConversationFollowupsJob < ApplicationJob
         account_id: conversation.account_id,
         inbox_id: conversation.inbox_id,
         message_type: :outgoing,
+        sender: sender_for(conversation),
         content: body
       )
     end
@@ -137,10 +138,18 @@ class ConversationFollowupsJob < ApplicationJob
       account_id: conversation.account_id,
       inbox_id: conversation.inbox_id,
       message_type: :outgoing,
+      sender: sender_for(conversation),
       private: true,
       content: "Seguimiento sugerido (#{motivo}):\n\n#{body}"
     )
     conversation.add_labels([ASSISTED_LABEL])
+  end
+
+  # A message with no sender is labelled with a generic "Bot" in the dashboard, right next
+  # to the named bot the customer has been talking to all along. The inbox's own agent bot
+  # is the name already on every other outgoing message in that thread.
+  def sender_for(conversation)
+    conversation.inbox.agent_bot
   end
 
   def resolve_sent

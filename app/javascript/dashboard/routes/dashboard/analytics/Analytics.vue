@@ -21,6 +21,7 @@ const loading = ref({
   aiInsights: true,
   winLoss: true,
   profit: true,
+  locations: true,
 });
 
 const overview = ref({ kpis: {}, mini_metrics: {} });
@@ -40,6 +41,8 @@ const profit = ref({
   customers: [],
   available: false,
 });
+
+const contactLocations = ref({ locations: [], without_city: 0 });
 
 const lastUpdated = ref(null);
 
@@ -105,6 +108,15 @@ async function loadWinLoss() {
   }
 }
 
+async function loadContactLocations() {
+  try {
+    const { data } = await api.getContactLocations();
+    contactLocations.value = data;
+  } finally {
+    loading.value.locations = false;
+  }
+}
+
 async function loadProfit() {
   try {
     const { data } = await api.getProfit();
@@ -125,6 +137,7 @@ async function refresh() {
     loadAIInsights(),
     loadWinLoss(),
     loadProfit(),
+    loadContactLocations(),
   ]);
   if (results.some(r => r.status === 'rejected')) {
     useAlert('Algunas secciones del dashboard no se pudieron cargar');
@@ -237,8 +250,9 @@ onUnmounted(() => {
             :loading="loading.profit"
           />
           <VenezuelaMap
-            :customers="profit.customers"
-            :loading="loading.profit"
+            :locations="contactLocations.locations"
+            :without-city="contactLocations.without_city"
+            :loading="loading.locations"
           />
         </div>
       </div>
