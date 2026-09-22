@@ -117,6 +117,19 @@ RSpec.describe ConversationFollowupsJob do
       expect(conversation.messages.where(message_type: :outgoing).last.content).to eq(followup.mensaje)
     end
 
+    it 'signs the nudge with the bot the customer has been talking to' do
+      agent_bot = create(:agent_bot, account: account, name: 'Carlos Asesor')
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot)
+        job.perform
+      end
+
+      # Without a sender the dashboard labels the bubble with a bare "Bot".
+      expect(conversation.messages.where(message_type: :outgoing).last.sender).to eq(agent_bot)
+    end
+
     it 'offers to warn the customer when the part was never in stock' do
       travel_to(midday) do
         conversation = quiet_conversation
