@@ -5,7 +5,16 @@ class ApplicationController < ActionController::Base
   include SwitchLocale
   include TrackSessionActivity
 
-  skip_before_action :verify_authenticity_token, if: -> { request.path.start_with?('/api/') }
+  # Devise controllers are exempt alongside /api/. Everything served through here
+  # authenticates with devise_token_auth headers (access-token / client / uid), which a
+  # cross-origin page cannot set, so there is no CSRF exposure to protect against — and the
+  # frontend never sends a CSRF token, so requiring one simply rejects every /auth/ call
+  # with 422: sign in, sign out and password reset all stop working.
+  #
+  # The super admin is unaffected either way: SuperAdmin::ApplicationController descends
+  # from Administrate's and SuperAdmin::Devise::SessionsController from Devise's, never
+  # from this class, so its cookie-session CSRF protection stays on.
+  skip_before_action :verify_authenticity_token, if: -> { request.path.start_with?('/api/') || devise_controller? }
 
   before_action :set_current_user, unless: :devise_controller?
   around_action :switch_locale
