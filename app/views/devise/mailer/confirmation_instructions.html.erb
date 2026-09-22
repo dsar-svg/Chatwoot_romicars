@@ -6,48 +6,51 @@
   account_name = account_user&.account&.name
   invited_user = inviter.present? && @resource.unconfirmed_email.blank?
 
-  eyebrow = 'Welcome'
-  heading = 'Confirm your email to get started'
+  # Kept in step with enterprise/app/views/devise/mailer/confirmation_instructions.html.erb,
+  # which is the one that actually renders — enterprise views come first in the view path.
+  # This copy is the fallback, and a fallback in another language would be a surprise.
+  eyebrow = 'Bienvenido'
+  heading = 'Confirma tu correo para empezar'
   intro_text =
-    "Welcome to #{brand_name}. We just need to verify your email address before you can start using your account."
-  supporting_text = 'This only takes a moment.'
-  action_text = 'Confirm my account'
+    "Te damos la bienvenida a #{brand_name}. Solo falta verificar tu correo para que puedas usar tu cuenta."
+  supporting_text = 'Toma un momento.'
+  action_text = 'Confirmar mi cuenta'
   action_url = frontend_url('auth/confirmation', confirmation_token: @token)
   info_title = nil
   info_text = nil
   detail_rows = []
-  detail_rows << ['New email', @resource.unconfirmed_email] if @resource.unconfirmed_email.present?
+  detail_rows << ['Correo nuevo', @resource.unconfirmed_email] if @resource.unconfirmed_email.present?
 
   if @resource.unconfirmed_email.present?
-    eyebrow = 'Email update'
-    heading = 'Confirm your new email address'
-    intro_text = "We received a request to update the email address on your #{brand_name} account."
-    supporting_text = 'Confirm the new address below to finish the change.'
-    action_text = 'Confirm email address'
+    eyebrow = 'Cambio de correo'
+    heading = 'Confirma tu nuevo correo'
+    intro_text = "Recibimos una solicitud para cambiar el correo de tu cuenta de #{brand_name}."
+    supporting_text = 'Confirma la nueva dirección para completar el cambio.'
+    action_text = 'Confirmar correo'
   elsif @resource.confirmed?
-    eyebrow = 'Account ready'
-    heading = 'Your account is ready'
-    intro_text = "Your #{brand_name} account is already active."
-    supporting_text = 'Use the button below to sign in and continue where you left off.'
-    action_text = 'Open my account'
+    eyebrow = 'Cuenta lista'
+    heading = 'Tu cuenta está lista'
+    intro_text = "Tu cuenta de #{brand_name} ya está activa."
+    supporting_text = 'Usa el botón de abajo para entrar y seguir donde lo dejaste.'
+    action_text = 'Entrar a mi cuenta'
     action_url = frontend_url('auth/sign_in')
     detail_rows = []
   elsif invited_user
-    eyebrow = 'Workspace invitation'
-    heading = account_name.present? ? "You're invited to join #{account_name}" : "You're invited to try #{brand_name}"
+    eyebrow = 'Invitación'
+    heading = account_name.present? ? "Te invitaron a #{account_name}" : "Te invitaron a probar #{brand_name}"
     intro_text = if account_name.present?
-      "#{inviter.name} invited you to join the #{account_name} workspace on #{brand_name}."
+      "#{inviter.name} te invitó al espacio #{account_name} en #{brand_name}."
     else
-      "#{inviter.name} invited you to try #{brand_name}."
+      "#{inviter.name} te invitó a probar #{brand_name}."
     end
-    supporting_text = 'Create your account to start collaborating with your team.'
-    action_text = 'Accept invitation'
+    supporting_text = 'Crea tu cuenta para empezar a trabajar con el equipo.'
+    action_text = 'Aceptar invitación'
     action_url = frontend_url(
       'auth/password/edit',
       reset_password_token: @resource.send(:set_reset_password_token)
     )
-    detail_rows = [['Invited by', inviter.name]]
-    detail_rows << ['Workspace', account_name] if account_name.present?
+    detail_rows = [['Te invitó', inviter.name]]
+    detail_rows << ['Espacio de trabajo', account_name] if account_name.present?
   end
 %>
 
