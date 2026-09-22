@@ -6,33 +6,43 @@ import {
   toSvg,
   VENEZUELA_PATH,
 } from 'dashboard/helper/venezuelaGeo';
+import { toHeatPoints } from 'dashboard/helper/venezuelaCities';
 
 const props = defineProps({
-  customers: { type: Array, default: () => [] },
+  locations: { type: Array, default: () => [] },
+  withoutCity: { type: Number, default: 0 },
   loading: { type: Boolean, default: false },
 });
 
-const tooltip = ref(null);
-const tooltipPos = ref({ x: 0, y: 0 });
+const hovered = ref(null);
 
-const dots = computed(() => {
-  return props.customers
-    .filter(c => c.lat && c.lng)
-    .map(c => ({
-      ...toSvg(Number(c.lat), Number(c.lng)),
-      name: c.nombre || c.name || 'Cliente',
-      city: c.ciudad || c.city || '',
-    }));
+const points = computed(() => {
+  const heat = toHeatPoints(props.locations);
+  const max = heat.length ? heat[0].count : 0;
+
+  return heat.map(point => ({
+    ...point,
+    ...toSvg(point.lat, point.lng),
+    // Square root so a town with ten times the contacts reads as bigger, not as a blob
+    // covering half the country.
+    radius: 8 + 24 * Math.sqrt(point.count / max),
+  }));
 });
 
-function showTooltip(evt, dot) {
-  tooltip.value = dot;
-  tooltipPos.value = { x: evt.offsetX, y: evt.offsetY };
-}
+const plotted = computed(() =>
+  points.value.reduce((total, point) => total + point.count, 0)
+);
 
-function hideTooltip() {
-  tooltip.value = null;
-}
+// Rows the API returned that no place in the table matched — a typo, a town that is not
+// listed, or something that is not a city at all. Silently dropping them would make the
+// map look complete when it is not.
+const unmatched = computed(() => {
+  const counted = props.locations.reduce(
+    (total, { count }) => total + (Number(count) || 0),
+    0
+  );
+  return counted - plotted.value;
+});
 </script>
 
 <template>
@@ -40,11 +50,11 @@ function hideTooltip() {
     <div class="flex items-center gap-2 mb-4">
       <span class="i-lucide-map-pin size-4 text-n-accent" />
       <h2 class="text-sm font-semibold text-n-slate-12">
-        Ubicación de Clientes
+        ¿De dónde nos escriben?
       </h2>
-      <span class="ml-auto text-xs text-n-slate-9"
-        >{{ customers.length }} clientes</span
-      >
+      <span class="ml-auto text-xs text-n-slate-9">
+        {{ plotted }} contactos ubicados
+      </span>
     </div>
 
     <div v-if="loading" class="h-64 bg-n-alpha-1 rounded-lg animate-pulse" />
@@ -53,71 +63,88 @@ function hideTooltip() {
       <svg
         :viewBox="`0 0 ${MAP_W} ${MAP_H}`"
         class="w-full h-auto max-h-[340px]"
-        @mouseleave="hideTooltip"
+        @mouseleave="hovered = null"
       >
-        <!-- Country outline -->
+        <defs>
+          <filter id="romicars-heat-blur">
+            <feGaussianBlur stdDeviation="7" />
+          </filter>
+        </defs>
+
         <path
           :d="VENEZUELA_PATH"
           class="fill-n-blue-4 stroke-n-blue-7"
           stroke-width="1.5"
           stroke-linejoin="round"
+          fill-rule="evenodd"
         />
 
-        <!-- Customer dots -->
-        <g v-for="(dot, i) in dots" :key="i">
-          <circle :cx="dot.x" :cy="dot.y" r="8" class="fill-n-accent/10" />
-          <circle :cx="dot.x" :cy="dot.y" r="5" class="fill-n-accent/30" />
+        <!-- Heat first, blurred as one layer so neighbouring towns bleed into each other
+             the way a heat map should. -->
+        <g filter="url(#romicars-heat-blur)" class="pointer-events-none">
           <circle
-            :cx="dot.x"
-            :cy="dot.y"
-            r="2.5"
-            class="fill-n-accent cursor-pointer"
-            @mouseenter="showTooltip($event, dot)"
+            v-for="point in points"
+            :key="`heat-${point.lat}-${point.lng}`"
+            :cx="point.x"
+            :cy="point.y"
+            :r="point.radius"
+            class="fill-n-ruby-9"
+            opacity="0.45"
           />
         </g>
 
-        <!-- Tooltip -->
-        <g v-if="tooltip">
+        <circle
+          v-for="point in points"
+          :key="`dot-${point.lat}-${point.lng}`"
+          :cx="point.x"
+          :cy="point.y"
+          r="3"
+          class="fill-n-slate-12 cursor-pointer"
+          @mouseenter="hovered = point"
+        />
+
+        <g v-if="hovered" class="pointer-events-none">
           <rect
-            :x="tooltipPos.x + 8"
-            :y="tooltipPos.y - 20"
-            width="120"
-            height="38"
+            :x="Math.min(hovered.x + 8, MAP_W - 130)"
+            :y="hovered.y - 26"
+            width="126"
+            height="34"
             rx="4"
             class="fill-n-solid-3"
-            opacity="0.95"
+            opacity="0.96"
           />
           <text
-            :x="tooltipPos.x + 14"
-            :y="tooltipPos.y - 6"
-            font-size="9"
-            class="fill-n-slate-12"
+            :x="Math.min(hovered.x + 14, MAP_W - 124)"
+            :y="hovered.y - 12"
+            font-size="10"
             font-weight="600"
+            class="fill-n-slate-12"
           >
-            {{ tooltip.name }}
+            {{ hovered.labels[0] }}
           </text>
           <text
-            :x="tooltipPos.x + 14"
-            :y="tooltipPos.y + 8"
-            font-size="8"
+            :x="Math.min(hovered.x + 14, MAP_W - 124)"
+            :y="hovered.y + 2"
+            font-size="9"
             class="fill-n-slate-10"
           >
-            {{ tooltip.city }}
+            {{ hovered.count }} contactos
           </text>
         </g>
       </svg>
 
-      <!-- No customers: a caption along the bottom rather than a panel over the map. The
-           map is the point of the card even when there is nothing plotted on it yet. -->
+      <!-- A caption along the bottom rather than a panel over the map. The map is the
+           point of the card even when there is nothing plotted on it yet. -->
       <p
-        v-if="!dots.length"
+        v-if="!points.length || withoutCity || unmatched"
         class="absolute inset-x-0 bottom-0 py-2 text-center text-xs text-n-slate-11 bg-n-alpha-2 backdrop-blur-sm"
       >
-        {{
-          customers.length
-            ? 'Los clientes no tienen coordenadas'
-            : 'Sin datos de clientes (Profit API)'
-        }}
+        <template v-if="!points.length">
+          Ningún contacto tiene ciudad registrada todavía
+        </template>
+        <template v-else>
+          {{ withoutCity + unmatched }} contactos sin ciudad reconocida
+        </template>
       </p>
     </div>
   </div>

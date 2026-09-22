@@ -562,6 +562,7 @@ Rails.application.routes.draw do
               get :overview
               get :agents
               get :demand
+              get :contact_locations
               get :ai_insights
               get :profit
               get :resolution

@@ -12,6 +12,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   COUNT_DESC = Arel.sql('COUNT(*) DESC')
   FIRST_RESPONSE_MINUTES = Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60')
+  CONTACT_CITY = Arel.sql(
+    "NULLIF(TRIM(COALESCE(NULLIF(contacts.custom_attributes->>'ciudad', ''), " \
+    "NULLIF(contacts.additional_attributes->>'city', ''), contacts.location, '')), '')"
+  )
 
   AI_SYSTEM_PROMPT = <<~PROMPT
     Eres analista comercial de una tienda venezolana de repuestos automotrices (RomiCars).
@@ -234,6 +238,27 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       popular_products: top_products,
       channel_breakdown: channel_breakdown,
       total_inquiries: inquiries.count
+    }
+  end
+
+  # Where the people who write to us are. Chatwoot only fills `additional_attributes.city`
+  # for website widget contacts (ContactIpLookupJob), so for WhatsApp, Messenger and
+  # Instagram the city has to be asked for and written to `custom_attributes.ciudad`.
+  # `without_city` is reported so the map can say how much of the picture is missing
+  # instead of implying the shop only sells in four towns.
+  def contact_locations
+    account = Current.account
+    counts = account.contacts
+                    .where(id: account.conversations.select(:contact_id))
+                    .group(CONTACT_CITY)
+                    .count
+
+    located = counts.except(nil)
+
+    render json: {
+      locations: located.map { |label, count| { label: label, count: count } }.sort_by { |row| -row[:count] },
+      with_city: located.values.sum,
+      without_city: counts[nil].to_i
     }
   end
 
