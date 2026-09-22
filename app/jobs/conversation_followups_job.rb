@@ -19,12 +19,12 @@ class ConversationFollowupsJob < ApplicationJob
   # customer when it arrives, would be inventing. Only `sin_stock` speaks about
   # availability, and it can, because `encontrado: false` is a recorded fact.
   MESSAGES = {
-    'cotizado' => '%<saludo>s¿seguís interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
+    'cotizado' => '%<saludo>s¿sigues interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
     'sin_stock' => '%<saludo>stodavía no me llega %<repuesto>s. ¿Te aviso apenas entre?',
     'consulta' => '%<saludo>s¿estabas buscando algún repuesto en particular? Te lo reviso 🔧'
   }.freeze
 
-  GENERIC = '%<saludo>s¿seguís necesitando lo que me consultaste? Te lo reviso 🔧'
+  GENERIC = '%<saludo>s¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
@@ -202,7 +202,7 @@ class ConversationFollowupsJob < ApplicationJob
     repuesto = last_inquiry(conversation)&.repuesto_buscado.to_s.squish
     template = MESSAGES.fetch(etapa, GENERIC)
     # Naming the part is what makes the message worth answering. Without one, fall back to
-    # the vague version rather than sending "¿seguís interesado en ?".
+    # the vague version rather than sending "¿sigues interesado en ?".
     template = GENERIC if repuesto.blank? && template.include?('%<repuesto>s')
 
     format(template, saludo: saludo_for(conversation), repuesto: repuesto)
