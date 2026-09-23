@@ -12,8 +12,23 @@ class ApplicationMailer < ActionMailer::Base
   helper :frontend_urls
   helper do
     def global_config
-      @global_config ||= GlobalConfig.get('BRAND_NAME', 'BRAND_URL')
+      @global_config ||= ApplicationMailer.brand_config
     end
+  end
+
+  # The logo is stored as whatever the super admin typed, which may be a path rooted at the
+  # frontend. An email is read outside the app, so a relative src renders as a broken image.
+  def self.brand_config
+    GlobalConfig.get('BRAND_NAME', 'BRAND_URL', 'LOGO').tap do |config|
+      config['LOGO'] = absolute_brand_url(config['LOGO'])
+    end
+  end
+
+  def self.absolute_brand_url(url)
+    return if url.blank?
+    return url if url.start_with?('http')
+
+    "#{ENV.fetch('FRONTEND_URL', '').chomp('/')}/#{url.delete_prefix('/')}"
   end
 
   rescue_from(*ExceptionList::SMTP_EXCEPTIONS, with: :handle_smtp_exceptions)
@@ -54,7 +69,7 @@ class ApplicationMailer < ActionMailer::Base
   def liquid_locals
     # expose variables you want to be exposed in liquid
     locals = {
-      global_config: GlobalConfig.get('BRAND_NAME', 'BRAND_URL'),
+      global_config: ApplicationMailer.brand_config,
       action_url: @action_url
     }
 

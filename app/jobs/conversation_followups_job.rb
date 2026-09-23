@@ -19,14 +19,20 @@ class ConversationFollowupsJob < ApplicationJob
   # customer when it arrives, would be inventing. Only `sin_stock` speaks about
   # availability, and it can, because `encontrado: false` is a recorded fact.
   MESSAGES = {
-    'cotizado' => '%<saludo>s¿seguís interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
+    'cotizado' => '%<saludo>s¿sigues interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
     'sin_stock' => '%<saludo>stodavía no me llega %<repuesto>s. ¿Te aviso apenas entre?',
     'consulta' => '%<saludo>s¿estabas buscando algún repuesto en particular? Te lo reviso 🔧'
   }.freeze
 
-  GENERIC = '%<saludo>s¿seguís necesitando lo que me consultaste? Te lo reviso 🔧'
+  GENERIC = '%<saludo>s¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
+
+  # Threads a seller has tagged as not-a-lead. A supplier writing about a price list and a
+  # delivery being coordinated with the motorizado both live on the same WhatsApp number as
+  # the sales, and neither has a funnel to chase — the customer going quiet after "estoy
+  # afuera" means they got their parts, not that the sale was lost.
+  EXCLUDED_LABELS = %w[proveedor logistica].freeze
 
   # Off unless switched on. This job writes to real customers on its own every fifteen
   # minutes, so it ships dormant: deploy, migrate, watch one tick, then set the variable.
@@ -59,6 +65,7 @@ class ConversationFollowupsJob < ApplicationJob
       # At least one message from the customer. Without this, an outbound campaign that
       # nobody ever answered would get chased as if it were a warm lead.
       .where(id: Message.where(message_type: :incoming).select(:conversation_id))
+      .where.not(id: Conversation.tagged_with(EXCLUDED_LABELS, any: true).select('conversations.id'))
       .joins(:contact)
       .where("COALESCE(contacts.custom_attributes->>'followups_opt_out', 'false') <> 'true'")
   end
@@ -157,6 +164,12 @@ class ConversationFollowupsJob < ApplicationJob
       next followup.update!(status: 'replied') if followup.customer_replied?
       next unless followup.sent_at <= ConversationFollowup::CLOSE_AFTER.ago
 
+      # A seller owns an assisted follow-up — all we did was leave them a note. Closing on
+      # their behalf is how a delivery in progress gets filed as a lost sale two days after
+      # the customer stopped writing because they received their parts. The row goes
+      # terminal so the job stops looking at it; the conversation is theirs to close.
+      next followup.update!(status: 'exhausted') if followup.mode == 'assisted'
+
       close_as_silent(followup)
     rescue StandardError => e
       Rails.logger.error "[Followups] resolve failed for followup #{followup.id}: #{e.class}: #{e.message}"
@@ -165,9 +178,11 @@ class ConversationFollowupsJob < ApplicationJob
 
   def close_as_silent(followup)
     conversation = followup.conversation
+    # `abandonado`, not `perdido`: nobody said they were not buying. No reason either —
+    # `resolve_with_outcome` only keeps one for a declared loss, and here the type already
+    # says everything we know.
     saved = conversation.resolve_with_outcome(
-      resolution_type: 'perdido',
-      resolution_reason: 'sin_respuesta',
+      resolution_type: 'abandonado',
       resolution_notes: "Cerrada sin respuesta. Seguimiento enviado el #{followup.sent_at.strftime('%d/%m %H:%M')}."
     )
 
@@ -202,7 +217,7 @@ class ConversationFollowupsJob < ApplicationJob
     repuesto = last_inquiry(conversation)&.repuesto_buscado.to_s.squish
     template = MESSAGES.fetch(etapa, GENERIC)
     # Naming the part is what makes the message worth answering. Without one, fall back to
-    # the vague version rather than sending "¿seguís interesado en ?".
+    # the vague version rather than sending "¿sigues interesado en ?".
     template = GENERIC if repuesto.blank? && template.include?('%<repuesto>s')
 
     format(template, saludo: saludo_for(conversation), repuesto: repuesto)

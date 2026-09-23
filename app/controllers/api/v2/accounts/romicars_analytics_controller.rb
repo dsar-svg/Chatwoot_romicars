@@ -12,9 +12,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   COUNT_DESC = Arel.sql('COUNT(*) DESC')
   FIRST_RESPONSE_MINUTES = Arel.sql('EXTRACT(EPOCH FROM (first_reply_created_at - conversations.created_at)) / 60')
+  # Same two places Campaigns::AudienceResolver reads: the contact's own city field, which
+  # writes to additional_attributes, and the `estado` custom attribute. City first because
+  # a town is worth more on a map than the state it sits in; `estado` last so a contact
+  # that only has the state still gets plotted, on its capital.
   CONTACT_CITY = Arel.sql(
-    "NULLIF(TRIM(COALESCE(NULLIF(contacts.custom_attributes->>'ciudad', ''), " \
-    "NULLIF(contacts.additional_attributes->>'city', ''), contacts.location, '')), '')"
+    "NULLIF(TRIM(COALESCE(NULLIF(contacts.additional_attributes->>'city', ''), " \
+    "NULLIF(contacts.location, ''), contacts.custom_attributes->>'estado', '')), '')"
   )
 
   AI_SYSTEM_PROMPT = <<~PROMPT
@@ -241,11 +245,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
-  # Where the people who write to us are. Chatwoot only fills `additional_attributes.city`
-  # for website widget contacts (ContactIpLookupJob), so for WhatsApp, Messenger and
-  # Instagram the city has to be asked for and written to `custom_attributes.ciudad`.
-  # `without_city` is reported so the map can say how much of the picture is missing
-  # instead of implying the shop only sells in four towns.
+  # Where the people who write to us are. `without_city` is reported so the map can say how
+  # much of the picture is missing instead of implying the shop only sells in four towns.
   def contact_locations
     account = Current.account
     counts = account.contacts
@@ -301,7 +302,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     # This endpoint reports itself as "30 días" but used to query all history, so the
     # percentages never matched the daily/by_agent series below them.
     resolved = account.conversations
-                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since_30..)
 
     # One grouped query instead of ~10 separate COUNT round trips.
@@ -339,6 +340,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       consulta: {
         count: counts_by_type.fetch('consulta', 0),
         percentage: percentage_of(counts_by_type.fetch('consulta', 0), total_resolved)
+      },
+      # Outside the funnel on purpose: nobody declared an outcome, so there is nothing to
+      # take a percentage of. Reported anyway — a number the shop cannot see is a number
+      # it cannot act on, and this one measures how many leads go quiet.
+      abandonado: {
+        count: account.conversations.where(status: :resolved, resolution_type: 'abandonado')
+                      .where(resolved_at: since_30..).count
       },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)
@@ -492,7 +500,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since = 30.days.ago
     convs = account.conversations.where(created_at: since..Time.current)
     resolved = account.conversations
-                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since..)
     by_type = resolved.group(:resolution_type).count
     ganado = by_type.fetch('ganado', 0)
@@ -765,7 +773,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # tables of the resolution report was permanently zero.
   def daily_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .group(Arel.sql('DATE(resolved_at)'))
            .group(:resolution_type)
@@ -775,7 +783,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   def agent_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .where.not(assignee_id: nil)
            .joins('LEFT JOIN users ON users.id = conversations.assignee_id')

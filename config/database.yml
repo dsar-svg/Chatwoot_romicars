@@ -24,8 +24,12 @@ test:
   username: "<%= ENV.fetch('POSTGRES_USERNAME', 'postgres') %>"
   password: "<%= ENV.fetch('POSTGRES_PASSWORD', '') %>"
 
+# ERB renders this whole file whatever RAILS_ENV is, so a fetch without a default here
+# raises in development and in CI too, not just in production. `rake db:create` never got
+# as far as loading the test config: every spec shard died on
+# `KeyError: key not found: "POSTGRES_USERNAME"`.
 production:
   <<: *default
   database: "<%= ENV.fetch('POSTGRES_DATABASE', 'chatwoot_production') %>"
-  username: "<%= ENV.fetch('POSTGRES_USERNAME') %>"
-  password: "<%= ENV.fetch('POSTGRES_PASSWORD') %>"
+  username: "<%= ENV.fetch('POSTGRES_USERNAME', nil) %>"
+  password: "<%= ENV.fetch('POSTGRES_PASSWORD', nil) %>"
