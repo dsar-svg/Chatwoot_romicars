@@ -52,6 +52,15 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.count).to eq(0)
     end
 
+    it 'leaves alone a thread tagged as not a lead' do
+      travel_to(midday) do
+        quiet_conversation.add_labels(['proveedor'])
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
     it 'leaves alone a conversation that is still warm' do
       travel_to(midday) do
         quiet_conversation.update!(last_activity_at: 1.hour.ago)
@@ -176,7 +185,7 @@ RSpec.describe ConversationFollowupsJob do
   end
 
   describe 'closing' do
-    it 'closes as perdido / sin_respuesta when the nudge went unanswered' do
+    it 'closes as abandonado when the nudge went unanswered' do
       conversation = nil
       travel_to(midday) do
         conversation = quiet_conversation
@@ -184,8 +193,25 @@ RSpec.describe ConversationFollowupsJob do
       end
       travel_to(midday + 49.hours) { job.perform }
 
-      expect(conversation.reload).to have_attributes(status: 'resolved', resolution_type: 'perdido',
-                                                     resolution_reason: 'sin_respuesta')
+      # Not `perdido`: nobody said they were not buying.
+      expect(conversation.reload).to have_attributes(status: 'resolved', resolution_type: 'abandonado',
+                                                     resolution_reason: nil)
+      expect(ConversationFollowup.last.status).to eq('exhausted')
+    end
+
+    it 'never closes a conversation a seller owns' do
+      agent = create(:user, account: account)
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        conversation.update!(assignee: agent)
+        job.perform
+      end
+      travel_to(midday + 49.hours) { job.perform }
+
+      # A delivery being coordinated goes quiet because the customer got their parts.
+      expect(conversation.reload.status).to eq('open')
+      expect(conversation.resolution_type).to be_nil
       expect(ConversationFollowup.last.status).to eq('exhausted')
     end
 

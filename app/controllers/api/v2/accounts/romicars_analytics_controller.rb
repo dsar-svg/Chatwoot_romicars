@@ -302,7 +302,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     # This endpoint reports itself as "30 días" but used to query all history, so the
     # percentages never matched the daily/by_agent series below them.
     resolved = account.conversations
-                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since_30..)
 
     # One grouped query instead of ~10 separate COUNT round trips.
@@ -340,6 +340,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       consulta: {
         count: counts_by_type.fetch('consulta', 0),
         percentage: percentage_of(counts_by_type.fetch('consulta', 0), total_resolved)
+      },
+      # Outside the funnel on purpose: nobody declared an outcome, so there is nothing to
+      # take a percentage of. Reported anyway — a number the shop cannot see is a number
+      # it cannot act on, and this one measures how many leads go quiet.
+      abandonado: {
+        count: account.conversations.where(status: :resolved, resolution_type: 'abandonado')
+                      .where(resolved_at: since_30..).count
       },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)
@@ -493,7 +500,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since = 30.days.ago
     convs = account.conversations.where(created_at: since..Time.current)
     resolved = account.conversations
-                      .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+                      .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since..)
     by_type = resolved.group(:resolution_type).count
     ganado = by_type.fetch('ganado', 0)
@@ -766,7 +773,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # tables of the resolution report was permanently zero.
   def daily_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .group(Arel.sql('DATE(resolved_at)'))
            .group(:resolution_type)
@@ -776,7 +783,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   def agent_resolution_stats(account, since)
     account.conversations
-           .where(status: :resolved, resolution_type: Conversation::RESOLUTION_TYPES)
+           .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .where.not(assignee_id: nil)
            .joins('LEFT JOIN users ON users.id = conversations.assignee_id')

@@ -10,9 +10,10 @@
 #          or a human took over)
 #          --> cancelled
 #
-# `exhausted` is the only state that closes the conversation, always as
-# perdido / sin_respuesta. Every other loss reason is declared by the customer and
-# written by the bot at close time, never inferred from silence.
+# `exhausted` means the nudge is spent. For an `auto` follow-up it also closes the
+# conversation, always as `abandonado` — silence is the absence of an outcome, not a loss,
+# and every real loss reason is declared by the customer and written by the bot at close
+# time. For an `assisted` one it closes nothing: a seller owns that thread.
 class ConversationFollowup < ApplicationRecord
   # What we are nudging about. Each one gets a different message, because "¿sigues ahí?"
   # converts nothing and the reason to reply is already in the data.

@@ -53,6 +53,12 @@ const consultaPct = computed(
   () => resolutionData.value?.consulta?.percentage || 0
 );
 const totalResolved = computed(() => resolutionData.value?.total_resolved || 0);
+// Outside the three above on purpose: the customer never came back, so there is no
+// outcome and no percentage to take. Shown next to them because the count itself is the
+// finding — it is how many leads go quiet.
+const abandonadoCount = computed(
+  () => resolutionData.value?.abandonado?.count || 0
+);
 const totalSalesAmount = computed(
   () => resolutionData.value?.ganado?.total_sales_amount || 0
 );
@@ -179,6 +185,12 @@ const requestedProductsList = computed(
             <span class="text-sm font-normal text-n-blue-11">
               ({{ formatPct(consultaPct) }})
             </span>
+          </div>
+        </div>
+        <div class="p-4 rounded-lg bg-n-alpha-2">
+          <div class="text-sm text-n-slate-11 mb-1">Sin respuesta</div>
+          <div class="text-2xl font-bold text-n-slate-12">
+            {{ abandonadoCount }}
           </div>
         </div>
         <div class="p-4 rounded-lg bg-n-blue-2">
