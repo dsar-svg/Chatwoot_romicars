@@ -146,6 +146,12 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner "InstallationConfig.f
 #### Sidebar
 - Logo size aumentado de `size-4` (16px) a `size-5` (20px)
 
+## Estado de la sesión en curso
+
+Lo que se está construyendo ahora, el punto exacto donde quedó y los pendientes con su
+contexto viven en **[ESTADO-ACTUAL.md](ESTADO-ACTUAL.md)**. Leelo antes de retomar: este
+archivo describe cómo está montado el proyecto, ese otro describe en qué se está trabajando.
+
 ## Pendiente
 
 - [ ] Verificar que los favicons se muestran correctamente después del deploy
