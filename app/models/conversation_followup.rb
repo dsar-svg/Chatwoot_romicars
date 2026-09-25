@@ -17,7 +17,7 @@
 class ConversationFollowup < ApplicationRecord
   # What we are nudging about. Each one gets a different message, because "¿sigues ahí?"
   # converts nothing and the reason to reply is already in the data.
-  ETAPAS = %w[cotizado sin_stock consulta].freeze
+  ETAPAS = %w[cotizado sin_stock consulta derivado].freeze
   STATUSES = %w[pending sent cancelled replied exhausted].freeze
 
   # `auto` sends by itself. `assisted` only leaves a private note and a label, because a

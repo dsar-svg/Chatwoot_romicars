@@ -23,6 +23,9 @@ class ConversationFollowupsJob < ApplicationJob
     'cotizado' => '¿sigues interesado en {repuesto}? Te confirmo disponibilidad 🔧',
     'sin_stock' => 'todavía no me llega {repuesto}. ¿Te aviso apenas entre?',
     'consulta' => '¿estabas buscando algún repuesto en particular? Te lo reviso 🔧',
+    # Sent the wa.me link and never showed up on WhatsApp. Asking for the number is the
+    # fallback: the bot saves it and a seller writes from the phone.
+    'derivado' => '¿pudiste escribirnos por WhatsApp? Si prefieres, déjame tu número y te escribimos nosotros 📲',
     # Used whenever the chosen text names the part and we do not know which part it was.
     'generico' => '¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
   }.freeze
@@ -229,6 +232,8 @@ class ConversationFollowupsJob < ApplicationJob
   end
 
   def etapa_for(conversation)
+    return 'derivado' if conversation.custom_attributes&.dig('wa_code').present?
+
     inquiry = last_inquiry(conversation)
     return 'consulta' if inquiry.blank?
 
@@ -236,6 +241,8 @@ class ConversationFollowupsJob < ApplicationJob
   end
 
   def motivo_for(conversation)
+    return 'Se le mandó el link de WhatsApp y no escribió' if conversation.custom_attributes&.dig('wa_code').present?
+
     inquiry = last_inquiry(conversation)
     return 'Consultó y no volvió a escribir' if inquiry.blank?
 

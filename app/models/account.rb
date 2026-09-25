@@ -61,7 +61,8 @@ class Account < ApplicationRecord
   store_accessor :settings, :captain_auto_resolve_mode, :captain_false_promise_harness_enabled
   # Read by ConversationFollowupsJob; toggled from Settings > Conversation workflow.
   store_accessor :settings, :followups_enabled, :followups_silence_hours, :followups_message_cotizado,
-                 :followups_message_sin_stock, :followups_message_consulta, :followups_message_generico
+                 :followups_message_sin_stock, :followups_message_consulta, :followups_message_derivado,
+                 :followups_message_generico
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async

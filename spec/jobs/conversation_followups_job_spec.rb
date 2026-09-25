@@ -216,6 +216,16 @@ RSpec.describe ConversationFollowupsJob do
       end
     end
 
+    it 'asks whether they made it to WhatsApp when the bot sent them the link' do
+      travel_to(midday) do
+        quiet_conversation(custom_attributes: { 'wa_code' => 'RC-ABCDE' })
+        job.perform
+      end
+
+      expect(ConversationFollowup.last).to have_attributes(etapa: 'derivado',
+                                                           mensaje: "Ricardo, #{described_class::MESSAGES['derivado']}")
+    end
+
     it 'offers to warn the customer when the part was never in stock' do
       travel_to(midday) do
         conversation = quiet_conversation
