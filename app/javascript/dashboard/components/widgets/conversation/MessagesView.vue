@@ -470,14 +470,21 @@ export default {
         :href-link="instagramRestrictionStatusUrl"
         :href-link-text="$t('CONVERSATION.INSTAGRAM_RESTRICTION_STATUS_LINK')"
       />
-      <Banner
+      <p
         v-if="!currentChat.can_reply"
-        color-scheme="alert"
-        class="mx-2 mt-2 overflow-hidden rounded-lg"
-        :banner-message="replyWindowBannerMessage"
-        :href-link="replyWindowLink"
-        :href-link-text="replyWindowLinkText"
-      />
+        class="mx-4 mt-2 mb-0 text-xs text-n-slate-11"
+      >
+        {{ replyWindowBannerMessage }}
+        <a
+          v-if="replyWindowLink"
+          :href="replyWindowLink"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="underline"
+        >
+          {{ replyWindowLinkText }}
+        </a>
+      </p>
       <Banner
         v-if="hasDuplicateInstagramInbox"
         color-scheme="alert"

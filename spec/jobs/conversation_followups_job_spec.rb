@@ -203,7 +203,6 @@ RSpec.describe ConversationFollowupsJob do
         end
 
         # Sending anyway leaves a `failed` message in the thread that the customer never got.
-        # Conversation#can_reply? cannot catch it: this fork makes it always true.
         expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'fuera_de_ventana')
       end
 

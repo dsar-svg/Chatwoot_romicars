@@ -123,19 +123,17 @@ Se agregaron por API, con `POST /{app-id}/subscriptions`:
   plantillas. Además, si la ventana ya se cerró, el recordatorio se cancela como
   `fuera_de_ventana` en vez de quedar en el hilo como mensaje fallido.
 - El cierre a las 48 h sigue fijo en código (`ConversationFollowup::CLOSE_AFTER`).
-- El guard de ventana del job **no usa `Conversation#can_reply?`**: el commit `1a3fc64`
-  (19/08, "remove 24-hour messaging window restriction") lo dejó devolviendo siempre `true`
-  para quitar el banner rojo. El job lleva su propio chequeo de 24 h para WhatsApp, Messenger
-  e Instagram.
+- El guard de ventana del job **no usa `Conversation#can_reply?`**: para un mensaje
+  automático la regla es 24 h aunque Messenger e Instagram le den 7 días a un agente humano.
 
-### Decisión pendiente: la ventana de 24 h en toda la app
+### Ventana de 24 h en toda la app (decidido)
 
-`1a3fc64` quitó el aviso, no el límite. Meta sigue rechazando un mensaje libre más de 24 h
-después del último del cliente (error 131047). Hoy un agente puede escribir a esa altura sin
-ningún aviso, el mensaje sale de Chatwoot y vuelve como fallido. Opciones: dejarlo así,
-restaurar el chequeo con un aviso menos intrusivo que el banner, o restaurarlo solo para
-WhatsApp. Es decisión del dueño, no técnica. Mientras tanto, 13 specs de
-`message_window_service_spec.rb` fallan por esto.
+`1a3fc64` (19/08) había dejado `can_reply?` siempre en `true` para quitar el banner rojo, pero
+Meta seguía rechazando los mensajes libres pasadas 24 h (error 131047). Se restauró el
+chequeo en `Conversations::MessageWindowService` y el banner rojo quedó como una línea gris
+pequeña sobre el hilo. Fuera de ventana, en WhatsApp el editor solo deja mandar plantillas
+(o nota privada); también se puede contestar desde la app de WhatsApp Business en el
+teléfono, que por coexistence no tiene ese límite.
 
 ## Punto exacto donde quedamos
 

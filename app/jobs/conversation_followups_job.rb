@@ -36,10 +36,8 @@ class ConversationFollowupsJob < ApplicationJob
   MAX_SILENCE_HOURS = 12
 
   # Channels where Meta refuses a free-form message 24 hours after the customer's last one.
-  # Checked here rather than through Conversation#can_reply?, which this fork makes always
-  # true (1a3fc64, to drop the red banner for agents). That hides the limit, it does not lift
-  # it — and for an automated message the rule is 24 hours even where Messenger and
-  # Instagram give a human agent seven days.
+  # Checked here rather than through Conversation#can_reply?: for an automated message the
+  # rule is 24 hours even where Messenger and Instagram give a human agent seven days.
   WINDOWED_CHANNELS = %w[Channel::Whatsapp Channel::FacebookPage Channel::Instagram].freeze
   MESSAGING_WINDOW = 24.hours
 
