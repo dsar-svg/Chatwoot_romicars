@@ -1,5 +1,6 @@
 {
-  "CONTACT_PANEL": {
+  "CONTACT_PANEL": {
+
     "VEHICLE": "Vehículo",
     "NOT_AVAILABLE": "No Disponible",
     "EMAIL_ADDRESS": "Dirección de correo",
@@ -309,6 +310,8 @@
           "ADD_CONTACT": "Añadir contacto",
           "EXPORT_CONTACT": "Exportar contactos",
           "IMPORT_CONTACT": "Importar contactos",
+          "DOWNLOAD_VCARD": "Descargar para el teléfono (.vcf)",
+          "DOWNLOAD_VCARD_ERROR": "No se pudo descargar el archivo de contactos",
           "SAVE_CONTACT": "Guardar contacto",
           "EMAIL_ADDRESS_DUPLICATE": "Ésta dirección de correo está siendo utilizada por otro contacto.",
           "PHONE_NUMBER_DUPLICATE": "Este número de teléfono está en uso para otro contacto.",
