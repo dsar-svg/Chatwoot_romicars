@@ -59,6 +59,7 @@
             "COTIZADO": "When they were given a price",
             "SIN_STOCK": "When the part was not in stock",
             "CONSULTA": "When they asked without naming a part",
+            "DERIVADO": "When they got the WhatsApp link and never wrote",
             "GENERICO": "When the part they asked for is not known"
           }
         },

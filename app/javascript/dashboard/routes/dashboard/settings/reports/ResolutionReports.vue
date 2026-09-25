@@ -59,6 +59,10 @@ const totalResolved = computed(() => resolutionData.value?.total_resolved || 0);
 const abandonadoCount = computed(
   () => resolutionData.value?.abandonado?.count || 0
 );
+// Instagram and Facebook leads that went on to WhatsApp; their outcome is on that side.
+const derivadoCount = computed(
+  () => resolutionData.value?.derivado?.count || 0
+);
 const totalSalesAmount = computed(
   () => resolutionData.value?.ganado?.total_sales_amount || 0
 );
@@ -191,6 +195,12 @@ const requestedProductsList = computed(
           <div class="text-sm text-n-slate-11 mb-1">Sin respuesta</div>
           <div class="text-2xl font-bold text-n-slate-12">
             {{ abandonadoCount }}
+          </div>
+        </div>
+        <div class="p-4 rounded-lg bg-n-teal-2">
+          <div class="text-sm text-n-teal-11 mb-1">Pasaron a WhatsApp</div>
+          <div class="text-2xl font-bold text-n-teal-12">
+            {{ derivadoCount }}
           </div>
         </div>
         <div class="p-4 rounded-lg bg-n-blue-2">

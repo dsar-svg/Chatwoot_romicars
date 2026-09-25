@@ -26,6 +26,8 @@ const DEFAULT_MESSAGES = {
   cotizado: '¿sigues interesado en {repuesto}? Te confirmo disponibilidad 🔧',
   sin_stock: 'todavía no me llega {repuesto}. ¿Te aviso apenas entre?',
   consulta: '¿estabas buscando algún repuesto en particular? Te lo reviso 🔧',
+  derivado:
+    '¿pudiste escribirnos por WhatsApp? Si prefieres, déjame tu número y te escribimos nosotros 📲',
   generico: '¿sigues necesitando lo que me consultaste? Te lo reviso 🔧',
 };
 const STAGES = Object.keys(DEFAULT_MESSAGES);
@@ -34,6 +36,7 @@ const stageLabels = computed(() => ({
   cotizado: t('GENERAL_SETTINGS.FORM.FOLLOWUPS.MESSAGES.STAGES.COTIZADO'),
   sin_stock: t('GENERAL_SETTINGS.FORM.FOLLOWUPS.MESSAGES.STAGES.SIN_STOCK'),
   consulta: t('GENERAL_SETTINGS.FORM.FOLLOWUPS.MESSAGES.STAGES.CONSULTA'),
+  derivado: t('GENERAL_SETTINGS.FORM.FOLLOWUPS.MESSAGES.STAGES.DERIVADO'),
   generico: t('GENERAL_SETTINGS.FORM.FOLLOWUPS.MESSAGES.STAGES.GENERICO'),
 }));
 
