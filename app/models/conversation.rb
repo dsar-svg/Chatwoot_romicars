@@ -110,6 +110,27 @@ class Conversation < ApplicationRecord
   }
   scope :with_sale, -> { where.not(sale_amount: nil) }
 
+  # Numbers the shop talks to that are not customers: suppliers and the delivery rider. On a
+  # conversation the label covers that thread; on the contact it covers every conversation
+  # with that number, past and future. Those skip the bot, the follow-ups and every figure
+  # on the RomiCars dashboard.
+  NON_LEAD_LABELS = %w[proveedor logistica].freeze
+  # Being a supplier is who the number is, so tagging one conversation tags the contact too.
+  # `logistica` stays on the conversation: a customer's own thread can be about a delivery.
+  SUPPLIER_LABEL = 'proveedor'
+
+  scope :leads, lambda {
+    where.not(id: non_lead_taggings('Conversation')).where.not(contact_id: non_lead_taggings('Contact'))
+  }
+
+  # Straight against taggings, one column: `tagged_with` brings its own SELECT and cannot
+  # sit inside a NOT IN.
+  def self.non_lead_taggings(taggable_type)
+    ActsAsTaggableOn::Tagging.joins(:tag)
+                             .where(taggable_type: taggable_type, context: 'labels', tags: { name: NON_LEAD_LABELS })
+                             .select(:taggable_id)
+  end
+
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }
@@ -166,6 +187,9 @@ class Conversation < ApplicationRecord
 
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
+  # after_commit runs bottom-up here (load_defaults 7.0): this goes after the display id is
+  # loaded and before the creation event, so the event already carries the labels.
+  after_create_commit :inherit_non_lead_labels
   after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit -> { Conversations::ContinuityJob.perform_later(self) }
   before_destroy :set_unread_count_deletion_data
@@ -324,6 +348,22 @@ class Conversation < ApplicationRecord
     create_activity
     invalidate_filtered_unread_count_conversation
     notify_conversation_updation
+    tag_contact_as_supplier
+  end
+
+  def non_lead_contact?
+    contact.label_list.intersect?(NON_LEAD_LABELS)
+  end
+
+  def inherit_non_lead_labels
+    add_labels(contact.label_list & NON_LEAD_LABELS) if non_lead_contact?
+  end
+
+  def tag_contact_as_supplier
+    return unless saved_change_to_cached_label_list? && label_list.include?(SUPPLIER_LABEL)
+    return if contact.label_list.include?(SUPPLIER_LABEL)
+
+    contact.add_labels([SUPPLIER_LABEL])
   end
 
   def handle_resolved_status_change
@@ -372,7 +412,8 @@ class Conversation < ApplicationRecord
 
     return handle_campaign_status if campaign.present?
 
-    set_active_bot_conversation if inbox.active_bot?
+    # A supplier goes straight to a person: the bot only answers conversations assigned to it.
+    set_active_bot_conversation if inbox.active_bot? && !non_lead_contact?
   end
 
   def handle_campaign_status

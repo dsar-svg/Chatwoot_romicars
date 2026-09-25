@@ -46,12 +46,6 @@ class ConversationFollowupsJob < ApplicationJob
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
-  # Threads a seller has tagged as not-a-lead. A supplier writing about a price list and a
-  # delivery being coordinated with the motorizado both live on the same WhatsApp number as
-  # the sales, and neither has a funnel to chase — the customer going quiet after "estoy
-  # afuera" means they got their parts, not that the sale was lost.
-  EXCLUDED_LABELS = %w[proveedor logistica].freeze
-
   # A pending follow-up older than this is not sent. Rows only wait this long when the job
   # was switched off, and switching it back on must not fire a week of stale nudges at once.
   STALE_AFTER = 1.day
@@ -92,13 +86,10 @@ class ConversationFollowupsJob < ApplicationJob
       # At least one message from the customer. Without this, an outbound campaign that
       # nobody ever answered would get chased as if it were a warm lead.
       .where(id: Message.where(message_type: :incoming).select(:conversation_id))
-      # Straight against taggings, one column. `tagged_with(any: true)` brings its own
-      # SELECT, and adding `.select(:id)` to it made Postgres reject the subquery with
-      # "subquery has too many columns" on every tick.
-      .where.not(id: ActsAsTaggableOn::Tagging.joins(:tag)
-                                              .where(taggable_type: 'Conversation', context: 'labels',
-                                                     tags: { name: EXCLUDED_LABELS })
-                                              .select(:taggable_id))
+      # Suppliers and the delivery rider (Conversation::NON_LEAD_LABELS, on the thread or on
+      # the contact) have no funnel to chase: the rider going quiet after "estoy afuera" means
+      # the parts arrived, not that a sale was lost.
+      .leads
       .joins(:contact)
       .where("COALESCE(contacts.custom_attributes->>'followups_opt_out', 'false') <> 'true'")
   end

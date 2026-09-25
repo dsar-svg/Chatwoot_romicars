@@ -88,7 +88,7 @@ function formatMinutes(mins) {
             {{ agent.name }}
           </p>
           <p class="text-xs text-n-slate-9">
-            {{ agent.assigned }} asignados · {{ agent.resolved }} resueltos ·
+            {{ agent.assigned }} asignados · {{ agent.won }} ventas ·
             {{ formatMinutes(agent.avg_response_minutes) }} resp.
           </p>
         </div>
