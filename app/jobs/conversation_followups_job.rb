@@ -34,29 +34,35 @@ class ConversationFollowupsJob < ApplicationJob
   # afuera" means they got their parts, not that the sale was lost.
   EXCLUDED_LABELS = %w[proveedor logistica].freeze
 
-  # Off unless switched on. This job writes to real customers on its own every fifteen
-  # minutes, so it ships dormant: deploy, migrate, watch one tick, then set the variable.
-  # It is also the fastest way to stop it if the eligibility query turns out to be wrong.
-  def perform
-    return Rails.logger.info('[Followups] disabled (FOLLOWUPS_ENABLED is not true)') unless enabled?
+  # A pending follow-up older than this is not sent. Rows only wait this long when the job
+  # was switched off, and switching it back on must not fire a week of stale nudges at once.
+  STALE_AFTER = 1.day
 
-    schedule_new
-    send_due
-    resolve_sent
+  # Off unless an admin switches it on for the account, from Settings > Conversation
+  # workflow. This job writes to real customers on its own every fifteen minutes, so it
+  # stays dormant until someone decides otherwise — and the switch doubles as the fastest
+  # way to stop it, faster than any redeploy.
+  #
+  # It used to be the FOLLOWUPS_ENABLED environment variable. One switch, not two: with
+  # both, someone flips the one they can see and nothing happens.
+  def perform
+    account_ids = Account.where("settings ->> 'followups_enabled' = 'true'").pluck(:id)
+    return Rails.logger.info('[Followups] off for every account') if account_ids.empty?
+
+    schedule_new(account_ids)
+    send_due(account_ids)
+    resolve_sent(account_ids)
   end
 
   private
-
-  def enabled?
-    ENV.fetch('FOLLOWUPS_ENABLED', 'false') == 'true'
-  end
 
   # Mirrors Chatwoot's own `resolvable_not_waiting` scope: `waiting_since IS NULL` means an
   # agent or the bot answered last, so the ball is in the customer's court. With it set, the
   # one who went quiet is us — that is an SLA problem, and nudging the customer for it would
   # be backwards.
-  def eligible_conversations
+  def eligible_conversations(account_ids)
     Conversation
+      .where(account_id: account_ids)
       .where(status: %i[open pending])
       .where(waiting_since: nil)
       .where(last_activity_at: ..ConversationFollowup::SILENCE_BEFORE_FOLLOWUP.ago)
@@ -65,13 +71,19 @@ class ConversationFollowupsJob < ApplicationJob
       # At least one message from the customer. Without this, an outbound campaign that
       # nobody ever answered would get chased as if it were a warm lead.
       .where(id: Message.where(message_type: :incoming).select(:conversation_id))
-      .where.not(id: Conversation.tagged_with(EXCLUDED_LABELS, any: true).select('conversations.id'))
+      # Straight against taggings, one column. `tagged_with(any: true)` brings its own
+      # SELECT, and adding `.select(:id)` to it made Postgres reject the subquery with
+      # "subquery has too many columns" on every tick.
+      .where.not(id: ActsAsTaggableOn::Tagging.joins(:tag)
+                                              .where(taggable_type: 'Conversation', context: 'labels',
+                                                     tags: { name: EXCLUDED_LABELS })
+                                              .select(:taggable_id))
       .joins(:contact)
       .where("COALESCE(contacts.custom_attributes->>'followups_opt_out', 'false') <> 'true'")
   end
 
-  def schedule_new
-    eligible_conversations.find_each do |conversation|
+  def schedule_new(account_ids)
+    eligible_conversations(account_ids).find_each do |conversation|
       ConversationFollowup.create!(
         conversation: conversation,
         account_id: conversation.account_id,
@@ -88,12 +100,12 @@ class ConversationFollowupsJob < ApplicationJob
     end
   end
 
-  def send_due
+  def send_due(account_ids)
     # Outside 8am-8pm nothing goes out. The rows stay pending and the next morning's tick
     # picks them up.
     return unless ConversationFollowup.sendable_now?
 
-    ConversationFollowup.due.find_each do |followup|
+    ConversationFollowup.due.where(account_id: account_ids).find_each do |followup|
       reason = disqualified(followup)
       next followup.cancel!(reason) if reason
 
@@ -115,6 +127,7 @@ class ConversationFollowupsJob < ApplicationJob
     return 'conversacion_cerrada' unless conversation.open? || conversation.pending?
     return 'resultado_ya_declarado' if conversation.resolution_type.present?
     return 'venta_registrada' if conversation.sale_amount.present?
+    return 'vencido' if followup.scheduled_at < STALE_AFTER.ago
 
     nil
   end
@@ -159,8 +172,8 @@ class ConversationFollowupsJob < ApplicationJob
     conversation.inbox.agent_bot
   end
 
-  def resolve_sent
-    ConversationFollowup.sent.find_each do |followup|
+  def resolve_sent(account_ids)
+    ConversationFollowup.sent.where(account_id: account_ids).find_each do |followup|
       next followup.update!(status: 'replied') if followup.customer_replied?
       next unless followup.sent_at <= ConversationFollowup::CLOSE_AFTER.ago
 

@@ -101,6 +101,21 @@ Se agregaron por API, con `POST /{app-id}/subscriptions`:
 - El objeto `instagram` completo, que no estaba suscrito: `messages`,
   `messaging_postbacks`, `messaging_referral`, `standby`. Verificado con un DM real.
 
+### 25/09 — el seguimiento se enciende desde la app
+
+- **Bug en producción desde el deploy del #64**: la exclusión por etiquetas usaba
+  `Conversation.tagged_with(..., any: true).select('conversations.id')`, y Postgres la
+  rechazaba con `subquery has too many columns`. Como revienta en `schedule_new`, el job no
+  agendaba, no mandaba ni cerraba nada. Ahora consulta `taggings` directo.
+- **El interruptor reemplazó a `FOLLOWUPS_ENABLED`.** Vive en `account.settings['followups_enabled']`
+  y se cambia desde **Configuración → Flujo de conversación → Seguimiento automático**
+  (solo administradores). La variable de entorno ya no se lee: si sigue puesta en EasyPanel
+  no hace nada y se puede borrar.
+- **Después de desplegar, el seguimiento queda APAGADO** hasta que alguien lo prenda desde
+  esa pantalla. Es a propósito: el job le escribe a clientes solo.
+- Un seguimiento pendiente de más de un día se cancela como `vencido` en vez de mandarse, para
+  que apagar y prender no dispare una semana de recordatorios atrasados.
+
 ## Punto exacto donde quedamos
 
 Investigando unos mensajes `This message is unavailable.` que aparecen en varias

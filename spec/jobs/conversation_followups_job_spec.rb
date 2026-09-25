@@ -5,13 +5,9 @@ require 'rails_helper'
 RSpec.describe ConversationFollowupsJob do
   subject(:job) { described_class.new }
 
-  # The job ships dormant so a bad eligibility query cannot message customers on deploy.
-  # Every example here runs it switched on; the off case is its own test below.
-  around do |example|
-    with_modified_env(FOLLOWUPS_ENABLED: 'true') { example.run }
-  end
-
-  let(:account) { create(:account) }
+  # The job ships dormant: an admin switches it on per account. Every example here runs
+  # with it on; the off case is its own test below.
+  let(:account) { create(:account, settings: { 'followups_enabled' => true }) }
   let(:inbox) { create(:inbox, account: account) }
   let(:contact) { create(:contact, account: account, name: 'Ricardo') }
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
@@ -232,16 +228,32 @@ RSpec.describe ConversationFollowupsJob do
     end
   end
 
-  describe 'the kill switch' do
-    it 'does nothing at all while FOLLOWUPS_ENABLED is unset' do
-      with_modified_env(FOLLOWUPS_ENABLED: nil) do
-        travel_to(midday) do
-          quiet_conversation
-          job.perform
-        end
+  describe 'the switch' do
+    it 'does nothing at all for an account that has not switched it on' do
+      account.update!(settings: account.settings.merge('followups_enabled' => false))
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
       end
 
       expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'holds pending follow-ups while off instead of sending them' do
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
+      account.update!(settings: account.settings.merge('followups_enabled' => false))
+      travel_to(midday) { job.perform }
+
+      expect(ConversationFollowup.last.status).to eq('pending')
+    end
+
+    it 'drops what went stale while it was off rather than sending it late' do
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
+
+      # Switched back on a week later: that nudge is about a conversation nobody remembers.
+      travel_to(midday + 7.days) { job.perform }
+
+      expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'vencido')
     end
   end
 end
