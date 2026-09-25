@@ -59,9 +59,9 @@ module WhatsappHandoff
   def close_origin(origin, arrival)
     origin.update!(custom_attributes: origin.custom_attributes.merge('wa_llego_at' => Time.current.iso8601,
                                                                      'wa_conversation_id' => arrival.display_id))
-    where = "por WhatsApp en la conversación ##{arrival.display_id}."
-    origin.resolve_with_outcome(resolution_type: 'derivado', resolution_notes: "Siguió #{where}")
-    activity(origin, "El cliente siguió #{where}")
+    destino = "por WhatsApp en la conversación ##{arrival.display_id}."
+    origin.resolve_with_outcome(resolution_type: 'derivado', resolution_notes: "Siguió #{destino}")
+    activity(origin, "El cliente siguió #{destino}")
   end
 
   # The customer typed a number instead of tapping the link. If another contact already has
