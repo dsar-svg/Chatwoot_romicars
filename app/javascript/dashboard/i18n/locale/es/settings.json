@@ -702,8 +702,8 @@
   "CONVERSATION_WORKFLOW": {
     "INDEX": {
       "HEADER": {
-        "TITLE": "Conversation Workflows",
-        "DESCRIPTION": "Configure rules and required fields for conversation resolution."
+        "TITLE": "Flujo de conversación",
+        "DESCRIPTION": "Seguimiento automático de clientes que dejan de responder y reglas para cerrar conversaciones."
       }
     },
     "REQUIRED_ATTRIBUTES": {
