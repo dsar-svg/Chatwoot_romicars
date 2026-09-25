@@ -1,7 +1,7 @@
-# Estado actual — 23/24 de septiembre de 2026
+# Estado actual — 25 de septiembre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Escrito al cierre de la sesión del 23 de septiembre.
+Actualizado al cierre de la sesión del 25 de septiembre.
 
 ## Qué está funcionando hoy
 
@@ -135,41 +135,66 @@ pequeña sobre el hilo. Fuera de ventana, en WhatsApp el editor solo deja mandar
 (o nota privada); también se puede contestar desde la app de WhatsApp Business en el
 teléfono, que por coexistence no tiene ese límite.
 
+### 25/09 — traspaso a WhatsApp, continuidad, proveedores y dashboard
+
+Todo mergeado en `claude/init-tvh2q7`.
+
+| PR | Qué |
+|---|---|
+| #66–#68 | Seguimiento con interruptor, horas y textos; ventana de 24 h restaurada; menú **Ajustes → Flujo de conversación** (la ruta existía pero nadie la importaba) |
+| #69 | Traspaso de Instagram/Facebook a WhatsApp con link `wa.me` y código `RC-XXXXX` |
+| #70 | Contactos → ⋮ → **Descargar para el teléfono (.vcf)** |
+| #71 | `continua_de`: conversación nueva de un contacto con otra activa en los últimos 14 días |
+| #72 | Los 47 specs heredados en verde. Dos eran bugs reales: filtro de contactos (500) y fechas en la búsqueda de conversaciones |
+| #73 | Números que no son leads (`proveedor` / `logistica`) y dashboard corregido |
+
+**Traspaso a WhatsApp (`WhatsappHandoff`):**
+
+- `POST /api/v1/accounts/:id/conversations/:id/whatsapp_handoff` (token del bot) → `{ link, code }`.
+  Guarda `wa_code`, `wa_enviado_at`, `wa_repuesto`, `wa_vehiculo` y la etiqueta `derivado-whatsapp`.
+- `PATCH` al mismo endpoint con `telefono` → guarda el número tecleado. Si otro contacto ya lo
+  tiene, se fusionan (el número es único por cuenta).
+- Llegada: un mensaje entrante de WhatsApp con el código dispara
+  `Conversations::WhatsappHandoffArrivalJob` → fusiona contactos (sobrevive el de WhatsApp, el
+  nombre viene del de Instagram), cierra el origen como `derivado` y deja una línea de
+  actividad en los dos hilos.
+- `derivado` es un tipo sin declarar, como `abandonado`: fuera del embudo, contado aparte en
+  el informe ("Pasaron a WhatsApp").
+- Si no llega, el seguimiento usa la etapa `derivado` (texto editable en Ajustes).
+
+**No-leads:** etiqueta `proveedor` o `logistica` en el **contacto** (o `proveedor` en una
+conversación, que marca el contacto). `Conversation.leads` los excluye. Sus conversaciones no
+pasan por el bot, heredan la etiqueta, no reciben seguimiento y no cuentan en el dashboard.
+
+**Dashboard:** leads = contactos distintos (no conversaciones); conversión por vendedor =
+ventas ÷ asignadas (antes resueltas ÷ asignadas). Cachés `ai_insights:v3` y `win_loss:v2`.
+
+**Seguimiento:** si alguien pospone (snooze) una conversación después del recordatorio, el
+job ya no la cierra a las 48 h.
+
 ## Punto exacto donde quedamos
 
-Investigando unos mensajes `This message is unavailable.` que aparecen en varias
-conversaciones de WhatsApp (una es la #48, de `+12066409886`).
-
-Ya está descartado que sea spam. Lo explica el comentario del propio fork en
-`app/services/whatsapp/incoming_message_base_service.rb`:
-
-> WhatsApp delivers messages it cannot render (e.g. coexistence companion-device syncs that
-> fail with error 131060) as type: unsupported with no content.
-
-Es la sincronización del historial del teléfono hacia la WABA al conectar coexistence.
-
-**El comando que faltaba correr** (la consulta anterior dio 0 porque `content_attributes`
-se guarda con `store ... coder: JSON`, o sea un string JSON dentro de una columna `json`,
-y `->>` devuelve NULL):
+1. **Deploy** de #66–#74 (ver abajo).
+2. Después del deploy, **aplicar los cambios del bot en n8n** (`Bot Atencion Cliente`):
+   tools `derivar_a_whatsapp` (POST `whatsapp_handoff`), `guardar_telefono` (PATCH
+   `whatsapp_handoff`), `posponer_conversacion` (`toggle_status` con `snoozed`, máx. 14 días) y
+   reglas nuevas en el prompt: línea `Canal:` en los datos, paso 3 dividido por canal, paso 6
+   (compra con fecha → posponer), código `RC-` en WhatsApp → nota + asignar, teléfono suelto
+   → `guardar_telefono`. Credencial de las tres: `Demo ChatR` (token del bot). No aplicarlo
+   antes del deploy: el bot llamaría a un endpoint que no existe.
+3. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
+   con `StatementInvalid`). Falta el error exacto:
 
 ```bash
-docker exec asta_chatwoot-rails-1 bundle exec rails runner "
-ms = Message.where(content: 'This message is unavailable.').order(:created_at)
-puts ['total', ms.count].inspect
-puts ms.joins(conversation: :contact).group('contacts.phone_number').count.inspect
-puts ['primera', ms.minimum(:created_at).to_s, 'ultima', ms.maximum(:created_at).to_s].inspect
-"
+docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.new; puts d.size; puts d.map { |j| [j.display_class, j["error_class"], j["error_message"].to_s[0,150]] }.tally.sort_by { -_2 }.first(5).inspect; puts ActiveRecord::Base.connection.table_exists?(:automation_rule_pending_executions)'
 ```
 
-Cómo leerlo:
+   Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
+   marcó la migración como corrida.
 
-- fechas concentradas alrededor del 23/09 → sincronización inicial, se detiene sola
-- fechas que siguen apareciendo → el companion device sigue fallando, hay que mirar la app
-  y el estado del número en el portafolio
-
-Efecto secundario a decidir: cada uno creó contacto y conversación, quedaron asignadas por
-la política por defecto y cuentan como leads. Si son muchas, inflan el denominador de la
-conversión.
+4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español,
+   "Hola {{1}}, te escribimos de Romicars por el {{2}} que consultaste. ¿Seguimos con tu pedido?".
+   Cuando esté aprobada, el vendedor la usa desde el editor fuera de la ventana de 24 h.
 
 ## Pendientes
 
@@ -185,57 +210,27 @@ conversión.
       arreglar antes el body del nodo de n8n: manda `contentType: json`, que re-serializa y
       rompe el HMAC. Tiene que ir como raw.
 
-### Continuidad de conversaciones — diseñado, no construido
-
-El plan acordado, en orden:
-
-1. ~~`abandonado` como tipo propio~~ hecho en #64
-2. **Marcar la continuación**: cuando nace una conversación para un contacto cuya anterior
-   cerró `abandonado` hace poco, estamparle `custom_attributes['continua_de']`. Sin eso el
-   mismo lead cuenta dos veces: `abandonado` en la vieja y `ganado` en la nueva.
-3. **Posponer con el snooze nativo.** Chatwoot ya tiene `status: snoozed` y `snoozed_until`,
-   y `TriggerScheduledItemsJob` las reabre. Una conversación pospuesta ya es invisible para
-   `eligible_conversations`. Falta la tool `posponer_conversacion` en el bot y un guard para
-   que un seguimiento ya enviado no cierre una conversación que después se pospuso.
-4. **Plantilla para lo diferido.** Fuera de la ventana de 24 h de Meta, un mensaje libre no
-   se manda: `Whatsapp::SendOnWhatsappService` lo crea con `status: failed` y el vendedor
-   cree que salió. Hace falta una plantilla **Utility** aprobada, con nombre y repuesto como
-   variables, y que el job la use cuando `conversation.can_reply?` sea falso.
-
-### Deduplicación de contactos y traspaso a WhatsApp — diseñado, no construido
-
-Ya hay un caso real: Dario Medina existe como contacto de Instagram y como contacto de
-WhatsApp.
-
-1. `after_commit` en `Contact` cuando cambia `phone_number`: buscar el otro contacto de la
-   cuenta con ese número y fusionar con `ContactMergeAction` (base = el más viejo). Fusionar
-   solo si hay exactamente un candidato.
-2. Enlace `wa.me` con el repuesto y un código de correlación al detectar intención de compra.
-   No pedir el número por chat: el mensaje entrante de WhatsApp lo entrega verificado.
-3. Cerrar la conversación de origen como `consulta / derivado_whatsapp`, nunca `ganado`.
-4. Etapa `derivado` en el seguimiento.
-5. Endpoint `.vcf` para exportar los teléfonos a la agenda del teléfono — los estados de
-   WhatsApp solo los ve quien te tiene guardado y a quien vos tenés guardado, y ninguna API
-   publica estados.
-
 ### Otros
 
 - [ ] Reprobar el bot con "chery orinoco, el largo" → debe cotizar 17 $ a tasa BCV o 15 $ en
       divisas, no el cigüeñal de 136 $.
 - [ ] Probar el echo: escribir desde la app WhatsApp Business y ver si entra como saliente.
-- [ ] 886 jobs muertos en Sidekiq, 879 de
-      `AutomationRules::TriggerPendingExecutionsJob / ActiveRecord::StatementInvalid`.
-- [ ] 137 offenses de RuboCop, 77 autocorregibles.
-- [ ] `fake-indexeddb` no está en node_modules: ningún spec de frontend corre local.
-- [ ] Bandeja "Erdu" (id 1): era de prueba, se puede borrar.
+- [ ] Mensajes `This message is unavailable.`: sincronización de coexistence (error 131060).
+      Ver si siguen apareciendo:
+      `Message.where(content: 'This message is unavailable.').group('DATE(created_at)').count`.
+- [ ] Que el job de seguimiento mande la plantilla Utility cuando la ventana esté cerrada
+      (hoy cancela como `fuera_de_ventana`).
+- [ ] RuboCop: ~140 offenses, casi todas heredadas en `romicars_analytics_controller.rb`.
+- [ ] `fake-indexeddb` no está en node_modules: los specs de frontend no corren local sin
+      quitarlo de `setupFiles` (`vitest.config.ts`).
 
 ## Cómo desplegar
 
 ```bash
-docker stop $(docker ps -q --filter "name=chatwoot")
-docker rmi ghcr.io/dsar-svg/chatwoot_romicars:latest
+docker stop $(docker ps -q --filter "name=asta_chatwoot")
 docker pull ghcr.io/dsar-svg/chatwoot_romicars:latest
 ```
 
-Y redesplegar desde EasyPanel. El commit `21ccfed` no necesita migraciones: `abandonado` es
-un valor de una columna `string`, no un enum.
+Y redesplegar desde EasyPanel. Las migraciones corren solas al arrancar
+(`db:chatwoot_prepare`). **No usar `name=chatwoot`**: también detiene el otro Chatwoot del VPS
+(`automatisupri_chatwoot`).

@@ -178,7 +178,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     items, label = case type
                    when 'new_today'
-                     contacts = lead_contacts(account).where('created_at >= ?', today).order(created_at: :desc).limit(50)
+                     contacts = lead_contacts(account).where(created_at: today..).order(created_at: :desc).limit(50)
                      [contacts.map { |c| { id: c.id, contact_name: c.name, status: 'Nuevo', agent_name: '—', created_at: c.created_at } }, 'Nuevos Hoy']
                    when 'pending'
                      convs = account.conversations.leads.where(status: :pending).includes(:contact, :assignee).order(created_at: :desc).limit(50)
@@ -256,10 +256,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # much of the picture is missing instead of implying the shop only sells in four towns.
   def contact_locations
     account = Current.account
-    counts = lead_contacts(account)
-                    .where(id: account.conversations.leads.select(:contact_id))
-                    .group(CONTACT_CITY)
-                    .count
+    counts = lead_contacts(account).where(id: account.conversations.leads.select(:contact_id))
+                                   .group(CONTACT_CITY)
+                                   .count
 
     located = counts.except(nil)
 
