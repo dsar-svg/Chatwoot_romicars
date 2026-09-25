@@ -117,7 +117,7 @@ class Conversation < ApplicationRecord
   NON_LEAD_LABELS = %w[proveedor logistica].freeze
   # Being a supplier is who the number is, so tagging one conversation tags the contact too.
   # `logistica` stays on the conversation: a customer's own thread can be about a delivery.
-  SUPPLIER_LABEL = 'proveedor'
+  SUPPLIER_LABEL = 'proveedor'.freeze
 
   scope :leads, lambda {
     where.not(id: non_lead_taggings('Conversation')).where.not(contact_id: non_lead_taggings('Contact'))

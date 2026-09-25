@@ -316,6 +316,19 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.last.status).to eq('exhausted')
     end
 
+    it 'never closes a conversation someone snoozed after the nudge' do
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+      end
+      conversation.update!(status: :snoozed, snoozed_until: midday + 5.days)
+      travel_to(midday + 49.hours) { job.perform }
+
+      expect(conversation.reload).to have_attributes(status: 'snoozed', resolution_type: nil)
+      expect(ConversationFollowup.last.status).to eq('exhausted')
+    end
+
     it 'records a reply and leaves the conversation open' do
       conversation = nil
       travel_to(midday) do

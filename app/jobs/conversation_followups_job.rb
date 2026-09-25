@@ -198,6 +198,9 @@ class ConversationFollowupsJob < ApplicationJob
       # the customer stopped writing because they received their parts. The row goes
       # terminal so the job stops looking at it; the conversation is theirs to close.
       next followup.update!(status: 'exhausted') if followup.mode == 'assisted'
+      # Snoozed after the nudge went out: someone expects this customer back on a date.
+      # Closing it as silent now would bury that date.
+      next followup.update!(status: 'exhausted') if followup.conversation.snoozed?
 
       close_as_silent(followup)
     rescue StandardError => e
