@@ -35,6 +35,14 @@ class ConversationFollowupsJob < ApplicationJob
   # approved template. 12 + 12 is the most that still lands inside the window.
   MAX_SILENCE_HOURS = 12
 
+  # Channels where Meta refuses a free-form message 24 hours after the customer's last one.
+  # Checked here rather than through Conversation#can_reply?, which this fork makes always
+  # true (1a3fc64, to drop the red banner for agents). That hides the limit, it does not lift
+  # it — and for an automated message the rule is 24 hours even where Messenger and
+  # Instagram give a human agent seven days.
+  WINDOWED_CHANNELS = %w[Channel::Whatsapp Channel::FacebookPage Channel::Instagram].freeze
+  MESSAGING_WINDOW = 24.hours
+
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
   # Threads a seller has tagged as not-a-lead. A supplier writing about a price list and a
@@ -143,7 +151,7 @@ class ConversationFollowupsJob < ApplicationJob
     # Past 24 hours since the customer's last message, anything but a template is refused.
     # Chatwoot would still create the message, as `failed` — so the seller sees a reminder in
     # the thread that never reached the customer. A private note has no window.
-    return 'fuera_de_ventana' if followup.mode == 'auto' && !conversation.can_reply?
+    return 'fuera_de_ventana' if followup.mode == 'auto' && outside_messaging_window?(conversation)
 
     nil
   end
@@ -253,6 +261,13 @@ class ConversationFollowupsJob < ApplicationJob
     template = MESSAGES['generico'] if repuesto.blank? && template.include?(PART_TOKEN)
 
     "#{saludo_for(conversation)}#{template.gsub(PART_TOKEN, repuesto)}"
+  end
+
+  def outside_messaging_window?(conversation)
+    return false unless WINDOWED_CHANNELS.include?(conversation.inbox.channel_type)
+
+    last_incoming = conversation.messages.where(message_type: :incoming).maximum(:created_at)
+    last_incoming.nil? || last_incoming < MESSAGING_WINDOW.ago
   end
 
   def message_for(settings, etapa)
