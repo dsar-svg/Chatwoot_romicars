@@ -35,8 +35,10 @@ RSpec.describe ConversationFollowupsJob do
         job.perform
       end
 
+      # Inside the send window it goes out in the same tick; the night case stays pending and
+      # has its own example below.
       followup = ConversationFollowup.find_by(conversation: conversation)
-      expect(followup).to have_attributes(status: 'pending', mode: 'auto', attempt: 1)
+      expect(followup).to have_attributes(status: 'sent', mode: 'auto', attempt: 1)
     end
 
     it 'leaves alone a conversation where we are the ones who owe a reply' do
@@ -202,11 +204,15 @@ RSpec.describe ConversationFollowupsJob do
     end
 
     it 'cancels instead of sending when the customer came back during the wait' do
-      travel_to(midday) { quiet_conversation && job.perform }
+      # Scheduled at 3am, so it waits for the 8am window — that wait is where the customer
+      # can come back. At midday it would go out in the same tick with nothing to wait for.
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
 
       followup = ConversationFollowup.last
-      create(:message, conversation: followup.conversation, account: account, message_type: :incoming)
-      travel_to(midday + 10.minutes) { job.perform }
+      travel_to(Time.zone.local(2026, 9, 21, 7, 0)) do
+        create(:message, conversation: followup.conversation, account: account, message_type: :incoming)
+      end
+      travel_to(midday) { job.perform }
 
       expect(followup.reload).to have_attributes(status: 'cancelled', cancel_reason: 'cliente_respondio')
     end
