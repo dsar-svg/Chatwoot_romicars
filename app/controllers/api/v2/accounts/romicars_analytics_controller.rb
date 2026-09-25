@@ -146,23 +146,26 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since_30 = 30.days.ago
     today    = now.beginning_of_day
 
-    convs_30 = account.conversations.where(created_at: since_30..now)
-    total    = convs_30.count
-    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').count
+    # One lead per person, not per conversation: the Instagram thread that moved to WhatsApp
+    # and the one a customer reopens two days later are the same lead, and the contacts a
+    # handoff merges already share one id. Suppliers and the rider are out (Conversation.leads).
+    convs_30 = account.conversations.leads.where(created_at: since_30..now)
+    total    = convs_30.distinct.count(:contact_id)
+    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').distinct.count(:contact_id)
 
     render json: {
       kpis: {
         total_leads:  total,
         conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
-        active_chats: account.conversations.where(status: :open).count
+        active_chats: account.conversations.leads.where(status: :open).count
       },
       mini_metrics: {
-        new_today:      account.contacts.where('created_at >= ?', today).count,
-        pending:        account.conversations.where(status: :pending).count,
-        high_urgency:   account.conversations.where(priority: %i[high urgent]).where(status: %i[open pending]).count,
-        bot:            account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).count,
-        agent:          account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).count,
-        resolved_today: account.conversations.where(status: :resolved)
+        new_today:      lead_contacts(account).where('created_at >= ?', today).count,
+        pending:        account.conversations.leads.where(status: :pending).count,
+        high_urgency:   account.conversations.leads.where(priority: %i[high urgent]).where(status: %i[open pending]).count,
+        bot:            account.conversations.leads.where(status: :open).where.not(assignee_agent_bot_id: nil).count,
+        agent:          account.conversations.leads.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).count,
+        resolved_today: account.conversations.leads.where(status: :resolved)
                                .where('resolved_at >= ?', today).count
       }
     }
@@ -175,22 +178,22 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     items, label = case type
                    when 'new_today'
-                     contacts = account.contacts.where('created_at >= ?', today).order(created_at: :desc).limit(50)
+                     contacts = lead_contacts(account).where('created_at >= ?', today).order(created_at: :desc).limit(50)
                      [contacts.map { |c| { id: c.id, contact_name: c.name, status: 'Nuevo', agent_name: '—', created_at: c.created_at } }, 'Nuevos Hoy']
                    when 'pending'
-                     convs = account.conversations.where(status: :pending).includes(:contact, :assignee).order(created_at: :desc).limit(50)
+                     convs = account.conversations.leads.where(status: :pending).includes(:contact, :assignee).order(created_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Pendiente', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Pendientes']
                    when 'high_urgency'
-                     convs = account.conversations.where(priority: %i[high urgent], status: %i[open pending]).includes(:contact, :assignee).order(priority: :desc).limit(50)
+                     convs = account.conversations.leads.where(priority: %i[high urgent], status: %i[open pending]).includes(:contact, :assignee).order(priority: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: c.status == 'open' ? 'Abierta' : 'Pendiente', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Alta Urgencia']
                    when 'bot'
-                     convs = account.conversations.where(status: :open).where.not(assignee_agent_bot_id: nil).includes(:contact).order(created_at: :desc).limit(50)
+                     convs = account.conversations.leads.where(status: :open).where.not(assignee_agent_bot_id: nil).includes(:contact).order(created_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Abierta', agent_name: 'Bot', created_at: c.created_at } }, 'En Bot']
                    when 'agent'
-                     convs = account.conversations.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).includes(:contact, :assignee).order(created_at: :desc).limit(50)
+                     convs = account.conversations.leads.where(status: :open).where.not(assignee_id: nil).where(assignee_agent_bot_id: nil).includes(:contact, :assignee).order(created_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Abierta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'En Agente']
                    when 'resolved_today'
-                     convs = account.conversations.where(status: :resolved).where('resolved_at >= ?', today).includes(:contact, :assignee).order(resolved_at: :desc).limit(50)
+                     convs = account.conversations.leads.where(status: :resolved).where('resolved_at >= ?', today).includes(:contact, :assignee).order(resolved_at: :desc).limit(50)
                      [convs.map { |c| { id: c.display_id, contact_name: c.contact&.name || '—', status: 'Resuelta', agent_name: c.assignee&.name || '—', created_at: c.created_at } }, 'Resueltos Hoy']
                    else
                      [[], type]
@@ -204,9 +207,12 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     since_30 = 30.days.ago
 
     data = account.agents.map do |agent|
-      convs    = account.conversations.where(assignee_id: agent.id, created_at: since_30..Time.current)
+      convs    = account.conversations.leads.where(assignee_id: agent.id, created_at: since_30..Time.current)
       assigned = convs.count
       res      = convs.where(status: :resolved).count
+      # A sale, not any close: counting resolved as conversion credited a seller for every
+      # customer who went quiet, asked a question or moved to WhatsApp.
+      won      = convs.where(status: :resolved, resolution_type: 'ganado').count
 
       {
         id:                  agent.id,
@@ -215,7 +221,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         avatar_url:          agent.avatar_url,
         assigned:            assigned,
         resolved:            res,
-        conversion:          assigned.positive? ? (res.to_f / assigned * 100).round(1) : 0,
+        won:                 won,
+        conversion:          assigned.positive? ? (won.to_f / assigned * 100).round(1) : 0,
         avg_response_minutes: avg_first_response(account, agent.id, since_30)
       }
     end
@@ -227,7 +234,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
-    inquiries = account.product_inquiries.where(created_at: since_30..Time.current)
+    inquiries = lead_inquiries(account).where(created_at: since_30..Time.current)
 
     # Aggregated and sorted in SQL by ProductInquiry. Rows written by the n8n flow can
     # arrive without a repuesto or canal; those scopes drop them so the dashboard stops
@@ -249,8 +256,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # much of the picture is missing instead of implying the shop only sells in four towns.
   def contact_locations
     account = Current.account
-    counts = account.contacts
-                    .where(id: account.conversations.select(:contact_id))
+    counts = lead_contacts(account)
+                    .where(id: account.conversations.leads.select(:contact_id))
                     .group(CONTACT_CITY)
                     .count
 
@@ -301,7 +308,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
     # This endpoint reports itself as "30 días" but used to query all history, so the
     # percentages never matched the daily/by_agent series below them.
-    resolved = account.conversations
+    resolved = account.conversations.leads
                       .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since_30..)
 
@@ -345,12 +352,12 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       # take a percentage of. Reported anyway — a number the shop cannot see is a number
       # it cannot act on, and this one measures how many leads go quiet.
       abandonado: {
-        count: account.conversations.where(status: :resolved, resolution_type: 'abandonado')
+        count: account.conversations.leads.where(status: :resolved, resolution_type: 'abandonado')
                       .where(resolved_at: since_30..).count
       },
       # Also outside: the lead moved to a WhatsApp conversation and is counted there.
       derivado: {
-        count: account.conversations.where(status: :resolved, resolution_type: 'derivado')
+        count: account.conversations.leads.where(status: :resolved, resolution_type: 'derivado')
                       .where(resolved_at: since_30..).count
       },
       # Sales that picked up a conversation from the last two weeks (Conversations::ContinuityJob):
@@ -367,7 +374,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account  = Current.account
     since_30 = 30.days.ago
 
-    scope = account.conversations
+    scope = account.conversations.leads
                    .where(status: :resolved, resolution_reason: Conversation::RESOLUTION_REASON_REQUIRING_PRODUCT)
                    .where.not(requested_product: [nil, ''])
                    .where(resolved_at: since_30..)
@@ -427,6 +434,16 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     authorize :report, :view?
   end
 
+  def lead_contacts(account)
+    account.contacts.where.not(id: Conversation.non_lead_taggings('Contact'))
+  end
+
+  # Inquiries the bot logged without a conversation stay in; NOT IN alone would drop them.
+  def lead_inquiries(account)
+    inquiries = account.product_inquiries
+    inquiries.where(conversation_id: nil).or(inquiries.where(conversation_id: account.conversations.leads.select(:id)))
+  end
+
   def percentage_of(part, total)
     return 0 unless total.to_i.positive?
 
@@ -436,7 +453,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # Averaged in SQL. The Ruby version loaded every conversation of every agent into
   # memory just to subtract two timestamps.
   def avg_first_response(account, agent_id, since)
-    average = account.conversations
+    average = account.conversations.leads
                      .where(assignee_id: agent_id, created_at: since..Time.current)
                      .where.not(first_reply_created_at: nil)
                      .average(FIRST_RESPONSE_MINUTES)
@@ -445,7 +462,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def ai_insights_cache_key(account)
-    "romicars:ai_insights:v2:#{account.id}"
+    "romicars:ai_insights:v3:#{account.id}"
   end
 
   def openai_api_key
@@ -508,8 +525,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # being lost. These add the won/lost comparison the shop actually needs.
   def insights_context(account)
     since = 30.days.ago
-    convs = account.conversations.where(created_at: since..Time.current)
-    resolved = account.conversations
+    convs = account.conversations.leads.where(created_at: since..Time.current)
+    resolved = account.conversations.leads
                       .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
                       .where(resolved_at: since..)
     by_type = resolved.group(:resolution_type).count
@@ -589,7 +606,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def demand_context(account, since)
-    inquiries = account.product_inquiries.where(created_at: since..Time.current)
+    inquiries = lead_inquiries(account).where(created_at: since..Time.current)
     total = inquiries.count
     missing = inquiries.not_found.count
 
@@ -782,7 +799,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # Both series excluded `consulta`, so the "Consulta" column in the daily and per-agent
   # tables of the resolution report was permanently zero.
   def daily_resolution_stats(account, since)
-    account.conversations
+    account.conversations.leads
            .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .group(Arel.sql('DATE(resolved_at)'))
@@ -792,7 +809,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def agent_resolution_stats(account, since)
-    account.conversations
+    account.conversations.leads
            .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
            .where(resolved_at: since..)
            .where.not(assignee_id: nil)
@@ -804,7 +821,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def win_loss_cache_key(account)
-    "romicars:win_loss:v1:#{account.id}"
+    "romicars:win_loss:v2:#{account.id}"
   end
 
   def build_win_loss(account)
@@ -893,7 +910,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def conversation_samples(account, memory)
-    scope = account.conversations
+    scope = account.conversations.leads
                    .where(status: :resolved, resolved_at: 30.days.ago..)
                    .includes(:messages, :assignee, :inbox)
 

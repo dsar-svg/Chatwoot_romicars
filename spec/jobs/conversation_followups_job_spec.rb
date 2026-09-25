@@ -59,6 +59,16 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.count).to eq(0)
     end
 
+    it 'leaves alone any thread with a contact tagged as a supplier' do
+      travel_to(midday) do
+        quiet_conversation
+        contact.add_labels(['proveedor'])
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(0)
+    end
+
     it 'waits the hours of silence the account set instead of the default five' do
       account.update!(settings: account.settings.merge('followups_silence_hours' => 2))
       travel_to(midday) do
