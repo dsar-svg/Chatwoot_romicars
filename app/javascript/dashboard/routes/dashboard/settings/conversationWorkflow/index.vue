@@ -43,7 +43,10 @@ const showRequiredAttributes = computed(() => {
       <div class="flex flex-col gap-6 mt-4">
         <FollowupsSettings />
         <AutoResolve v-if="showAutoResolutionConfig" />
-        <ConversationRequiredAttributes :is-enabled="showRequiredAttributes" />
+        <ConversationRequiredAttributes
+          v-if="showRequiredAttributes"
+          is-enabled
+        />
       </div>
     </template>
   </SettingsLayout>

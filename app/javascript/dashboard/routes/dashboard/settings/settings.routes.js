@@ -11,6 +11,7 @@ import agentBot from './agentBots/agentBot.routes';
 import auditlogs from './auditlogs/audit.routes';
 import billing from './billing/billing.routes';
 import canned from './canned/canned.routes';
+import conversationWorkflow from './conversationWorkflow/conversationWorkflow.routes';
 import faqs from './faqs/faqs.routes';
 import vehicleBrands from './vehicles/vehicleBrands.routes';
 import prices from './prices/prices.routes';
@@ -53,6 +54,7 @@ export default {
     ...auditlogs.routes,
     ...billing.routes,
     ...canned.routes,
+    ...conversationWorkflow.routes,
     ...faqs.routes,
     ...vehicleBrands.routes,
     ...prices.routes,
