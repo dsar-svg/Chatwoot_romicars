@@ -26,7 +26,7 @@ RSpec.describe AgentNotifications::ConversationNotificationsMailer do
     end
 
     it 'renders the manage notification preferences footer link' do
-      expect(mail.body.encoded).to match('Manage notification preferences')
+      expect(mail.body.decoded).to match('Administrar notificaciones')
       expect(mail.body.encoded).to include("/app/accounts/#{account.id}/profile/settings")
     end
   end
