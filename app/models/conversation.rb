@@ -167,6 +167,7 @@ class Conversation < ApplicationRecord
   after_update_commit :execute_after_update_commit_callbacks
   after_create_commit :notify_conversation_creation
   after_create_commit :load_attributes_created_by_db_triggers
+  after_create_commit -> { Conversations::ContinuityJob.perform_later(self) }
   before_destroy :set_unread_count_deletion_data
   after_destroy_commit :notify_conversation_deletion
 

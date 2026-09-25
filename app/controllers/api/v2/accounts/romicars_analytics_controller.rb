@@ -353,6 +353,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         count: account.conversations.where(status: :resolved, resolution_type: 'derivado')
                       .where(resolved_at: since_30..).count
       },
+      # Sales that picked up a conversation from the last two weeks (Conversations::ContinuityJob):
+      # leads that looked lost the first time and came back to buy.
+      recuperados: {
+        count: resolved.where(resolution_type: 'ganado').where("conversations.custom_attributes ->> 'continua_de' IS NOT NULL").count
+      },
       daily: daily_resolution_stats(account, since_30),
       by_agent: agent_resolution_stats(account, since_30)
     }
