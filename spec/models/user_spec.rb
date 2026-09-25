@@ -36,7 +36,8 @@ RSpec.describe User do
     context 'with rotate the pubsub_token' do
       it 'changes the pubsub_token when password changes' do
         pubsub_token = user.pubsub_token
-        user.password = Faker::Internet.password(special_characters: true)
+        # Fixed rather than Faker: its passwords can be shorter than the 10 characters this fork requires.
+        user.password = 'Rotated-Pass123!'
         user.save!
         expect(user.pubsub_token).not_to eq(pubsub_token)
       end
