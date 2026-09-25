@@ -99,6 +99,10 @@ class ContactAPI extends ApiClient {
   exportContacts(queryPayload) {
     return axios.post(`${this.url}/export`, queryPayload);
   }
+
+  downloadVcard() {
+    return axios.get(`${this.url}/vcard`, { responseType: 'blob' });
+  }
 }
 
 export default new ContactAPI();

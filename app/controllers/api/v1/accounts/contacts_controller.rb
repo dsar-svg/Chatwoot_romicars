@@ -50,6 +50,14 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
     head :ok, message: I18n.t('errors.contacts.export.success')
   end
 
+  # Every contact with a number, as one .vcf the shop opens on its phone. Saving the
+  # customers' numbers there is what lets the shop's WhatsApp Status reach them.
+  def vcard
+    contacts = Current.account.contacts.where.not(phone_number: [nil, '']).order(:name)
+    send_data contacts.map { |contact| vcard_entry(contact) }.join, type: 'text/vcard',
+                                                                   filename: "contactos-#{Date.current}.vcf"
+  end
+
   # returns online contacts
   def active
     contacts = Current.account.contacts.where(id: ::OnlineStatusTracker
@@ -135,6 +143,14 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
 
   def set_current_page
     @current_page = params[:page] || 1
+  end
+
+  def vcard_entry(contact)
+    name = contact.name.to_s.squish.presence || contact.phone_number
+    # vCard reserves these three; an unescaped comma splits "Pérez, Ricardo" into two fields.
+    escaped = name.gsub(/([\\,;])/) { "\\#{Regexp.last_match(1)}" }
+    ['BEGIN:VCARD', 'VERSION:3.0', "N:;#{escaped};;;", "FN:#{escaped}", "TEL;TYPE=CELL:#{contact.phone_number}", 'END:VCARD', '']
+      .join("\r\n")
   end
 
   def fetch_contacts(contacts)
