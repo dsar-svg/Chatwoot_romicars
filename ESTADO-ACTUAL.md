@@ -174,14 +174,13 @@ job ya no la cierra a las 48 h.
 
 ## Punto exacto donde quedamos
 
-1. **Deploy** de #66–#74 (ver abajo).
-2. Después del deploy, **aplicar los cambios del bot en n8n** (`Bot Atencion Cliente`):
-   tools `derivar_a_whatsapp` (POST `whatsapp_handoff`), `guardar_telefono` (PATCH
-   `whatsapp_handoff`), `posponer_conversacion` (`toggle_status` con `snoozed`, máx. 14 días) y
-   reglas nuevas en el prompt: línea `Canal:` en los datos, paso 3 dividido por canal, paso 6
-   (compra con fecha → posponer), código `RC-` en WhatsApp → nota + asignar, teléfono suelto
-   → `guardar_telefono`. Credencial de las tres: `Demo ChatR` (token del bot). No aplicarlo
-   antes del deploy: el bot llamaría a un endpoint que no existe.
+1. **Deploy** de #66–#74 (ver "Cómo desplegar"). Imagen `ghcr.io/dsar-svg/chatwoot_romicars:latest`,
+   etiqueta `sha-109789e`. Al 25/09 en la tarde estaba mergeado y construyéndose, **sin desplegar**.
+2. Después del deploy, **aplicar los cambios del bot en n8n**: tres herramientas nuevas
+   (`derivar_a_whatsapp`, `guardar_telefono`, `posponer_conversacion`) y tres reemplazos en el
+   prompt. Todo lo necesario está en el **Anexo** al final de este archivo, con el chequeo
+   previo para confirmar que el deploy está arriba. No aplicarlo antes: el bot llamaría a un
+   endpoint que no existe y cada cliente que quiera comprar por Instagram vería un error.
 3. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
@@ -234,3 +233,90 @@ docker pull ghcr.io/dsar-svg/chatwoot_romicars:latest
 Y redesplegar desde EasyPanel. Las migraciones corren solas al arrancar
 (`db:chatwoot_prepare`). **No usar `name=chatwoot`**: también detiene el otro Chatwoot del VPS
 (`automatisupri_chatwoot`).
+
+## Anexo: cambios del bot pendientes (aplicar después del deploy)
+
+Workflow `Bot Atencion Cliente` (`8nLOTjgmTTK52CsO`). Se aplica con el MCP de n8n
+(`update_workflow`), o a mano en el editor. **Antes de aplicarlo, confirmar que el deploy
+está arriba**:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://asta-chatwoot.larlxe.easypanel.host/api/v1/accounts/1/conversations/1/whatsapp_handoff
+```
+
+`401` = el endpoint existe (pide token). `404` = todavía no se desplegó: no seguir.
+
+### Tres nodos nuevos
+
+Los tres son `n8n-nodes-base.httpRequestTool` versión `4.2`, con autenticación
+`predefinedCredentialType` → `httpHeaderAuth` → credencial **`Demo ChatR`**
+(id `iLGtJYU2QVYLnTts`, el token del bot, la misma de `asignar_agente`). Cada uno se conecta
+al `Agente Orquestador` por la salida `ai_tool`. Cuerpo: `sendBody: true`,
+`specifyBody: json`. Base de las URLs:
+
+```
+https://asta-chatwoot.larlxe.easypanel.host/api/v1/accounts/{{ $('Normalizar datos').item.json.account_id }}/conversations/{{ $('Normalizar datos').item.json.conversation_id }}
+```
+
+**`Tool: derivar_a_whatsapp`** — `POST {base}/whatsapp_handoff`
+
+- jsonBody:
+  `={{ { "repuesto": $fromAI('repuesto', 'El repuesto que el cliente va a comprar, con la variante si la dijo. Ej: sensor de cigüeñal largo', 'string'), "vehiculo": $fromAI('vehiculo', 'Marca y modelo del carro. Ej: Chery Orinoco. Vacío si no se sabe', 'string') } }}`
+- toolDescription:
+  > Genera el link de WhatsApp para cerrar la compra de un cliente que escribe por Instagram o Facebook. Devuelve `link`: mandáselo al cliente completo, sin acortarlo ni cambiarle nada; abre WhatsApp con el mensaje ya escrito y un código que une las dos conversaciones. Usala SOLO cuando el canal NO es WhatsApp y el cliente confirmó que quiere comprar, después de crear_nota_privada. NO llames a asignar_agente después: el vendedor toma la venta cuando el cliente escribe por WhatsApp. Si devuelve error, hacé el traspaso normal con asignar_agente.
+
+**`Tool: guardar_telefono`** — `PATCH {base}/whatsapp_handoff`
+
+- jsonBody:
+  `={{ { "telefono": $fromAI('telefono', 'El número tal como lo escribió el cliente, ej: 0414-1234567', 'string') } }}`
+- toolDescription:
+  > Guarda el número de WhatsApp que el cliente escribió, para que un vendedor le escriba. Usala cuando el cliente te pase su número (porque no puede abrir el link de WhatsApp, o respondiendo al recordatorio). Si devuelve error, el número está incompleto: pedíselo de nuevo con el código de área. Después llamá a crear_nota_privada ("Escribirle por WhatsApp al número guardado" y qué repuesto quiere) y a asignar_agente.
+
+**`Tool: posponer_conversacion`** — `POST {base}/toggle_status`
+
+- jsonBody (clampa entre mañana y 14 días, a las 9 am de Caracas):
+  `={{ (() => { const f = String($fromAI('fecha', 'Día en que el cliente dijo que compra o decide, formato YYYY-MM-DD. Ej: si hoy es lunes y dijo el viernes, la fecha de ese viernes', 'string') || ''); const hoy = $now.setZone('America/Caracas').startOf('day'); let d = DateTime.fromISO(f, { zone: 'America/Caracas' }); if (!d.isValid || d <= hoy) d = hoy.plus({ days: 1 }); if (d > hoy.plus({ days: 14 })) d = hoy.plus({ days: 14 }); return { status: 'snoozed', snoozed_until: Math.floor(d.set({ hour: 9 }).toSeconds()) }; })() }}`
+- toolDescription:
+  > Pausa la conversación hasta el día en que el cliente dijo que compra o decide ("te aviso el viernes", "cobro el 15", "paso la semana que viene"). Ese día a las 9 am vuelve a aparecer abierta para que un vendedor le escriba. Máximo 14 días. Llamá antes a crear_nota_privada con qué va a comprar, qué precio le diste y qué fecha dijo. NO la uses si es vago ("lo pienso", "después te digo") ni si quiere comprar ahora.
+
+### Cambios en el prompt (`Agente Orquestador` → `options.systemMessage`)
+
+Tres reemplazos de texto exacto. Leer el prompt vigente justo antes: si alguien lo editó y el
+texto de "Buscar" ya no aparece tal cual, adaptar en vez de pisar.
+
+1. Buscar `- Campaña de origen:` y poner antes de esa línea:
+   `- Canal: {{ $('Normalizar datos').item.json.canal }}`
+
+2. Buscar, en el paso 3 del FLUJO:
+   ```
+      b) Luego llamá a asignar_agente.
+      c) NUNCA cierres una conversación que termina en compra. Una venta va a un humano, no a cerrar_conversacion.
+   ```
+   Reemplazar por:
+   ```
+      b) Canal WhatsApp: llamá a asignar_agente.
+      c) Canal Instagram o Facebook y el cliente quiere comprar: llamá a derivar_a_whatsapp y mandale el link que devuelve, completo y sin cambiarle nada, en un mensaje corto: "Para cerrar tu compra seguimos por WhatsApp 👉 <link> Te abre el chat con el mensaje listo, solo dale enviar 📲". NO llames a asignar_agente: el vendedor toma la venta cuando escriba por WhatsApp. Si solo pide hablar con un vendedor sin estar comprando, asignar_agente como siempre.
+      d) Si en vez de abrir el link te da su número, o dice que no puede abrirlo: guardar_telefono, después crear_nota_privada ("Escribirle por WhatsApp al número guardado") y asignar_agente.
+      e) NUNCA cierres una conversación que termina en compra. Una venta va a un humano, no a cerrar_conversacion.
+   ```
+
+3. Buscar la línea que empieza con `CONTEXTO IMAGEN:` y poner antes (con una línea en blanco
+   entre bloques):
+   ```
+   6. Compra o decisión con fecha → Si el cliente dice que compra o decide un día concreto ("te aviso el viernes", "cobro el 15", "paso la semana que viene"): respondé corto que queda anotado para ese día, llamá a crear_nota_privada (repuesto, precio que le diste y la fecha que dijo) y a posponer_conversacion con esa fecha. Si es vago ("lo pienso", "después te digo") NO pospongas.
+
+   CONTEXTO WHATSAPP CON CÓDIGO: si el Canal es WhatsApp y el mensaje trae un código tipo "RC-" seguido de 5 letras o números, el cliente viene de Instagram o Facebook a comprar lo que dice ese mensaje. No le vuelvas a preguntar repuesto ni vehículo: saludalo, decile que ya lo pasás con un asesor para cerrar la compra, y llamá a crear_nota_privada y a asignar_agente.
+
+   TELÉFONO SUELTO: si el cliente te manda un número de teléfono (por ejemplo respondiendo si pudo escribir por WhatsApp), es su WhatsApp: guardar_telefono, crear_nota_privada y asignar_agente.
+   ```
+
+### Verificar
+
+- Releer el workflow y confirmar que los tres nodos llegan al `Agente Orquestador` por
+  `ai_tool` (no por `main`).
+- Prueba desde Instagram: pedir un repuesto, decir "lo compro" → tiene que llegar el link.
+  Tocarlo y enviar el mensaje en WhatsApp → la conversación de Instagram se cierra como
+  derivado, el contacto queda uno solo con el teléfono, y en WhatsApp aparece la línea
+  "Viene de … (conversación #N)".
+- Prueba de posponer: "te aviso el viernes" → conversación en estado pospuesta hasta el viernes
+  a las 9 am, con nota.
