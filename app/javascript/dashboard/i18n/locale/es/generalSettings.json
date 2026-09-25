@@ -47,10 +47,27 @@
       "FOLLOWUPS": {
         "TITLE": "Seguimiento automático",
         "NOTE": "Si un cliente deja de responder durante 5 horas, se le envía un recordatorio entre las 8 am y las 8 pm. Si tampoco responde en 48 horas, la conversación se cierra como abandonada. Las conversaciones con un agente asignado solo reciben una nota privada y nunca se cierran solas, y las etiquetadas como proveedor o logistica quedan fuera.",
+        "SILENCE": {
+          "LABEL": "Horas de silencio antes del recordatorio",
+          "HELP": "Entre 1 y 12. El recordatorio solo sale entre las 8 am y las 8 pm, y WhatsApp e Instagram no dejan escribir más de 24 horas después del último mensaje del cliente: con más de 12 horas no llegaría.",
+          "ERROR": "Las horas tienen que ser un número entero entre 1 y 12."
+        },
+        "MESSAGES": {
+          "LABEL": "Textos del recordatorio",
+          "HELP": "El nombre del cliente se agrega solo al principio. Escribe {'{'}repuesto{'}'} donde quieras nombrar la pieza que pidió. Si dejas un campo vacío se usa el texto de ejemplo.",
+          "STAGES": {
+            "COTIZADO": "Cuando se le dio precio",
+            "SIN_STOCK": "Cuando no había el repuesto",
+            "CONSULTA": "Cuando preguntó sin pedir un repuesto",
+            "GENERICO": "Cuando no se sabe qué repuesto pidió"
+          }
+        },
+        "UPDATE_BUTTON": "Guardar",
         "API": {
           "ENABLED": "Seguimiento automático activado",
           "DISABLED": "Seguimiento automático desactivado",
-          "ERROR": "No se pudo guardar el cambio. Intenta de nuevo."
+          "ERROR": "No se pudo guardar el cambio. Intenta de nuevo.",
+          "SAVED": "Cambios guardados"
         }
       },
       "AUTO_RESOLVE": {

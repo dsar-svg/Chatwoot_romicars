@@ -8,10 +8,11 @@
 class ConversationFollowupsJob < ApplicationJob
   queue_as :scheduled_jobs
 
-  # The copy lives here on purpose: this is the part the shop will want to reword, and it
-  # should not require touching the logic to do it. `%{repuesto}` is what the customer
-  # actually asked for, which is the only reason the message earns a reply — "¿sigues ahí?"
-  # earns none.
+  # Defaults. Each one can be rewritten per account from Settings > Conversation workflow,
+  # and a blank field falls back to these. `{repuesto}` is what the customer actually asked
+  # for, which is the only reason the message earns a reply — "¿sigues ahí?" earns none. The
+  # customer's name is prefixed on its own ("Ricardo, ...") so an edited text never ends up
+  # saying "Hola ," to someone we have no name for.
   #
   # None of these may claim the part is in stock. `vehicle_prices` carries a price, a
   # variant and a currency, but no quantity: a hit on `encontrado` means the part is in the
@@ -19,12 +20,20 @@ class ConversationFollowupsJob < ApplicationJob
   # customer when it arrives, would be inventing. Only `sin_stock` speaks about
   # availability, and it can, because `encontrado: false` is a recorded fact.
   MESSAGES = {
-    'cotizado' => '%<saludo>s¿sigues interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
-    'sin_stock' => '%<saludo>stodavía no me llega %<repuesto>s. ¿Te aviso apenas entre?',
-    'consulta' => '%<saludo>s¿estabas buscando algún repuesto en particular? Te lo reviso 🔧'
+    'cotizado' => '¿sigues interesado en {repuesto}? Te confirmo disponibilidad 🔧',
+    'sin_stock' => 'todavía no me llega {repuesto}. ¿Te aviso apenas entre?',
+    'consulta' => '¿estabas buscando algún repuesto en particular? Te lo reviso 🔧',
+    # Used whenever the chosen text names the part and we do not know which part it was.
+    'generico' => '¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
   }.freeze
 
-  GENERIC = '%<saludo>s¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
+  PART_TOKEN = '{repuesto}'
+
+  # Hours of silence before the nudge are set per account, capped here. The job also holds
+  # anything that comes due at night until 8am — up to 12 more hours — and past 24 hours
+  # since the customer's last message WhatsApp and Instagram refuse anything that is not an
+  # approved template. 12 + 12 is the most that still lands inside the window.
+  MAX_SILENCE_HOURS = 12
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
@@ -46,12 +55,15 @@ class ConversationFollowupsJob < ApplicationJob
   # It used to be the FOLLOWUPS_ENABLED environment variable. One switch, not two: with
   # both, someone flips the one they can see and nothing happens.
   def perform
-    account_ids = Account.where("settings ->> 'followups_enabled' = 'true'").pluck(:id)
-    return Rails.logger.info('[Followups] off for every account') if account_ids.empty?
+    accounts = Account.where("settings ->> 'followups_enabled' = 'true'")
+    return Rails.logger.info('[Followups] off for every account') unless accounts.exists?
 
-    schedule_new(account_ids)
-    send_due(account_ids)
-    resolve_sent(account_ids)
+    # One account at a time: the silence and the texts are per account.
+    accounts.find_each do |account|
+      schedule_new(account)
+      send_due(account)
+      resolve_sent(account)
+    end
   end
 
   private
@@ -60,12 +72,12 @@ class ConversationFollowupsJob < ApplicationJob
   # agent or the bot answered last, so the ball is in the customer's court. With it set, the
   # one who went quiet is us — that is an SLA problem, and nudging the customer for it would
   # be backwards.
-  def eligible_conversations(account_ids)
+  def eligible_conversations(account)
     Conversation
-      .where(account_id: account_ids)
+      .where(account_id: account.id)
       .where(status: %i[open pending])
       .where(waiting_since: nil)
-      .where(last_activity_at: ..ConversationFollowup::SILENCE_BEFORE_FOLLOWUP.ago)
+      .where(last_activity_at: ..silence_for(account).ago)
       .where(resolution_type: nil, sale_amount: nil)
       .where.not(id: ConversationFollowup.select(:conversation_id))
       # At least one message from the customer. Without this, an outbound campaign that
@@ -82,8 +94,8 @@ class ConversationFollowupsJob < ApplicationJob
       .where("COALESCE(contacts.custom_attributes->>'followups_opt_out', 'false') <> 'true'")
   end
 
-  def schedule_new(account_ids)
-    eligible_conversations(account_ids).find_each do |conversation|
+  def schedule_new(account)
+    eligible_conversations(account).find_each do |conversation|
       ConversationFollowup.create!(
         conversation: conversation,
         account_id: conversation.account_id,
@@ -100,12 +112,12 @@ class ConversationFollowupsJob < ApplicationJob
     end
   end
 
-  def send_due(account_ids)
+  def send_due(account)
     # Outside 8am-8pm nothing goes out. The rows stay pending and the next morning's tick
     # picks them up.
     return unless ConversationFollowup.sendable_now?
 
-    ConversationFollowup.due.where(account_id: account_ids).find_each do |followup|
+    ConversationFollowup.due.where(account_id: account.id).find_each do |followup|
       reason = disqualified(followup)
       next followup.cancel!(reason) if reason
 
@@ -128,6 +140,10 @@ class ConversationFollowupsJob < ApplicationJob
     return 'resultado_ya_declarado' if conversation.resolution_type.present?
     return 'venta_registrada' if conversation.sale_amount.present?
     return 'vencido' if followup.scheduled_at < STALE_AFTER.ago
+    # Past 24 hours since the customer's last message, anything but a template is refused.
+    # Chatwoot would still create the message, as `failed` — so the seller sees a reminder in
+    # the thread that never reached the customer. A private note has no window.
+    return 'fuera_de_ventana' if followup.mode == 'auto' && !conversation.can_reply?
 
     nil
   end
@@ -172,8 +188,8 @@ class ConversationFollowupsJob < ApplicationJob
     conversation.inbox.agent_bot
   end
 
-  def resolve_sent(account_ids)
-    ConversationFollowup.sent.where(account_id: account_ids).find_each do |followup|
+  def resolve_sent(account)
+    ConversationFollowup.sent.where(account_id: account.id).find_each do |followup|
       next followup.update!(status: 'replied') if followup.customer_replied?
       next unless followup.sent_at <= ConversationFollowup::CLOSE_AFTER.ago
 
@@ -228,12 +244,28 @@ class ConversationFollowupsJob < ApplicationJob
 
   def compose(conversation, etapa)
     repuesto = last_inquiry(conversation)&.repuesto_buscado.to_s.squish
-    template = MESSAGES.fetch(etapa, GENERIC)
+    settings = conversation.account.settings || {}
+    template = message_for(settings, etapa)
     # Naming the part is what makes the message worth answering. Without one, fall back to
-    # the vague version rather than sending "¿sigues interesado en ?".
-    template = GENERIC if repuesto.blank? && template.include?('%<repuesto>s')
+    # the general version rather than sending "¿sigues interesado en ?" — and if the shop
+    # rewrote the general one to name the part too, to the built-in default.
+    template = message_for(settings, 'generico') if repuesto.blank? && template.include?(PART_TOKEN)
+    template = MESSAGES['generico'] if repuesto.blank? && template.include?(PART_TOKEN)
 
-    format(template, saludo: saludo_for(conversation), repuesto: repuesto)
+    "#{saludo_for(conversation)}#{template.gsub(PART_TOKEN, repuesto)}"
+  end
+
+  def message_for(settings, etapa)
+    settings["followups_message_#{etapa}"].to_s.strip.presence || MESSAGES.fetch(etapa, MESSAGES['generico'])
+  end
+
+  # Blank or zero means the default; anything above the cap is held to it, because the
+  # settings screen is not the only way to write this value.
+  def silence_for(account)
+    hours = account.settings&.dig('followups_silence_hours').to_i
+    return ConversationFollowup::SILENCE_BEFORE_FOLLOWUP if hours <= 0
+
+    [hours, MAX_SILENCE_HOURS].min.hours
   end
 
   def saludo_for(conversation)

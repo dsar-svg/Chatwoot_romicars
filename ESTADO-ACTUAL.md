@@ -115,6 +115,14 @@ Se agregaron por API, con `POST /{app-id}/subscriptions`:
   esa pantalla. Es a propósito: el job le escribe a clientes solo.
 - Un seguimiento pendiente de más de un día se cancela como `vencido` en vez de mandarse, para
   que apagar y prender no dispare una semana de recordatorios atrasados.
+- En la misma pantalla se configuran **las horas de silencio** (1 a 12, por defecto 5) y **los
+  cuatro textos** del recordatorio, con `{repuesto}` como variable. El nombre del cliente se
+  antepone solo. Campo vacío = texto por defecto.
+- El tope de 12 h no es arbitrario: el job difiere hasta las 8 am lo que cae de noche (hasta
+  12 h más) y pasadas 24 h del último mensaje del cliente, WhatsApp e Instagram solo aceptan
+  plantillas. Además, si la ventana ya se cerró, el recordatorio se cancela como
+  `fuera_de_ventana` en vez de quedar en el hilo como mensaje fallido.
+- El cierre a las 48 h sigue fijo en código (`ConversationFollowup::CLOSE_AFTER`).
 
 ## Punto exacto donde quedamos
 

@@ -57,6 +57,26 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.count).to eq(0)
     end
 
+    it 'waits the hours of silence the account set instead of the default five' do
+      account.update!(settings: account.settings.merge('followups_silence_hours' => 2))
+      travel_to(midday) do
+        quiet_conversation.update!(last_activity_at: 3.hours.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(1)
+    end
+
+    it 'holds an out-of-range silence to the cap, so the nudge still lands inside the 24h window' do
+      account.update!(settings: account.settings.merge('followups_silence_hours' => 40))
+      travel_to(midday) do
+        quiet_conversation.update!(last_activity_at: 13.hours.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(1)
+    end
+
     it 'leaves alone a conversation that is still warm' do
       travel_to(midday) do
         quiet_conversation.update!(last_activity_at: 1.hour.ago)
@@ -133,6 +153,41 @@ RSpec.describe ConversationFollowupsJob do
 
       # Without a sender the dashboard labels the bubble with a bare "Bot".
       expect(conversation.messages.where(message_type: :outgoing).last.sender).to eq(agent_bot)
+    end
+
+    it 'sends the text the shop wrote, with the part filled in and the name in front' do
+      account.update!(settings: account.settings.merge('followups_message_cotizado' => 'el {repuesto} sigue apartado, ¿lo buscas hoy?'))
+      travel_to(midday) do
+        conversation = quiet_conversation
+        create(:product_inquiry, conversation: conversation, account: account,
+                                 repuesto_buscado: 'kit de clutch', encontrado: true)
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mensaje).to eq('Ricardo, el kit de clutch sigue apartado, ¿lo buscas hoy?')
+    end
+
+    it 'falls back to the general text when the chosen one names a part we do not know' do
+      account.update!(settings: account.settings.merge('followups_message_consulta' => 'te guardé {repuesto}'))
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mensaje).to eq("Ricardo, #{described_class::MESSAGES['generico']}")
+    end
+
+    it 'cancels rather than writes once the 24h messaging window has closed' do
+      travel_to(midday) do
+        quiet_conversation
+        # rubocop:disable RSpec/AnyInstance
+        allow_any_instance_of(Conversation).to receive(:can_reply?).and_return(false)
+        # rubocop:enable RSpec/AnyInstance
+        job.perform
+      end
+
+      # Sending anyway leaves a `failed` message in the thread that the customer never got.
+      expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'fuera_de_ventana')
     end
 
     it 'offers to warn the customer when the part was never in stock' do
