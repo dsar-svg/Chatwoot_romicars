@@ -15,6 +15,9 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
                        content: 'Cuanto cuesta la bomba de agua?')
       create(:message, account: account, conversation: lost_with_chat, message_type: :outgoing,
                        content: 'Son 80 dolares.')
+      # An incoming message reopens a resolved conversation, and win_loss only reads
+      # resolved ones. Put it back the way the history would have left it.
+      lost_with_chat.update_columns(status: Conversation.statuses[:resolved]) # rubocop:disable Rails/SkipsModelValidations
 
       create_list(:conversation, 2, account: account, status: :resolved, resolution_type: 'perdido',
                                     resolution_reason: 'sin_stock', requested_product: 'Bomba de agua',

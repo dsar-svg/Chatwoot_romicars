@@ -135,22 +135,22 @@ RSpec.describe Account::ContactsExportJob do
       expect(csv_data.length).to eq(account.contacts.resolved_contacts.count)
     end
 
-    it 'returns resolved contacts filtered if labels are provided' do
-      # Adding label to a resolved contact
+    # This fork exports every contact, including Instagram and Facebook ones that have no
+    # email, phone or identifier (resolved_contacts returns all of them since 66699e7).
+    it 'returns every contact with the label, identified or not' do
       Contact.last.add_labels(['spec-billing'])
       contact = create(:contact, account: account, email: nil, phone_number: nil)
       contact.add_labels(['spec-billing'])
       described_class.perform_now(account.id, user.id, [], { :payload => nil, :label => 'spec-billing' })
       csv_data = CSV.parse(account.contacts_export.download, headers: true)
-      # since there is only 1 resolved contact with 'spec-billing' label
-      expect(csv_data.length).to eq(1)
+      expect(csv_data.length).to eq(2)
     end
 
-    it 'returns filtered data limited to resolved contacts when filter is provided' do
+    it 'returns filtered data including contacts without email or phone when filter is provided' do
       create(:contact, account: account, email: nil, phone_number: nil, additional_attributes: { :country_code => 'India' })
       described_class.perform_now(account.id, user.id, [], { :payload => [city_filter.merge(:query_operator => nil)] }.with_indifferent_access)
       csv_data = CSV.parse(account.contacts_export.download, headers: true)
-      expect(csv_data.length).to eq(4)
+      expect(csv_data.length).to eq(5)
     end
 
     it 'returns filtered data when multiple filters are provided' do

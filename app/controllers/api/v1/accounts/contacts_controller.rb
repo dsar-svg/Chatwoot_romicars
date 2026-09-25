@@ -44,8 +44,7 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
 
   def export
     column_names = params['column_names']
-    filter_params = { :payload => params.permit(payload: [:attribute_key, :filter_operator, :filter_value, :values])['payload'],
-                      :label => params.permit(:label)['label'] }
+    filter_params = { :payload => contact_filter_params['payload'], :label => params.permit(:label)['label'] }
     Account::ContactsExportJob.perform_later(Current.account.id, Current.user.id, column_names, filter_params)
     head :ok, message: I18n.t('errors.contacts.export.success')
   end
@@ -54,8 +53,7 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
   # customers' numbers there is what lets the shop's WhatsApp Status reach them.
   def vcard
     contacts = Current.account.contacts.where.not(phone_number: [nil, '']).order(:name)
-    send_data contacts.map { |contact| vcard_entry(contact) }.join, type: 'text/vcard',
-                                                                   filename: "contactos-#{Date.current}.vcf"
+    send_data contacts.map { |contact| vcard_entry(contact) }.join, type: 'text/vcard', filename: "contactos-#{Date.current}.vcf"
   end
 
   # returns online contacts
@@ -215,10 +213,12 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
                     .merge({ additional_attributes: contact_additional_attributes })
   end
 
+  # Same shape as ConversationsController#filter_params. The whitelist that replaced
+  # permit! read `filters`, but the dashboard and FilterService use `payload`, and `values`
+  # comes as an array — so every contact filter and filtered export answered 500.
   def contact_filter_params
-    params.permit(:page, :label, :sort, :email, :name, :phone_number, :company_name,
-      :city, :country, :custom_attributes, additional_attributes: {},
-      filters: [:attribute_key, :filter_operator, :filter_value, :values])
+    params.permit(:page, :sort, payload: [:attribute_key, :attribute_model, :filter_operator, :query_operator, :custom_attribute_type,
+                                         :values, { values: [] }])
   end
 
   def set_include_contact_inboxes

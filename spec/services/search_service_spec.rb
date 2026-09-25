@@ -64,16 +64,16 @@ describe SearchService do
       it 'searches across name, email, phone_number and identifier and returns in the order of contact last_activity_at' do
         # random contact
         create(:contact, account_id: account.id)
-        # unresolved contact -> no identifying info
-        # will not appear in search results
-        create(:contact, name: 'Harry Potter', account_id: account.id)
+        # No email, phone or identifier. Upstream leaves it out; this fork searches every
+        # contact (66699e7), and with no activity it sorts last.
+        unidentified = create(:contact, name: 'Harry Potter', account_id: account.id)
         harry2 = create(:contact, email: 'HarryPotter@test.com', account_id: account.id, last_activity_at: 2.days.ago)
         harry3 = create(:contact, identifier: 'Potter123', account_id: account.id, last_activity_at: 1.day.ago)
         harry4 = create(:contact, identifier: 'Potter1235', account_id: account.id, last_activity_at: 2.minutes.ago)
 
         params = { q: 'Potter ' }
         search = described_class.new(current_user: user, current_account: account, params: params, search_type: 'Contact')
-        expect(search.perform[:contacts].map(&:id)).to eq([harry4.id, harry3.id, harry2.id, harry.id])
+        expect(search.perform[:contacts].map(&:id)).to eq([harry4.id, harry3.id, harry2.id, harry.id, unidentified.id])
       end
     end
 

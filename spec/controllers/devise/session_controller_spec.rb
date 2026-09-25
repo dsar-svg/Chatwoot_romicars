@@ -19,7 +19,10 @@ RSpec.describe 'Session', type: :request do
     context 'when the user is unconfirmed' do
       let!(:user) { create(:user, password: 'Password1!', account: account, skip_confirmation: false) }
 
-      it 'returns an unconfirmed user error code' do
+      # Devise runs in paranoid mode here (4fb9cf4): an unconfirmed account answers exactly
+      # like wrong credentials, so the login form cannot be used to find out which emails
+      # have an account.
+      it 'answers like wrong credentials, without revealing the account exists' do
         params = { email: user.email, password: 'Password1!' }
 
         post new_user_session_url,
@@ -27,8 +30,8 @@ RSpec.describe 'Session', type: :request do
              as: :json
 
         expect(response).to have_http_status(:unauthorized)
-        expect(response.parsed_body['error_code']).to eq('user_not_confirmed')
-        expect(response.parsed_body['errors'].first).to include(user.email)
+        expect(response.parsed_body['error_code']).to be_nil
+        expect(response.body).not_to include(user.email)
       end
     end
 

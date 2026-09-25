@@ -38,8 +38,9 @@ VPS (169.254.0.1)
 # Ver contenedores activos
 docker ps --format "table {{.Names}}\t{{.Status}}" | grep chatwoot
 
-# Detener todos los contenedores chatwoot
-docker stop $(docker ps -q --filter "name=chatwoot")
+# Detener los contenedores de RomiCars (asta_chatwoot-*). No usar "name=chatwoot": en el
+# mismo VPS corre otro Chatwoot (automatisupri_chatwoot) que no es de RomiCars.
+docker stop $(docker ps -q --filter "name=asta_chatwoot")
 
 # Borrar imagen vieja y pull la nueva
 docker rmi ghcr.io/dsar-svg/chatwoot_romicars:latest

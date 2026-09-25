@@ -113,8 +113,11 @@ RSpec.describe Contact do
   describe '.resolved_contacts' do
     let(:account) { create(:account) }
 
+    # This fork lists every contact, not only those with an email, phone or identifier:
+    # an Instagram or Facebook contact has none of the three and still is a customer
+    # (66699e7). The crm_v2 path is unchanged.
     context 'when crm_v2 feature flag is disabled' do
-      it 'returns contacts with email, phone_number, or identifier using feature flag value' do
+      it 'returns every contact, with or without email, phone_number or identifier' do
         # Create contacts with different attributes
         contact_with_email = create(:contact, account: account, email: 'test@example.com', name: 'John Doe')
         contact_with_phone = create(:contact, account: account, phone_number: '+1234567890', name: 'Jane Smith')
@@ -123,8 +126,7 @@ RSpec.describe Contact do
 
         resolved = account.contacts.resolved_contacts(use_crm_v2: false)
 
-        expect(resolved).to include(contact_with_email, contact_with_phone, contact_with_identifier)
-        expect(resolved).not_to include(contact_without_details)
+        expect(resolved).to include(contact_with_email, contact_with_phone, contact_with_identifier, contact_without_details)
       end
     end
 
@@ -167,7 +169,7 @@ RSpec.describe Contact do
         expect(resolved).not_to include(visitor_contact)
       end
 
-      it 'returns contacts with email, phone_number, or identifier when explicitly passing use_crm_v2: false' do
+      it 'returns every contact when explicitly passing use_crm_v2: false' do
         # Even though feature flag is enabled, we're explicitly passing false
         contact_with_email = create(:contact, account: account, email: 'test@example.com', name: 'John Doe')
         contact_with_phone = create(:contact, account: account, phone_number: '+1234567890', name: 'Jane Smith')
@@ -176,8 +178,7 @@ RSpec.describe Contact do
         resolved = account.contacts.resolved_contacts(use_crm_v2: false)
 
         # Should use the old logic despite feature flag being enabled
-        expect(resolved).to include(contact_with_email, contact_with_phone)
-        expect(resolved).not_to include(contact_without_details)
+        expect(resolved).to include(contact_with_email, contact_with_phone, contact_without_details)
       end
     end
 
@@ -193,8 +194,7 @@ RSpec.describe Contact do
 
         # Test with use_crm_v2: false
         resolved_old = account.contacts.resolved_contacts(use_crm_v2: false)
-        expect(resolved_old).to include(lead_with_email, customer_contact)
-        expect(resolved_old).not_to include(visitor_contact, lead_without_email)
+        expect(resolved_old).to include(lead_with_email, customer_contact, visitor_contact, lead_without_email)
 
         # Test with use_crm_v2: true
         resolved_new = account.contacts.resolved_contacts(use_crm_v2: true)

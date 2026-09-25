@@ -181,7 +181,9 @@ class SearchService
     @articles = articles_query.page(params[:page]).per(15)
   end
 
-  ALLOWED_TIME_COLUMNS = %w[messages.created_at last_activity_at updated_at created_at].freeze
+  # Every column the callers above pass. Missing one does not fail: the filter is skipped
+  # and the search quietly ignores the dates, which is how conversations lost theirs.
+  ALLOWED_TIME_COLUMNS = %w[messages.created_at conversations.last_activity_at last_activity_at updated_at created_at].freeze
 
   def apply_time_filter(query, column_name)
     return query if params[:since].blank? && params[:until].blank?

@@ -13,7 +13,9 @@ describe Campaigns::AudienceResolver do
 
   let(:campaign) { create(:campaign, :whatsapp, account: account, audience: audience) }
 
-  def contact_with(attributes = {}, city: nil)
+  # Attributes as a splat: Ruby 3 reads a braceless string-keyed hash as keywords, so with
+  # a positional hash `contact_with('marca_vehiculo' => 'Chery')` raised unknown keyword.
+  def contact_with(city: nil, **attributes)
     create(:contact, account: account,
                      custom_attributes: attributes,
                      additional_attributes: city ? { 'city' => city } : {})
@@ -82,8 +84,8 @@ describe Campaigns::AudienceResolver do
 
     # The city lives in the standard additional_attributes slot, not a custom one.
     it 'reads the city off additional_attributes' do
-      local = contact_with({}, city: 'Valencia')
-      contact_with({}, city: 'Maracay')
+      local = contact_with(city: 'Valencia')
+      contact_with(city: 'Maracay')
 
       expect(resolved).to contain_exactly(local)
     end

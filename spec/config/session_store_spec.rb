@@ -10,12 +10,14 @@ describe 'Session Store Configuration' do
     expect(Rails.application.config.session_store).to eq(ActionDispatch::Session::CookieStore)
   end
 
-  it 'sets the session key' do
-    expect(session_options[:key]).to eq('_chatwoot_session')
+  # Hardened in f092401 and 4fb9cf4: the key carries the environment, and the cookie is
+  # only for the super admin dashboard, which never needs to ride a cross-site request.
+  it 'sets the session key per environment' do
+    expect(session_options[:key]).to eq("_#{Rails.env}_chatwoot_session")
   end
 
-  it 'sets same_site to lax' do
-    expect(session_options[:same_site]).to eq(:lax)
+  it 'sets same_site to strict' do
+    expect(session_options[:same_site]).to eq(:strict)
   end
 
   it 'sets httponly to true' do
