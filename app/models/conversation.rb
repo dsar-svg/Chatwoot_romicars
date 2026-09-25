@@ -85,12 +85,14 @@ class Conversation < ApplicationRecord
   enum status: { open: 0, resolved: 1, pending: 2, snoozed: 3 }
   enum priority: { low: 0, medium: 1, high: 2, urgent: 3 }
 
-  RESOLUTION_TYPES = %w[ganado perdido consulta abandonado].freeze
+  RESOLUTION_TYPES = %w[ganado perdido consulta abandonado derivado].freeze
   # The three a person declares. `abandonado` is written only by ConversationFollowupsJob,
   # for a customer who never came back: it is the absence of an outcome, not one of them.
   # Filing it under `perdido` put "the customer went quiet" next to "they said it was too
   # expensive", and the loss analysis then prescribed fixes for a loss that never happened.
   # It stays out of the funnel percentages and out of the resolution modal.
+  # `derivado` is the same kind: written only by WhatsappHandoff, for an Instagram or Facebook
+  # conversation whose customer went on to WhatsApp. The lead is counted over there.
   DECLARED_RESOLUTION_TYPES = %w[ganado perdido consulta].freeze
   # Reasons only apply to `perdido` closures.
   RESOLUTION_REASONS = %w[sin_stock precio sin_respuesta otro].freeze

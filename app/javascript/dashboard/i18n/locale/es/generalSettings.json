@@ -59,6 +59,7 @@
             "COTIZADO": "Cuando se le dio precio",
             "SIN_STOCK": "Cuando no había el repuesto",
             "CONSULTA": "Cuando preguntó sin pedir un repuesto",
+            "DERIVADO": "Cuando se le mandó el link de WhatsApp y no escribió",
             "GENERICO": "Cuando no se sabe qué repuesto pidió"
           }
         },

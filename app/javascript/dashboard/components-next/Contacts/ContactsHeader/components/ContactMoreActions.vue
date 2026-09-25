@@ -5,6 +5,8 @@ import { useI18n } from 'vue-i18n';
 import Button from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import { usePolicy } from 'dashboard/composables/usePolicy';
+import { useAlert } from 'dashboard/composables';
+import ContactAPI from 'dashboard/api/contacts';
 
 const emit = defineEmits(['add', 'import', 'export']);
 
@@ -40,13 +42,39 @@ const contactMenuItems = computed(() => [
           value: 'import',
           icon: 'i-lucide-download',
         },
+        {
+          label: t(
+            'CONTACTS_LAYOUT.HEADER.ACTIONS.CONTACT_CREATION.DOWNLOAD_VCARD'
+          ),
+          action: 'vcard',
+          value: 'vcard',
+          icon: 'i-lucide-smartphone',
+        },
       ]
     : []),
 ]);
 const showActionsDropdown = ref(false);
 
+// Through axios rather than a plain link: the API needs the session headers.
+const downloadVcard = async () => {
+  try {
+    const { data } = await ContactAPI.downloadVcard();
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(data);
+    link.download = 'contactos.vcf';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch {
+    useAlert(
+      t('CONTACTS_LAYOUT.HEADER.ACTIONS.CONTACT_CREATION.DOWNLOAD_VCARD_ERROR')
+    );
+  }
+};
+
 const handleContactAction = ({ action }) => {
-  if (action === 'add') {
+  if (action === 'vcard') {
+    downloadVcard();
+  } else if (action === 'add') {
     emit('add');
   } else if (action === 'import') {
     emit('import');

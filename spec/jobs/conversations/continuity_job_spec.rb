@@ -30,6 +30,15 @@ RSpec.describe Conversations::ContinuityJob do
     expect(current.reload.custom_attributes).not_to have_key('continua_de')
   end
 
+  it 'leaves the WhatsApp handoff to its own note' do
+    conversation_for(contact, status: :resolved, resolution_type: 'derivado', last_activity_at: 1.hour.ago)
+    current = conversation_for(contact)
+
+    described_class.perform_now(current)
+
+    expect(current.reload.custom_attributes).not_to have_key('continua_de')
+  end
+
   it 'is queued for every new conversation' do
     expect { conversation_for(contact) }.to have_enqueued_job(described_class)
   end

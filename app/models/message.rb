@@ -331,6 +331,15 @@ class Message < ApplicationRecord
     send_reply
     execute_message_template_hooks
     update_contact_activity
+    claim_whatsapp_handoff
+  end
+
+  # A customer arriving from Instagram or Facebook through the bot's wa.me link. Only the
+  # regex runs here; the merge and the closing happen in the job.
+  def claim_whatsapp_handoff
+    return unless incoming? && inbox.channel_type == 'Channel::Whatsapp' && content.to_s.match?(WhatsappHandoff::CODE_PATTERN)
+
+    Conversations::WhatsappHandoffArrivalJob.perform_later(self)
   end
 
   def update_contact_activity

@@ -178,6 +178,7 @@ Rails.application.routes.draw do
               resource :participants, only: [:show, :create, :update, :destroy]
               resource :direct_uploads, only: [:create]
               resource :draft_messages, only: [:show, :update, :destroy]
+              resource :whatsapp_handoff, only: [:create, :update]
             end
             member do
               post :mute
@@ -230,6 +231,7 @@ Rails.application.routes.draw do
               post :filter
               post :import
               post :export
+              get :vcard
             end
             member do
               get :contactable_inboxes

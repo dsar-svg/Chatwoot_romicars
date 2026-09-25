@@ -15,6 +15,9 @@ class Conversations::ContinuityJob < ApplicationJob
     previous = conversation.contact.conversations
                            .where.not(id: conversation.id)
                            .where(created_at: ...conversation.created_at, last_activity_at: WINDOW.ago..)
+                           # A wa.me handoff already links the two threads (WhatsappHandoff); counting
+                           # it here too would report every one of them as a customer who came back.
+                           .where('conversations.resolution_type IS DISTINCT FROM ?', 'derivado')
                            .order(last_activity_at: :desc)
                            .first
     return if previous.blank?
