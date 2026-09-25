@@ -44,6 +44,32 @@
         "TITLE": "Account ID",
         "NOTE": "This ID is required if you are building an API based integration"
       },
+      "FOLLOWUPS": {
+        "TITLE": "Automatic follow-up",
+        "NOTE": "If a customer stops replying for 5 hours, they get a reminder between 8 am and 8 pm. If they still do not reply within 48 hours, the conversation is closed as abandoned. Conversations with an assigned agent only get a private note and are never closed automatically, and those labelled proveedor or logistica are left out.",
+        "SILENCE": {
+          "LABEL": "Hours of silence before the reminder",
+          "HELP": "Between 1 and 12. The reminder only goes out between 8 am and 8 pm, and WhatsApp and Instagram do not allow writing more than 24 hours after the customer's last message: with more than 12 hours it would not arrive.",
+          "ERROR": "Hours must be a whole number between 1 and 12."
+        },
+        "MESSAGES": {
+          "LABEL": "Reminder texts",
+          "HELP": "The customer's name is added at the start on its own. Write {'{'}repuesto{'}'} wherever you want to name the part they asked for. A blank field uses the sample text.",
+          "STAGES": {
+            "COTIZADO": "When they were given a price",
+            "SIN_STOCK": "When the part was not in stock",
+            "CONSULTA": "When they asked without naming a part",
+            "GENERICO": "When the part they asked for is not known"
+          }
+        },
+        "UPDATE_BUTTON": "Save",
+        "API": {
+          "ENABLED": "Automatic follow-up enabled",
+          "DISABLED": "Automatic follow-up disabled",
+          "ERROR": "Could not save the change. Please try again.",
+          "SAVED": "Changes saved"
+        }
+      },
       "AUTO_RESOLVE": {
         "TITLE": "Auto-resolve conversations",
         "NOTE": "This configuration would allow you to automatically resolve the conversation after a certain period of inactivity.",

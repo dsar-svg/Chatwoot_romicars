@@ -5,13 +5,9 @@ require 'rails_helper'
 RSpec.describe ConversationFollowupsJob do
   subject(:job) { described_class.new }
 
-  # The job ships dormant so a bad eligibility query cannot message customers on deploy.
-  # Every example here runs it switched on; the off case is its own test below.
-  around do |example|
-    with_modified_env(FOLLOWUPS_ENABLED: 'true') { example.run }
-  end
-
-  let(:account) { create(:account) }
+  # The job ships dormant: an admin switches it on per account. Every example here runs
+  # with it on; the off case is its own test below.
+  let(:account) { create(:account, settings: { 'followups_enabled' => true }) }
   let(:inbox) { create(:inbox, account: account) }
   let(:contact) { create(:contact, account: account, name: 'Ricardo') }
   let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox) }
@@ -39,8 +35,10 @@ RSpec.describe ConversationFollowupsJob do
         job.perform
       end
 
+      # Inside the send window it goes out in the same tick; the night case stays pending and
+      # has its own example below.
       followup = ConversationFollowup.find_by(conversation: conversation)
-      expect(followup).to have_attributes(status: 'pending', mode: 'auto', attempt: 1)
+      expect(followup).to have_attributes(status: 'sent', mode: 'auto', attempt: 1)
     end
 
     it 'leaves alone a conversation where we are the ones who owe a reply' do
@@ -59,6 +57,26 @@ RSpec.describe ConversationFollowupsJob do
       end
 
       expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'waits the hours of silence the account set instead of the default five' do
+      account.update!(settings: account.settings.merge('followups_silence_hours' => 2))
+      travel_to(midday) do
+        quiet_conversation.update!(last_activity_at: 3.hours.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(1)
+    end
+
+    it 'holds an out-of-range silence to the cap, so the nudge still lands inside the 24h window' do
+      account.update!(settings: account.settings.merge('followups_silence_hours' => 40))
+      travel_to(midday) do
+        quiet_conversation.update!(last_activity_at: 13.hours.ago)
+        job.perform
+      end
+
+      expect(ConversationFollowup.count).to eq(1)
     end
 
     it 'leaves alone a conversation that is still warm' do
@@ -139,6 +157,65 @@ RSpec.describe ConversationFollowupsJob do
       expect(conversation.messages.where(message_type: :outgoing).last.sender).to eq(agent_bot)
     end
 
+    it 'sends the text the shop wrote, with the part filled in and the name in front' do
+      account.update!(settings: account.settings.merge('followups_message_cotizado' => 'el {repuesto} sigue apartado, ¿lo buscas hoy?'))
+      travel_to(midday) do
+        conversation = quiet_conversation
+        create(:product_inquiry, conversation: conversation, account: account,
+                                 repuesto_buscado: 'kit de clutch', encontrado: true)
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mensaje).to eq('Ricardo, el kit de clutch sigue apartado, ¿lo buscas hoy?')
+    end
+
+    it 'falls back to the general text when the chosen one names a part we do not know' do
+      account.update!(settings: account.settings.merge('followups_message_consulta' => 'te guardé {repuesto}'))
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
+      end
+
+      expect(ConversationFollowup.last.mensaje).to eq("Ricardo, #{described_class::MESSAGES['generico']}")
+    end
+
+    context 'when the conversation is on WhatsApp' do
+      let(:whatsapp_channel) { create(:channel_whatsapp, account: account, sync_templates: false, validate_provider_config: false) }
+      let(:whatsapp_inbox) { create(:inbox, channel: whatsapp_channel, account: account) }
+
+      # Same shape as quiet_conversation, on a channel with a 24h window and with the
+      # customer's last message placed where the example needs it.
+      def whatsapp_conversation(customer_wrote_at:)
+        wa_contact_inbox = create(:contact_inbox, contact: contact, inbox: whatsapp_inbox, source_id: '584141234567')
+        conversation = create(:conversation, account: account, inbox: whatsapp_inbox, contact: contact,
+                                             contact_inbox: wa_contact_inbox, status: :open)
+        create(:message, conversation: conversation, account: account, inbox: whatsapp_inbox,
+                         message_type: :incoming, created_at: customer_wrote_at)
+        create(:message, conversation: conversation, account: account, inbox: whatsapp_inbox,
+                         message_type: :outgoing, created_at: 6.hours.ago)
+        conversation.update!(waiting_since: nil, last_activity_at: 6.hours.ago)
+      end
+
+      it 'cancels rather than writes once the 24h messaging window has closed' do
+        travel_to(midday) do
+          whatsapp_conversation(customer_wrote_at: 30.hours.ago)
+          job.perform
+        end
+
+        # Sending anyway leaves a `failed` message in the thread that the customer never got.
+        expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'fuera_de_ventana')
+      end
+
+      it 'still sends while the window is open' do
+        travel_to(midday) do
+          whatsapp_conversation(customer_wrote_at: 7.hours.ago)
+          job.perform
+        end
+
+        expect(ConversationFollowup.last.status).to eq('sent')
+      end
+    end
+
     it 'offers to warn the customer when the part was never in stock' do
       travel_to(midday) do
         conversation = quiet_conversation
@@ -151,11 +228,15 @@ RSpec.describe ConversationFollowupsJob do
     end
 
     it 'cancels instead of sending when the customer came back during the wait' do
-      travel_to(midday) { quiet_conversation && job.perform }
+      # Scheduled at 3am, so it waits for the 8am window — that wait is where the customer
+      # can come back. At midday it would go out in the same tick with nothing to wait for.
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
 
       followup = ConversationFollowup.last
-      create(:message, conversation: followup.conversation, account: account, message_type: :incoming)
-      travel_to(midday + 10.minutes) { job.perform }
+      travel_to(Time.zone.local(2026, 9, 21, 7, 0)) do
+        create(:message, conversation: followup.conversation, account: account, message_type: :incoming)
+      end
+      travel_to(midday) { job.perform }
 
       expect(followup.reload).to have_attributes(status: 'cancelled', cancel_reason: 'cliente_respondio')
     end
@@ -232,16 +313,32 @@ RSpec.describe ConversationFollowupsJob do
     end
   end
 
-  describe 'the kill switch' do
-    it 'does nothing at all while FOLLOWUPS_ENABLED is unset' do
-      with_modified_env(FOLLOWUPS_ENABLED: nil) do
-        travel_to(midday) do
-          quiet_conversation
-          job.perform
-        end
+  describe 'the switch' do
+    it 'does nothing at all for an account that has not switched it on' do
+      account.update!(settings: account.settings.merge('followups_enabled' => false))
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
       end
 
       expect(ConversationFollowup.count).to eq(0)
+    end
+
+    it 'holds pending follow-ups while off instead of sending them' do
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
+      account.update!(settings: account.settings.merge('followups_enabled' => false))
+      travel_to(midday) { job.perform }
+
+      expect(ConversationFollowup.last.status).to eq('pending')
+    end
+
+    it 'drops what went stale while it was off rather than sending it late' do
+      travel_to(Time.zone.local(2026, 9, 21, 3, 0)) { quiet_conversation && job.perform }
+
+      # Switched back on a week later: that nudge is about a conversation nobody remembers.
+      travel_to(midday + 7.days) { job.perform }
+
+      expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'vencido')
     end
   end
 end

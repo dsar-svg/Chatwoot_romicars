@@ -129,7 +129,9 @@ class Api::V1::AccountsController < Api::BaseController
   end
 
   def permitted_settings_attributes
-    [:auto_resolve_after, :auto_resolve_message, :auto_resolve_ignore_waiting, :audio_transcriptions, :auto_resolve_label]
+    [:auto_resolve_after, :auto_resolve_message, :auto_resolve_ignore_waiting, :audio_transcriptions, :auto_resolve_label,
+     :followups_enabled, :followups_silence_hours, :followups_message_cotizado, :followups_message_sin_stock,
+     :followups_message_consulta, :followups_message_generico]
   end
 
   def check_signup_enabled

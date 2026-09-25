@@ -101,6 +101,40 @@ Se agregaron por API, con `POST /{app-id}/subscriptions`:
 - El objeto `instagram` completo, que no estaba suscrito: `messages`,
   `messaging_postbacks`, `messaging_referral`, `standby`. Verificado con un DM real.
 
+### 25/09 — el seguimiento se enciende desde la app
+
+- **Bug en producción desde el deploy del #64**: la exclusión por etiquetas usaba
+  `Conversation.tagged_with(..., any: true).select('conversations.id')`, y Postgres la
+  rechazaba con `subquery has too many columns`. Como revienta en `schedule_new`, el job no
+  agendaba, no mandaba ni cerraba nada. Ahora consulta `taggings` directo.
+- **El interruptor reemplazó a `FOLLOWUPS_ENABLED`.** Vive en `account.settings['followups_enabled']`
+  y se cambia desde **Configuración → Flujo de conversación → Seguimiento automático**
+  (solo administradores). La variable de entorno ya no se lee: si sigue puesta en EasyPanel
+  no hace nada y se puede borrar.
+- **Después de desplegar, el seguimiento queda APAGADO** hasta que alguien lo prenda desde
+  esa pantalla. Es a propósito: el job le escribe a clientes solo.
+- Un seguimiento pendiente de más de un día se cancela como `vencido` en vez de mandarse, para
+  que apagar y prender no dispare una semana de recordatorios atrasados.
+- En la misma pantalla se configuran **las horas de silencio** (1 a 12, por defecto 5) y **los
+  cuatro textos** del recordatorio, con `{repuesto}` como variable. El nombre del cliente se
+  antepone solo. Campo vacío = texto por defecto.
+- El tope de 12 h no es arbitrario: el job difiere hasta las 8 am lo que cae de noche (hasta
+  12 h más) y pasadas 24 h del último mensaje del cliente, WhatsApp e Instagram solo aceptan
+  plantillas. Además, si la ventana ya se cerró, el recordatorio se cancela como
+  `fuera_de_ventana` en vez de quedar en el hilo como mensaje fallido.
+- El cierre a las 48 h sigue fijo en código (`ConversationFollowup::CLOSE_AFTER`).
+- El guard de ventana del job **no usa `Conversation#can_reply?`**: para un mensaje
+  automático la regla es 24 h aunque Messenger e Instagram le den 7 días a un agente humano.
+
+### Ventana de 24 h en toda la app (decidido)
+
+`1a3fc64` (19/08) había dejado `can_reply?` siempre en `true` para quitar el banner rojo, pero
+Meta seguía rechazando los mensajes libres pasadas 24 h (error 131047). Se restauró el
+chequeo en `Conversations::MessageWindowService` y el banner rojo quedó como una línea gris
+pequeña sobre el hilo. Fuera de ventana, en WhatsApp el editor solo deja mandar plantillas
+(o nota privada); también se puede contestar desde la app de WhatsApp Business en el
+teléfono, que por coexistence no tiene ese límite.
+
 ## Punto exacto donde quedamos
 
 Investigando unos mensajes `This message is unavailable.` que aparecen en varias

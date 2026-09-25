@@ -8,10 +8,11 @@
 class ConversationFollowupsJob < ApplicationJob
   queue_as :scheduled_jobs
 
-  # The copy lives here on purpose: this is the part the shop will want to reword, and it
-  # should not require touching the logic to do it. `%{repuesto}` is what the customer
-  # actually asked for, which is the only reason the message earns a reply — "¿sigues ahí?"
-  # earns none.
+  # Defaults. Each one can be rewritten per account from Settings > Conversation workflow,
+  # and a blank field falls back to these. `{repuesto}` is what the customer actually asked
+  # for, which is the only reason the message earns a reply — "¿sigues ahí?" earns none. The
+  # customer's name is prefixed on its own ("Ricardo, ...") so an edited text never ends up
+  # saying "Hola ," to someone we have no name for.
   #
   # None of these may claim the part is in stock. `vehicle_prices` carries a price, a
   # variant and a currency, but no quantity: a hit on `encontrado` means the part is in the
@@ -19,12 +20,26 @@ class ConversationFollowupsJob < ApplicationJob
   # customer when it arrives, would be inventing. Only `sin_stock` speaks about
   # availability, and it can, because `encontrado: false` is a recorded fact.
   MESSAGES = {
-    'cotizado' => '%<saludo>s¿sigues interesado en %<repuesto>s? Te confirmo disponibilidad 🔧',
-    'sin_stock' => '%<saludo>stodavía no me llega %<repuesto>s. ¿Te aviso apenas entre?',
-    'consulta' => '%<saludo>s¿estabas buscando algún repuesto en particular? Te lo reviso 🔧'
+    'cotizado' => '¿sigues interesado en {repuesto}? Te confirmo disponibilidad 🔧',
+    'sin_stock' => 'todavía no me llega {repuesto}. ¿Te aviso apenas entre?',
+    'consulta' => '¿estabas buscando algún repuesto en particular? Te lo reviso 🔧',
+    # Used whenever the chosen text names the part and we do not know which part it was.
+    'generico' => '¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
   }.freeze
 
-  GENERIC = '%<saludo>s¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
+  PART_TOKEN = '{repuesto}'
+
+  # Hours of silence before the nudge are set per account, capped here. The job also holds
+  # anything that comes due at night until 8am — up to 12 more hours — and past 24 hours
+  # since the customer's last message WhatsApp and Instagram refuse anything that is not an
+  # approved template. 12 + 12 is the most that still lands inside the window.
+  MAX_SILENCE_HOURS = 12
+
+  # Channels where Meta refuses a free-form message 24 hours after the customer's last one.
+  # Checked here rather than through Conversation#can_reply?: for an automated message the
+  # rule is 24 hours even where Messenger and Instagram give a human agent seven days.
+  WINDOWED_CHANNELS = %w[Channel::Whatsapp Channel::FacebookPage Channel::Instagram].freeze
+  MESSAGING_WINDOW = 24.hours
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
@@ -34,44 +49,59 @@ class ConversationFollowupsJob < ApplicationJob
   # afuera" means they got their parts, not that the sale was lost.
   EXCLUDED_LABELS = %w[proveedor logistica].freeze
 
-  # Off unless switched on. This job writes to real customers on its own every fifteen
-  # minutes, so it ships dormant: deploy, migrate, watch one tick, then set the variable.
-  # It is also the fastest way to stop it if the eligibility query turns out to be wrong.
-  def perform
-    return Rails.logger.info('[Followups] disabled (FOLLOWUPS_ENABLED is not true)') unless enabled?
+  # A pending follow-up older than this is not sent. Rows only wait this long when the job
+  # was switched off, and switching it back on must not fire a week of stale nudges at once.
+  STALE_AFTER = 1.day
 
-    schedule_new
-    send_due
-    resolve_sent
+  # Off unless an admin switches it on for the account, from Settings > Conversation
+  # workflow. This job writes to real customers on its own every fifteen minutes, so it
+  # stays dormant until someone decides otherwise — and the switch doubles as the fastest
+  # way to stop it, faster than any redeploy.
+  #
+  # It used to be the FOLLOWUPS_ENABLED environment variable. One switch, not two: with
+  # both, someone flips the one they can see and nothing happens.
+  def perform
+    accounts = Account.where("settings ->> 'followups_enabled' = 'true'")
+    return Rails.logger.info('[Followups] off for every account') unless accounts.exists?
+
+    # One account at a time: the silence and the texts are per account.
+    accounts.find_each do |account|
+      schedule_new(account)
+      send_due(account)
+      resolve_sent(account)
+    end
   end
 
   private
-
-  def enabled?
-    ENV.fetch('FOLLOWUPS_ENABLED', 'false') == 'true'
-  end
 
   # Mirrors Chatwoot's own `resolvable_not_waiting` scope: `waiting_since IS NULL` means an
   # agent or the bot answered last, so the ball is in the customer's court. With it set, the
   # one who went quiet is us — that is an SLA problem, and nudging the customer for it would
   # be backwards.
-  def eligible_conversations
+  def eligible_conversations(account)
     Conversation
+      .where(account_id: account.id)
       .where(status: %i[open pending])
       .where(waiting_since: nil)
-      .where(last_activity_at: ..ConversationFollowup::SILENCE_BEFORE_FOLLOWUP.ago)
+      .where(last_activity_at: ..silence_for(account).ago)
       .where(resolution_type: nil, sale_amount: nil)
       .where.not(id: ConversationFollowup.select(:conversation_id))
       # At least one message from the customer. Without this, an outbound campaign that
       # nobody ever answered would get chased as if it were a warm lead.
       .where(id: Message.where(message_type: :incoming).select(:conversation_id))
-      .where.not(id: Conversation.tagged_with(EXCLUDED_LABELS, any: true).select('conversations.id'))
+      # Straight against taggings, one column. `tagged_with(any: true)` brings its own
+      # SELECT, and adding `.select(:id)` to it made Postgres reject the subquery with
+      # "subquery has too many columns" on every tick.
+      .where.not(id: ActsAsTaggableOn::Tagging.joins(:tag)
+                                              .where(taggable_type: 'Conversation', context: 'labels',
+                                                     tags: { name: EXCLUDED_LABELS })
+                                              .select(:taggable_id))
       .joins(:contact)
       .where("COALESCE(contacts.custom_attributes->>'followups_opt_out', 'false') <> 'true'")
   end
 
-  def schedule_new
-    eligible_conversations.find_each do |conversation|
+  def schedule_new(account)
+    eligible_conversations(account).find_each do |conversation|
       ConversationFollowup.create!(
         conversation: conversation,
         account_id: conversation.account_id,
@@ -88,12 +118,12 @@ class ConversationFollowupsJob < ApplicationJob
     end
   end
 
-  def send_due
+  def send_due(account)
     # Outside 8am-8pm nothing goes out. The rows stay pending and the next morning's tick
     # picks them up.
     return unless ConversationFollowup.sendable_now?
 
-    ConversationFollowup.due.find_each do |followup|
+    ConversationFollowup.due.where(account_id: account.id).find_each do |followup|
       reason = disqualified(followup)
       next followup.cancel!(reason) if reason
 
@@ -115,6 +145,11 @@ class ConversationFollowupsJob < ApplicationJob
     return 'conversacion_cerrada' unless conversation.open? || conversation.pending?
     return 'resultado_ya_declarado' if conversation.resolution_type.present?
     return 'venta_registrada' if conversation.sale_amount.present?
+    return 'vencido' if followup.scheduled_at < STALE_AFTER.ago
+    # Past 24 hours since the customer's last message, anything but a template is refused.
+    # Chatwoot would still create the message, as `failed` — so the seller sees a reminder in
+    # the thread that never reached the customer. A private note has no window.
+    return 'fuera_de_ventana' if followup.mode == 'auto' && outside_messaging_window?(conversation)
 
     nil
   end
@@ -159,8 +194,8 @@ class ConversationFollowupsJob < ApplicationJob
     conversation.inbox.agent_bot
   end
 
-  def resolve_sent
-    ConversationFollowup.sent.find_each do |followup|
+  def resolve_sent(account)
+    ConversationFollowup.sent.where(account_id: account.id).find_each do |followup|
       next followup.update!(status: 'replied') if followup.customer_replied?
       next unless followup.sent_at <= ConversationFollowup::CLOSE_AFTER.ago
 
@@ -215,12 +250,35 @@ class ConversationFollowupsJob < ApplicationJob
 
   def compose(conversation, etapa)
     repuesto = last_inquiry(conversation)&.repuesto_buscado.to_s.squish
-    template = MESSAGES.fetch(etapa, GENERIC)
+    settings = conversation.account.settings || {}
+    template = message_for(settings, etapa)
     # Naming the part is what makes the message worth answering. Without one, fall back to
-    # the vague version rather than sending "¿sigues interesado en ?".
-    template = GENERIC if repuesto.blank? && template.include?('%<repuesto>s')
+    # the general version rather than sending "¿sigues interesado en ?" — and if the shop
+    # rewrote the general one to name the part too, to the built-in default.
+    template = message_for(settings, 'generico') if repuesto.blank? && template.include?(PART_TOKEN)
+    template = MESSAGES['generico'] if repuesto.blank? && template.include?(PART_TOKEN)
 
-    format(template, saludo: saludo_for(conversation), repuesto: repuesto)
+    "#{saludo_for(conversation)}#{template.gsub(PART_TOKEN, repuesto)}"
+  end
+
+  def outside_messaging_window?(conversation)
+    return false unless WINDOWED_CHANNELS.include?(conversation.inbox.channel_type)
+
+    last_incoming = conversation.messages.where(message_type: :incoming).maximum(:created_at)
+    last_incoming.nil? || last_incoming < MESSAGING_WINDOW.ago
+  end
+
+  def message_for(settings, etapa)
+    settings["followups_message_#{etapa}"].to_s.strip.presence || MESSAGES.fetch(etapa, MESSAGES['generico'])
+  end
+
+  # Blank or zero means the default; anything above the cap is held to it, because the
+  # settings screen is not the only way to write this value.
+  def silence_for(account)
+    hours = account.settings&.dig('followups_silence_hours').to_i
+    return ConversationFollowup::SILENCE_BEFORE_FOLLOWUP if hours <= 0
+
+    [hours, MAX_SILENCE_HOURS].min.hours
   end
 
   def saludo_for(conversation)
