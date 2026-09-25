@@ -85,7 +85,7 @@ RSpec.describe 'Profile API', type: :request do
     end
 
     context 'when it is an authenticated user' do
-      let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+      let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
       it 'updates the name' do
         put '/api/v1/profile',
@@ -132,20 +132,20 @@ RSpec.describe 'Profile API', type: :request do
 
       it 'updates the password when current password is provided' do
         put '/api/v1/profile',
-            params: { profile: { current_password: 'Test123!', password: 'Test1234!', password_confirmation: 'Test1234!' } },
+            params: { profile: { current_password: 'Test12345!', password: 'Test123456!', password_confirmation: 'Test123456!' } },
             headers: agent.create_new_auth_token,
             as: :json
 
         expect(response).to have_http_status(:success)
         expect(response).to conform_schema(200)
-        expect(agent.reload.valid_password?('Test1234!')).to be true
+        expect(agent.reload.valid_password?('Test123456!')).to be true
       end
 
       it 'does not reset the display name if updates the password' do
         display_name = agent.display_name
 
         put '/api/v1/profile',
-            params: { profile: { current_password: 'Test123!', password: 'Test1234!', password_confirmation: 'Test1234!' } },
+            params: { profile: { current_password: 'Test12345!', password: 'Test123456!', password_confirmation: 'Test123456!' } },
             headers: agent.create_new_auth_token,
             as: :json
 
@@ -200,7 +200,7 @@ RSpec.describe 'Profile API', type: :request do
     end
 
     context 'when an authenticated user updates email' do
-      let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+      let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
       it 'populates the unconfirmed email' do
         new_email = Faker::Internet.email
@@ -218,7 +218,7 @@ RSpec.describe 'Profile API', type: :request do
   end
 
   describe 'DELETE /api/v1/profile/avatar' do
-    let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+    let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
     context 'when it is an unauthenticated user' do
       it 'returns unauthorized' do
@@ -255,7 +255,7 @@ RSpec.describe 'Profile API', type: :request do
     end
 
     context 'when it is an authenticated user' do
-      let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+      let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
       it 'updates the availability status' do
         post '/api/v1/profile/availability',
@@ -278,7 +278,7 @@ RSpec.describe 'Profile API', type: :request do
     end
 
     context 'when it is an authenticated user' do
-      let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+      let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
       it 'updates the auto offline status' do
         post '/api/v1/profile/auto_offline',
@@ -303,7 +303,7 @@ RSpec.describe 'Profile API', type: :request do
     end
 
     context 'when it is an authenticated user' do
-      let(:agent) { create(:user, password: 'Test123!', account: account, role: :agent) }
+      let(:agent) { create(:user, password: 'Test12345!', account: account, role: :agent) }
 
       it 'updates the last active account id' do
         put '/api/v1/profile/set_active_account',
@@ -327,7 +327,7 @@ RSpec.describe 'Profile API', type: :request do
 
     context 'when it is an authenticated user' do
       let(:agent) do
-        create(:user, password: 'Test123!', email: 'test-unconfirmed@email.com', account: account, role: :agent,
+        create(:user, password: 'Test12345!', email: 'test-unconfirmed@email.com', account: account, role: :agent,
                       unconfirmed_email: 'test-unconfirmed@email.com')
       end
 

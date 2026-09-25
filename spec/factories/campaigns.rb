@@ -18,7 +18,8 @@ FactoryBot.define do
         campaign.inbox = create(
           :inbox,
           account: campaign.account,
-          channel: create(:channel_whatsapp, account: campaign.account)
+          # No provider calls: a campaign spec is about the audience, not the WhatsApp API.
+          channel: create(:channel_whatsapp, account: campaign.account, sync_templates: false, validate_provider_config: false)
         )
         campaign.template_params = {
           'name' => 'ticket_status_updated',
