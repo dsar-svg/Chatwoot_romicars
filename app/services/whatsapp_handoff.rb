@@ -46,23 +46,22 @@ module WhatsappHandoff
     return if code.blank?
 
     arrival = message.conversation
-    origin = message.account.conversations
-                    .where("custom_attributes ->> 'wa_code' = ?", code)
-                    .where.not(id: arrival.id)
-                    .first
+    origin = message.account.conversations.where("custom_attributes ->> 'wa_code' = ?", code).where.not(id: arrival.id).first
     return if origin.blank? || origin.custom_attributes['wa_llego_at'].present?
 
     merge_contacts(arrival.contact, origin.contact)
-    origin.reload.update!(custom_attributes: origin.custom_attributes.merge(
-      'wa_llego_at' => Time.current.iso8601, 'wa_conversation_id' => arrival.display_id
-    ))
-    # `derivado`, not `consulta` nor `ganado`: the sale, if it happens, is recorded on the
-    # WhatsApp conversation. Counting this one too would put the same lead in the funnel twice.
-    origin.resolve_with_outcome(resolution_type: 'derivado',
-                                resolution_notes: "Siguió por WhatsApp en la conversación ##{arrival.display_id}.")
-
-    activity(origin, "El cliente siguió por WhatsApp en la conversación ##{arrival.display_id}.")
+    close_origin(origin.reload, arrival)
     activity(arrival, arrival_note(origin))
+  end
+
+  # `derivado`, not `consulta` nor `ganado`: the sale, if it happens, is recorded on the
+  # WhatsApp conversation. Counting this one too would put the same lead in the funnel twice.
+  def close_origin(origin, arrival)
+    origin.update!(custom_attributes: origin.custom_attributes.merge('wa_llego_at' => Time.current.iso8601,
+                                                                     'wa_conversation_id' => arrival.display_id))
+    where = "por WhatsApp en la conversación ##{arrival.display_id}."
+    origin.resolve_with_outcome(resolution_type: 'derivado', resolution_notes: "Siguió #{where}")
+    activity(origin, "El cliente siguió #{where}")
   end
 
   # The customer typed a number instead of tapping the link. If another contact already has
@@ -83,12 +82,12 @@ module WhatsappHandoff
   def normalize_phone(raw)
     text = raw.to_s.strip
     digits = text.gsub(/\D/, '')
-    return "+58#{digits[1..]}" if digits.length == 11 && digits.start_with?('0')
-    return "+58#{digits}" if digits.length == 10 && digits.start_with?('4', '2')
-    return "+#{digits}" if digits.length == 12 && digits.start_with?('58')
-    return "+#{digits}" if text.start_with?('+') && digits.length.between?(8, 15)
-
-    nil
+    case digits
+    when /\A0([24]\d{9})\z/ then "+58#{Regexp.last_match(1)}"
+    when /\A[24]\d{9}\z/ then "+58#{digits}"
+    when /\A58[24]\d{9}\z/ then "+#{digits}"
+    else "+#{digits}" if text.start_with?('+') && digits.length.between?(8, 15)
+    end
   end
 
   def whatsapp_number(account)
