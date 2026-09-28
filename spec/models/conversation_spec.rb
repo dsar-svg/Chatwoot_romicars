@@ -302,6 +302,24 @@ RSpec.describe Conversation do
                                content: system_resolved_message,
                                content_attributes: { activity: { type: 'conversation_status_changed', status: 'resolved' } } })
     end
+
+    it 'says the follow-up closed it, not inactivity, for an abandonado closure' do
+      conversation2 = create(:conversation, status: 'open', account: account)
+      Current.reset
+
+      expect { conversation2.resolve_with_outcome(resolution_type: 'abandonado') }
+        .to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation2, hash_including(content: 'System closed the conversation: the customer did not answer the follow-up'))
+    end
+
+    it 'adds no status line for a derivado closure, which WhatsappHandoff describes itself' do
+      conversation2 = create(:conversation, status: 'open', account: account)
+      Current.reset
+
+      expect { conversation2.resolve_with_outcome(resolution_type: 'derivado') }
+        .not_to have_enqueued_job(Conversations::ActivityMessageJob)
+        .with(conversation2, hash_including(content_attributes: { activity: { type: 'conversation_status_changed', status: 'resolved' } }))
+    end
   end
 
   describe '#update_labels' do
