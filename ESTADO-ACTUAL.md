@@ -197,7 +197,8 @@ Cars): Instagram y WhatsApp no tienen AgentBot a propósito, mientras está en p
 - `buscar_faq` une las palabras con OR (antes `plainto_tsquery` exigía todas).
 - `saveDataErrorExecution: all`: las ejecuciones fallidas del bot quedan guardadas.
 
-**Probado en vivo desde Messenger** (conversaciones #47, #314–#330): cotización, link + `RC-` +
+**Probado en vivo desde Messenger** (conversaciones #47, #314–#336; las de Erdu no llegaron al
+cliente, ver pendientes): lista de varios repuestos, fotos → vendedor, marca no trabajada, FAQ, cotización, link + `RC-` +
 llegada por WhatsApp con fusión de contactos y cierre `derivado`, teléfono inválido y válido,
 posponer hasta el viernes 9 am, pregunta técnica, pérdida con motivo, continuidad (`continua_de`).
 
@@ -256,8 +257,13 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
 ### Otros
 
 - [x] Reprobar el bot con "chery orinoco, el largo" → cotiza 17 $ BCV / 15 $ divisas (28/09).
-- [ ] **Contactos de prueba** (Dario Medina #27 y #310): etiquetarlos `proveedor` al terminar las
-      pruebas para sacarlos del dashboard. No antes: con esa etiqueta el bot deja de contestarles.
+- [x] **Contactos de prueba** (Dario Medina #27 y #310) etiquetados `proveedor` el 28/09: salen del
+      dashboard, pero **el bot ya no les contesta**. Para volver a probar, quitar la etiqueta.
+- [ ] **Página Erdu (inbox 1) no envía**: todo saliente falla con `Invalid appsecret_proof provided
+      in the API argument`. El token de la página es de otra app de Meta. Reautorizar la bandeja con
+      la cuenta de la app de RomiCars. Romi Cars (inbox 2) envía bien.
+- [ ] **Kia no está en `vehicle_brands`**: el bot contesta "para el Kia Rio no manejamos repuestos",
+      pero Juan vendió amortiguadores de Kia Rio por WhatsApp (#309). Cargar las marcas reales.
 - [ ] **Casos vistos en WhatsApp sin cubrir** (revisión de 60 conversaciones del 25–28/09):
       variantes 4x4/4x2, año y caja automática cuando cambian el precio; confirmar las marcas de
       `vehicle_brands` (piden Zotye, Chana, Kia, Terios); conversaciones con proveedores sin

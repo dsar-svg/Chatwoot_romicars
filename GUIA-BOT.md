@@ -7,9 +7,15 @@ manos de una persona y por qué.
 
 | Canal | Bot | Quién atiende |
 |---|---|---|
-| Facebook (páginas Romi Cars y Erdu) | activo | el bot primero, después un vendedor |
+| Facebook (página Romi Cars) | activo | el bot primero, después un vendedor |
+| Facebook (página Erdu) | activo, pero **no envía**: ver nota abajo | nadie recibe respuesta |
 | Instagram (somosromicars) | apagado, en pruebas | vendedores |
 | WhatsApp (+58 424-4205394) | apagado, en pruebas | vendedores |
+
+**Erdu no puede enviar mensajes** (ni el bot ni los vendedores): Meta rechaza cada respuesta con
+`Invalid appsecret_proof`. La página quedó conectada con un token de otra app de Meta. Se arregla
+reconectando la página desde **Ajustes → Bandejas → Erdu → Reautorizar** con la cuenta que
+administra la app de RomiCars.
 
 El bot se enciende por bandeja en **Ajustes → Bandejas → (bandeja) → Bot**. Solo contesta
 conversaciones que están asignadas a él (estado *Pendiente*). En cuanto una conversación pasa a
