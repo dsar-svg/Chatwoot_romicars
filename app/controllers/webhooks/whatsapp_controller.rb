@@ -22,10 +22,15 @@ class Webhooks::WhatsappController < ActionController::API
     token == whatsapp_webhook_verify_token if whatsapp_webhook_verify_token.present?
   end
 
+  # One Meta app serves WhatsApp, Instagram and Messenger here, and n8n re-signs every
+  # webhook it forwards with that app's secret. Accepting any of the three keys keeps
+  # WhatsApp working with whichever one the installation stored it under.
+  GLOBAL_META_APP_SECRET_KEYS = %w[WHATSAPP_APP_SECRET FB_APP_SECRET INSTAGRAM_APP_SECRET].freeze
+
   def meta_app_secrets
     [
       *channel_meta_app_secrets(whatsapp_channel),
-      GlobalConfigService.load('WHATSAPP_APP_SECRET', nil)
+      *GLOBAL_META_APP_SECRET_KEYS.map { |key| GlobalConfigService.load(key, nil) }
     ]
   end
 
@@ -37,6 +42,9 @@ class Webhooks::WhatsappController < ActionController::API
     return true if whatsapp_channel.blank?
     return false unless whatsapp_channel.provider == 'whatsapp_cloud'
     return true if channel_meta_app_secrets(whatsapp_channel).present?
+    # A channel created by hand has no secret of its own. Without this, anyone who knew the
+    # webhook URL could post messages that Chatwoot would take as coming from customers.
+    return true if GlobalConfigService.load('WHATSAPP_APP_SECRET', nil).present?
 
     whatsapp_channel.provider_config['source'] == 'embedded_signup'
   end

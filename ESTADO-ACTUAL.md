@@ -1,7 +1,8 @@
-# Estado actual — 25 de septiembre de 2026
+# Estado actual — 28 de septiembre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 25 de septiembre.
+Actualizado al cierre de la sesión del 28 de septiembre. Qué hace y qué no hace el bot, para
+vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)**.
 
 ## Qué está funcionando hoy
 
@@ -172,15 +173,52 @@ ventas ÷ asignadas (antes resueltas ÷ asignadas). Cachés `ai_insights:v3` y `
 **Seguimiento:** si alguien pospone (snooze) una conversación después del recordatorio, el
 job ya no la cierra a las 48 h.
 
+## 28/09 — bot con traspaso a WhatsApp, probado en vivo
+
+#66–#74 desplegados. El bot quedó activo **solo en las dos páginas de Facebook** (Erdu y Romi
+Cars): Instagram y WhatsApp no tienen AgentBot a propósito, mientras está en pruebas.
+
+**n8n `Bot Atencion Cliente`** (versión activa `d2ee73cc`; cada cambio es una versión propia):
+
+- Tools nuevas `derivar_a_whatsapp`, `guardar_telefono`, `posponer_conversacion` (credencial
+  `Demo ChatR`). Las dos de `whatsapp_handoff` tienen `neverError` para que el bot lea el 422.
+- **El prompt se arma por canal** con expresiones sobre `canal`: en Facebook/Instagram el paso 3
+  solo muestra el camino a WhatsApp; en WhatsApp solo nota + `asignar_agente` y la regla `RC-`.
+  Una regla "si el canal es X" dentro del prompt no alcanzó: GPT-4o seguía las descripciones de
+  las tools ("siempre nota y después asignar") y le pasaba la venta a un vendedor.
+- **Cotizar y derivar van en turnos distintos.** En el mismo turno el modelo se saltaba la nota y
+  `derivar_a_whatsapp` y **escribió un link inventado** (`wa.me/1234567890`). Ahora cotiza,
+  pregunta si lo quiere y deriva con la confirmación.
+- **Guard en `Responder en Chatwoot`**: todo link `wa.me` que no sea del número de la tienda con un
+  código `RC-` válido se reemplaza por `https://wa.me/584244205394`. Número hardcodeado.
+- Otras reglas: primer mensaje con pregunta se contesta antes de pedir datos; "no compro" pregunta
+  el motivo y cierra en el turno siguiente; fotos → vendedor (no hay catálogo); listas de
+  repuestos se cotizan ítem por ítem; FAQ sin respuesta → no inventar.
+- `buscar_faq` une las palabras con OR (antes `plainto_tsquery` exigía todas).
+- `saveDataErrorExecution: all`: las ejecuciones fallidas del bot quedan guardadas.
+
+**Probado en vivo desde Messenger** (conversaciones #47, #314–#336; las de Erdu no llegaron al
+cliente, ver pendientes): lista de varios repuestos, fotos → vendedor, marca no trabajada, FAQ, cotización, link + `RC-` +
+llegada por WhatsApp con fusión de contactos y cierre `derivado`, teléfono inválido y válido,
+posponer hasta el viernes 9 am, pregunta técnica, pérdida con motivo, continuidad (`continua_de`).
+
+**La memoria del bot es por `conversation_id`**: para repetir una prueba hay que cerrar la
+conversación y empezar otra, o el modelo copia lo que respondió antes.
+
+**Hallazgo: no hay FAQ de horario.** Con la búsqueda anterior el bot llegó a inventar un horario.
+Hay 5 FAQs (ubicación, envíos, delivery, garantía, pagos). Ver pendientes.
+
+**Rails (sin desplegar)**: el cierre `abandonado`/`derivado` ya no escribe "resolved due to 0
+minutes of inactivity"; y el webhook de WhatsApp **exige firma** cuando `WHATSAPP_APP_SECRET`
+está configurado, aunque el canal sea manual (acepta también `FB_APP_SECRET` e
+`INSTAGRAM_APP_SECRET`: es una sola app de Meta y n8n firma con ella).
+
 ## Punto exacto donde quedamos
 
-1. **Deploy** de #66–#74 (ver "Cómo desplegar"). Imagen `ghcr.io/dsar-svg/chatwoot_romicars:latest`,
-   etiqueta `sha-109789e`. Al 25/09 en la tarde estaba mergeado y construyéndose, **sin desplegar**.
-2. Después del deploy, **aplicar los cambios del bot en n8n**: tres herramientas nuevas
-   (`derivar_a_whatsapp`, `guardar_telefono`, `posponer_conversacion`) y tres reemplazos en el
-   prompt. Todo lo necesario está en el **Anexo** al final de este archivo, con el chequeo
-   previo para confirmar que el deploy está arriba. No aplicarlo antes: el bot llamaría a un
-   endpoint que no existe y cada cliente que quiera comprar por Instagram vería un error.
+1. **Deploy** del PR de Rails del 28/09 y verificar que siguen entrando los WhatsApp (ver
+   "Verificación de firma" en pendientes).
+2. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
+   Zelle = divisa, devoluciones.
 3. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
@@ -191,28 +229,47 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español,
-   "Hola {{1}}, te escribimos de Romicars por el {{2}} que consultaste. ¿Seguimos con tu pedido?".
-   Cuando esté aprobada, el vendedor la usa desde el editor fuera de la ventana de 24 h.
+4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
+   ejemplos en [GUIA-BOT.md](GUIA-BOT.md#plantilla-seguimiento_pedido). Cuando esté aprobada, el
+   vendedor la usa desde el editor fuera de la ventana de 24 h.
 
 ## Pendientes
 
 ### Seguridad
 
 - [ ] **App Secret en texto plano** en los tres nodos Crypto de `Captura de Campañas`
-      (`Calcular Firma IG`, `MSSG`, `WA`). Quedó expuesto en el JSON del workflow. Rotarlo en
-      Meta, moverlo a credencial de n8n, y actualizar `WHATSAPP_APP_SECRET` en super admin.
+      (`Calcular Firma IG`, `MSSG`, `WA`). Quedó expuesto en el JSON del workflow y volvió a
+      aparecer en la sesión del 28/09. Rotarlo en Meta, moverlo a credencial de n8n, y actualizar
+      `WHATSAPP_APP_SECRET` / `FB_APP_SECRET` en super admin **y** los tres nodos a la vez: si
+      queda uno viejo, ese canal deja de entrar (401).
 - [ ] **Token de Telegram** hardcodeado en 4 nodos de alerta de n8n.
-- [ ] **Verificación de firma del webhook de WhatsApp apagada.** El canal es manual, así que
-      `meta_signature_verification_required?` da `false` y cualquiera que sepa la URL puede
-      postear. Se enciende copiando el App Secret al `provider_config` del canal, pero hay que
-      arreglar antes el body del nodo de n8n: manda `contentType: json`, que re-serializa y
-      rompe el HMAC. Tiene que ir como raw.
+- [ ] **Verificación de firma de WhatsApp (Chatwoot)**: código listo en el PR del 28/09, se activa
+      con el deploy. n8n ya re-firma el body limpio (`Calcular Firma WA` → header
+      `x-hub-signature-256`), igual que Instagram, que ya exige firma y funciona. **Después del
+      deploy**, mandar un WhatsApp de prueba y confirmar que entra; si no entra, los logs de
+      rails muestran 401 en `/webhooks/whatsapp/+584244205394` y hay que revisar que
+      `WHATSAPP_APP_SECRET` (o `FB_APP_SECRET`) sea el mismo secreto que usa n8n.
+- [ ] **n8n no verifica la firma de Meta** en `Webhook Meta (POST)`: firma lo que le llegue. Quien
+      conozca `n8n.supricom.com.ve/webhook/romicars-meta-referral` puede inyectar mensajes en los
+      tres canales. Arreglo: opción `rawBody` en el webhook y comparar `x-hub-signature-256` contra
+      el HMAC del body crudo antes del `If`. Requiere el secreto ya rotado y en credencial.
 
 ### Otros
 
-- [ ] Reprobar el bot con "chery orinoco, el largo" → debe cotizar 17 $ a tasa BCV o 15 $ en
-      divisas, no el cigüeñal de 136 $.
+- [x] Reprobar el bot con "chery orinoco, el largo" → cotiza 17 $ BCV / 15 $ divisas (28/09).
+- [x] **Contactos de prueba** (Dario Medina #27 y #310) etiquetados `proveedor` el 28/09: salen del
+      dashboard, pero **el bot ya no les contesta**. Para volver a probar, quitar la etiqueta.
+- [ ] **Página Erdu (inbox 1) no envía**: todo saliente falla con `Invalid appsecret_proof provided
+      in the API argument`. El token de la página es de otra app de Meta. Reautorizar la bandeja con
+      la cuenta de la app de RomiCars. Romi Cars (inbox 2) envía bien.
+- [ ] **Kia no está en `vehicle_brands`**: el bot contesta "para el Kia Rio no manejamos repuestos",
+      pero Juan vendió amortiguadores de Kia Rio por WhatsApp (#309). Cargar las marcas reales.
+- [ ] **Casos vistos en WhatsApp sin cubrir** (revisión de 60 conversaciones del 25–28/09):
+      variantes 4x4/4x2, año y caja automática cuando cambian el precio; confirmar las marcas de
+      `vehicle_brands` (piden Zotye, Chana, Kia, Terios); conversaciones con proveedores sin
+      etiqueta (#194, #320).
+- [ ] Conectar el bot a Instagram y WhatsApp cuando termine la etapa de pruebas en Facebook. En
+      WhatsApp falta probar la regla `RC-` con el bot activo.
 - [ ] Probar el echo: escribir desde la app WhatsApp Business y ver si entra como saliente.
 - [ ] Mensajes `This message is unavailable.`: sincronización de coexistence (error 131060).
       Ver si siguen apareciendo:
@@ -233,90 +290,3 @@ docker pull ghcr.io/dsar-svg/chatwoot_romicars:latest
 Y redesplegar desde EasyPanel. Las migraciones corren solas al arrancar
 (`db:chatwoot_prepare`). **No usar `name=chatwoot`**: también detiene el otro Chatwoot del VPS
 (`automatisupri_chatwoot`).
-
-## Anexo: cambios del bot pendientes (aplicar después del deploy)
-
-Workflow `Bot Atencion Cliente` (`8nLOTjgmTTK52CsO`). Se aplica con el MCP de n8n
-(`update_workflow`), o a mano en el editor. **Antes de aplicarlo, confirmar que el deploy
-está arriba**:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://asta-chatwoot.larlxe.easypanel.host/api/v1/accounts/1/conversations/1/whatsapp_handoff
-```
-
-`401` = el endpoint existe (pide token). `404` = todavía no se desplegó: no seguir.
-
-### Tres nodos nuevos
-
-Los tres son `n8n-nodes-base.httpRequestTool` versión `4.2`, con autenticación
-`predefinedCredentialType` → `httpHeaderAuth` → credencial **`Demo ChatR`**
-(id `iLGtJYU2QVYLnTts`, el token del bot, la misma de `asignar_agente`). Cada uno se conecta
-al `Agente Orquestador` por la salida `ai_tool`. Cuerpo: `sendBody: true`,
-`specifyBody: json`. Base de las URLs:
-
-```
-https://asta-chatwoot.larlxe.easypanel.host/api/v1/accounts/{{ $('Normalizar datos').item.json.account_id }}/conversations/{{ $('Normalizar datos').item.json.conversation_id }}
-```
-
-**`Tool: derivar_a_whatsapp`** — `POST {base}/whatsapp_handoff`
-
-- jsonBody:
-  `={{ { "repuesto": $fromAI('repuesto', 'El repuesto que el cliente va a comprar, con la variante si la dijo. Ej: sensor de cigüeñal largo', 'string'), "vehiculo": $fromAI('vehiculo', 'Marca y modelo del carro. Ej: Chery Orinoco. Vacío si no se sabe', 'string') } }}`
-- toolDescription:
-  > Genera el link de WhatsApp para cerrar la compra de un cliente que escribe por Instagram o Facebook. Devuelve `link`: mandáselo al cliente completo, sin acortarlo ni cambiarle nada; abre WhatsApp con el mensaje ya escrito y un código que une las dos conversaciones. Usala SOLO cuando el canal NO es WhatsApp y el cliente confirmó que quiere comprar, después de crear_nota_privada. NO llames a asignar_agente después: el vendedor toma la venta cuando el cliente escribe por WhatsApp. Si devuelve error, hacé el traspaso normal con asignar_agente.
-
-**`Tool: guardar_telefono`** — `PATCH {base}/whatsapp_handoff`
-
-- jsonBody:
-  `={{ { "telefono": $fromAI('telefono', 'El número tal como lo escribió el cliente, ej: 0414-1234567', 'string') } }}`
-- toolDescription:
-  > Guarda el número de WhatsApp que el cliente escribió, para que un vendedor le escriba. Usala cuando el cliente te pase su número (porque no puede abrir el link de WhatsApp, o respondiendo al recordatorio). Si devuelve error, el número está incompleto: pedíselo de nuevo con el código de área. Después llamá a crear_nota_privada ("Escribirle por WhatsApp al número guardado" y qué repuesto quiere) y a asignar_agente.
-
-**`Tool: posponer_conversacion`** — `POST {base}/toggle_status`
-
-- jsonBody (clampa entre mañana y 14 días, a las 9 am de Caracas):
-  `={{ (() => { const f = String($fromAI('fecha', 'Día en que el cliente dijo que compra o decide, formato YYYY-MM-DD. Ej: si hoy es lunes y dijo el viernes, la fecha de ese viernes', 'string') || ''); const hoy = $now.setZone('America/Caracas').startOf('day'); let d = DateTime.fromISO(f, { zone: 'America/Caracas' }); if (!d.isValid || d <= hoy) d = hoy.plus({ days: 1 }); if (d > hoy.plus({ days: 14 })) d = hoy.plus({ days: 14 }); return { status: 'snoozed', snoozed_until: Math.floor(d.set({ hour: 9 }).toSeconds()) }; })() }}`
-- toolDescription:
-  > Pausa la conversación hasta el día en que el cliente dijo que compra o decide ("te aviso el viernes", "cobro el 15", "paso la semana que viene"). Ese día a las 9 am vuelve a aparecer abierta para que un vendedor le escriba. Máximo 14 días. Llamá antes a crear_nota_privada con qué va a comprar, qué precio le diste y qué fecha dijo. NO la uses si es vago ("lo pienso", "después te digo") ni si quiere comprar ahora.
-
-### Cambios en el prompt (`Agente Orquestador` → `options.systemMessage`)
-
-Tres reemplazos de texto exacto. Leer el prompt vigente justo antes: si alguien lo editó y el
-texto de "Buscar" ya no aparece tal cual, adaptar en vez de pisar.
-
-1. Buscar `- Campaña de origen:` y poner antes de esa línea:
-   `- Canal: {{ $('Normalizar datos').item.json.canal }}`
-
-2. Buscar, en el paso 3 del FLUJO:
-   ```
-      b) Luego llamá a asignar_agente.
-      c) NUNCA cierres una conversación que termina en compra. Una venta va a un humano, no a cerrar_conversacion.
-   ```
-   Reemplazar por:
-   ```
-      b) Canal WhatsApp: llamá a asignar_agente.
-      c) Canal Instagram o Facebook y el cliente quiere comprar: llamá a derivar_a_whatsapp y mandale el link que devuelve, completo y sin cambiarle nada, en un mensaje corto: "Para cerrar tu compra seguimos por WhatsApp 👉 <link> Te abre el chat con el mensaje listo, solo dale enviar 📲". NO llames a asignar_agente: el vendedor toma la venta cuando escriba por WhatsApp. Si solo pide hablar con un vendedor sin estar comprando, asignar_agente como siempre.
-      d) Si en vez de abrir el link te da su número, o dice que no puede abrirlo: guardar_telefono, después crear_nota_privada ("Escribirle por WhatsApp al número guardado") y asignar_agente.
-      e) NUNCA cierres una conversación que termina en compra. Una venta va a un humano, no a cerrar_conversacion.
-   ```
-
-3. Buscar la línea que empieza con `CONTEXTO IMAGEN:` y poner antes (con una línea en blanco
-   entre bloques):
-   ```
-   6. Compra o decisión con fecha → Si el cliente dice que compra o decide un día concreto ("te aviso el viernes", "cobro el 15", "paso la semana que viene"): respondé corto que queda anotado para ese día, llamá a crear_nota_privada (repuesto, precio que le diste y la fecha que dijo) y a posponer_conversacion con esa fecha. Si es vago ("lo pienso", "después te digo") NO pospongas.
-
-   CONTEXTO WHATSAPP CON CÓDIGO: si el Canal es WhatsApp y el mensaje trae un código tipo "RC-" seguido de 5 letras o números, el cliente viene de Instagram o Facebook a comprar lo que dice ese mensaje. No le vuelvas a preguntar repuesto ni vehículo: saludalo, decile que ya lo pasás con un asesor para cerrar la compra, y llamá a crear_nota_privada y a asignar_agente.
-
-   TELÉFONO SUELTO: si el cliente te manda un número de teléfono (por ejemplo respondiendo si pudo escribir por WhatsApp), es su WhatsApp: guardar_telefono, crear_nota_privada y asignar_agente.
-   ```
-
-### Verificar
-
-- Releer el workflow y confirmar que los tres nodos llegan al `Agente Orquestador` por
-  `ai_tool` (no por `main`).
-- Prueba desde Instagram: pedir un repuesto, decir "lo compro" → tiene que llegar el link.
-  Tocarlo y enviar el mensaje en WhatsApp → la conversación de Instagram se cierra como
-  derivado, el contacto queda uno solo con el teléfono, y en WhatsApp aparece la línea
-  "Viene de … (conversación #N)".
-- Prueba de posponer: "te aviso el viernes" → conversación en estado pospuesta hasta el viernes
-  a las 9 am, con nota.

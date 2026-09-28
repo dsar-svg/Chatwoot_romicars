@@ -85,6 +85,11 @@ module ActivityMessageHandler
       I18n.t("conversations.activity.status.#{status}", user_name: user_name)
     elsif Current.contact.present? && resolved?
       I18n.t('conversations.activity.status.contact_resolved', contact_name: Current.contact.name.capitalize)
+    elsif resolved? && resolution_type.in?(%w[abandonado derivado])
+      # Closed by ConversationFollowupsJob or WhatsappHandoff, not by inactivity: without
+      # this the thread read "resolved due to 0 minutes of inactivity". The handoff writes
+      # its own line saying where the customer went, so only `abandonado` needs one here.
+      I18n.t('conversations.activity.status.abandoned') if resolution_type == 'abandonado'
     elsif resolved?
       message_data = auto_resolve_message_key(auto_resolve_after || 0)
       I18n.t("conversations.activity.status.#{message_data[:key]}", count: message_data[:count])
