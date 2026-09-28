@@ -1,7 +1,8 @@
-# Estado actual — 25 de septiembre de 2026
+# Estado actual — 28 de septiembre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 25 de septiembre.
+Actualizado al cierre de la sesión del 28 de septiembre. Qué hace y qué no hace el bot, para
+vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)**.
 
 ## Qué está funcionando hoy
 
@@ -172,16 +173,51 @@ ventas ÷ asignadas (antes resueltas ÷ asignadas). Cachés `ai_insights:v3` y `
 **Seguimiento:** si alguien pospone (snooze) una conversación después del recordatorio, el
 job ya no la cierra a las 48 h.
 
+## 28/09 — bot con traspaso a WhatsApp, probado en vivo
+
+#66–#74 desplegados. El bot quedó activo **solo en las dos páginas de Facebook** (Erdu y Romi
+Cars): Instagram y WhatsApp no tienen AgentBot a propósito, mientras está en pruebas.
+
+**n8n `Bot Atencion Cliente`** (versión activa `d2ee73cc`; cada cambio es una versión propia):
+
+- Tools nuevas `derivar_a_whatsapp`, `guardar_telefono`, `posponer_conversacion` (credencial
+  `Demo ChatR`). Las dos de `whatsapp_handoff` tienen `neverError` para que el bot lea el 422.
+- **El prompt se arma por canal** con expresiones sobre `canal`: en Facebook/Instagram el paso 3
+  solo muestra el camino a WhatsApp; en WhatsApp solo nota + `asignar_agente` y la regla `RC-`.
+  Una regla "si el canal es X" dentro del prompt no alcanzó: GPT-4o seguía las descripciones de
+  las tools ("siempre nota y después asignar") y le pasaba la venta a un vendedor.
+- **Cotizar y derivar van en turnos distintos.** En el mismo turno el modelo se saltaba la nota y
+  `derivar_a_whatsapp` y **escribió un link inventado** (`wa.me/1234567890`). Ahora cotiza,
+  pregunta si lo quiere y deriva con la confirmación.
+- **Guard en `Responder en Chatwoot`**: todo link `wa.me` que no sea del número de la tienda con un
+  código `RC-` válido se reemplaza por `https://wa.me/584244205394`. Número hardcodeado.
+- Otras reglas: primer mensaje con pregunta se contesta antes de pedir datos; "no compro" pregunta
+  el motivo y cierra en el turno siguiente; fotos → vendedor (no hay catálogo); listas de
+  repuestos se cotizan ítem por ítem; FAQ sin respuesta → no inventar.
+- `buscar_faq` une las palabras con OR (antes `plainto_tsquery` exigía todas).
+- `saveDataErrorExecution: all`: las ejecuciones fallidas del bot quedan guardadas.
+
+**Probado en vivo desde Messenger** (conversaciones #47, #314–#330): cotización, link + `RC-` +
+llegada por WhatsApp con fusión de contactos y cierre `derivado`, teléfono inválido y válido,
+posponer hasta el viernes 9 am, pregunta técnica, pérdida con motivo, continuidad (`continua_de`).
+
+**La memoria del bot es por `conversation_id`**: para repetir una prueba hay que cerrar la
+conversación y empezar otra, o el modelo copia lo que respondió antes.
+
+**Hallazgo: no hay FAQ de horario.** Con la búsqueda anterior el bot llegó a inventar un horario.
+Hay 5 FAQs (ubicación, envíos, delivery, garantía, pagos). Ver pendientes.
+
+**Rails (sin desplegar)**: el cierre `abandonado`/`derivado` ya no escribe "resolved due to 0
+minutes of inactivity"; y el webhook de WhatsApp **exige firma** cuando `WHATSAPP_APP_SECRET`
+está configurado, aunque el canal sea manual (acepta también `FB_APP_SECRET` e
+`INSTAGRAM_APP_SECRET`: es una sola app de Meta y n8n firma con ella).
+
 ## Punto exacto donde quedamos
 
-1. **Deploy** de #66–#74 (ver abajo).
-2. Después del deploy, **aplicar los cambios del bot en n8n** (`Bot Atencion Cliente`):
-   tools `derivar_a_whatsapp` (POST `whatsapp_handoff`), `guardar_telefono` (PATCH
-   `whatsapp_handoff`), `posponer_conversacion` (`toggle_status` con `snoozed`, máx. 14 días) y
-   reglas nuevas en el prompt: línea `Canal:` en los datos, paso 3 dividido por canal, paso 6
-   (compra con fecha → posponer), código `RC-` en WhatsApp → nota + asignar, teléfono suelto
-   → `guardar_telefono`. Credencial de las tres: `Demo ChatR` (token del bot). No aplicarlo
-   antes del deploy: el bot llamaría a un endpoint que no existe.
+1. **Deploy** del PR de Rails del 28/09 y verificar que siguen entrando los WhatsApp (ver
+   "Verificación de firma" en pendientes).
+2. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
+   Zelle = divisa, devoluciones.
 3. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
@@ -192,28 +228,42 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español,
-   "Hola {{1}}, te escribimos de Romicars por el {{2}} que consultaste. ¿Seguimos con tu pedido?".
-   Cuando esté aprobada, el vendedor la usa desde el editor fuera de la ventana de 24 h.
+4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
+   ejemplos en [GUIA-BOT.md](GUIA-BOT.md#plantilla-seguimiento_pedido). Cuando esté aprobada, el
+   vendedor la usa desde el editor fuera de la ventana de 24 h.
 
 ## Pendientes
 
 ### Seguridad
 
 - [ ] **App Secret en texto plano** en los tres nodos Crypto de `Captura de Campañas`
-      (`Calcular Firma IG`, `MSSG`, `WA`). Quedó expuesto en el JSON del workflow. Rotarlo en
-      Meta, moverlo a credencial de n8n, y actualizar `WHATSAPP_APP_SECRET` en super admin.
+      (`Calcular Firma IG`, `MSSG`, `WA`). Quedó expuesto en el JSON del workflow y volvió a
+      aparecer en la sesión del 28/09. Rotarlo en Meta, moverlo a credencial de n8n, y actualizar
+      `WHATSAPP_APP_SECRET` / `FB_APP_SECRET` en super admin **y** los tres nodos a la vez: si
+      queda uno viejo, ese canal deja de entrar (401).
 - [ ] **Token de Telegram** hardcodeado en 4 nodos de alerta de n8n.
-- [ ] **Verificación de firma del webhook de WhatsApp apagada.** El canal es manual, así que
-      `meta_signature_verification_required?` da `false` y cualquiera que sepa la URL puede
-      postear. Se enciende copiando el App Secret al `provider_config` del canal, pero hay que
-      arreglar antes el body del nodo de n8n: manda `contentType: json`, que re-serializa y
-      rompe el HMAC. Tiene que ir como raw.
+- [ ] **Verificación de firma de WhatsApp (Chatwoot)**: código listo en el PR del 28/09, se activa
+      con el deploy. n8n ya re-firma el body limpio (`Calcular Firma WA` → header
+      `x-hub-signature-256`), igual que Instagram, que ya exige firma y funciona. **Después del
+      deploy**, mandar un WhatsApp de prueba y confirmar que entra; si no entra, los logs de
+      rails muestran 401 en `/webhooks/whatsapp/+584244205394` y hay que revisar que
+      `WHATSAPP_APP_SECRET` (o `FB_APP_SECRET`) sea el mismo secreto que usa n8n.
+- [ ] **n8n no verifica la firma de Meta** en `Webhook Meta (POST)`: firma lo que le llegue. Quien
+      conozca `n8n.supricom.com.ve/webhook/romicars-meta-referral` puede inyectar mensajes en los
+      tres canales. Arreglo: opción `rawBody` en el webhook y comparar `x-hub-signature-256` contra
+      el HMAC del body crudo antes del `If`. Requiere el secreto ya rotado y en credencial.
 
 ### Otros
 
-- [ ] Reprobar el bot con "chery orinoco, el largo" → debe cotizar 17 $ a tasa BCV o 15 $ en
-      divisas, no el cigüeñal de 136 $.
+- [x] Reprobar el bot con "chery orinoco, el largo" → cotiza 17 $ BCV / 15 $ divisas (28/09).
+- [ ] **Contactos de prueba** (Dario Medina #27 y #310): etiquetarlos `proveedor` al terminar las
+      pruebas para sacarlos del dashboard. No antes: con esa etiqueta el bot deja de contestarles.
+- [ ] **Casos vistos en WhatsApp sin cubrir** (revisión de 60 conversaciones del 25–28/09):
+      variantes 4x4/4x2, año y caja automática cuando cambian el precio; confirmar las marcas de
+      `vehicle_brands` (piden Zotye, Chana, Kia, Terios); conversaciones con proveedores sin
+      etiqueta (#194, #320).
+- [ ] Conectar el bot a Instagram y WhatsApp cuando termine la etapa de pruebas en Facebook. En
+      WhatsApp falta probar la regla `RC-` con el bot activo.
 - [ ] Probar el echo: escribir desde la app WhatsApp Business y ver si entra como saliente.
 - [ ] Mensajes `This message is unavailable.`: sincronización de coexistence (error 131060).
       Ver si siguen apareciendo:
