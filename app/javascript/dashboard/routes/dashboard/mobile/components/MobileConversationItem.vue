@@ -1,13 +1,13 @@
 <script setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useI18n } from 'vue-i18n';
 import { useStoreGetters } from 'dashboard/composables/store';
-import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import { getInboxIconByType } from 'dashboard/helper/inbox';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+import MessagePreview from 'dashboard/components/widgets/conversation/MessagePreview.vue';
 
 // Works on the store's snake_case conversation, the same object the list and the
 // realtime updates keep current.
@@ -17,8 +17,6 @@ const props = defineProps({
 
 const route = useRoute();
 const getters = useStoreGetters();
-const { t } = useI18n();
-const { getPlainText } = useMessageFormatter();
 
 const contact = computed(() => props.conversation.meta?.sender || {});
 const assignee = computed(() => props.conversation.meta?.assignee);
@@ -29,10 +27,8 @@ const inboxIcon = computed(() =>
   getInboxIconByType(inbox.value.channel_type, inbox.value.medium, 'fill')
 );
 
-const preview = computed(() => {
-  const message = props.conversation.last_non_activity_message;
-  return getPlainText(message?.content || t('CHAT_LIST.NO_CONTENT'));
-});
+// Same preview as the desktop list: attachments show their type, not "no content".
+const lastMessage = computed(() => getLastMessage(props.conversation));
 
 const time = computed(() => {
   const { timestamp } = props.conversation;
@@ -72,11 +68,14 @@ const unread = computed(() => props.conversation.unread_count || 0);
         <span class="flex-shrink-0 text-xs text-n-slate-10">{{ time }}</span>
       </div>
       <div class="flex items-center gap-2">
-        <p
-          class="flex-1 mb-0 text-sm truncate"
+        <MessagePreview
+          v-if="lastMessage"
+          :message="lastMessage"
+          class="flex-1 min-w-0 text-sm"
           :class="unread ? 'text-n-slate-12 font-medium' : 'text-n-slate-11'"
-        >
-          {{ preview }}
+        />
+        <p v-else class="flex-1 mb-0 text-sm text-n-slate-11">
+          {{ $t('CHAT_LIST.NO_CONTENT') }}
         </p>
         <span
           v-if="unread"
