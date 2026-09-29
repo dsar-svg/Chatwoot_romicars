@@ -8,6 +8,11 @@ import { picoSearch } from '@scmmishra/pico-search';
 import AddPrice from './AddPrice.vue';
 import EditPrice from './EditPrice.vue';
 import ImportPrices from './ImportPrices.vue';
+import {
+  calcCostBs as costBsFor,
+  calcBolivares as bolivaresFor,
+  toVE,
+} from 'dashboard/helper/vehiclePriceHelper';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -88,17 +93,8 @@ const pagedRecords = computed(() => {
   return filteredRecords.value.slice(start, start + perPage);
 });
 
-const calcCostBs = divisa => {
-  if (!divisa || !latestRate.value) return null;
-  return Number((divisa * latestRate.value.equiv_13).toFixed(2));
-};
-
-const calcBolivares = divisa => {
-  const montoBs = calcCostBs(divisa);
-  if (montoBs === null) return null;
-  const tasaBcv = latestRate.value.equiv_13 / 1.13;
-  return Math.round(montoBs / tasaBcv);
-};
+const calcCostBs = divisa => costBsFor(divisa, latestRate.value);
+const calcBolivares = divisa => bolivaresFor(divisa, latestRate.value);
 
 const fetchPrices = async () => {
   try {
@@ -216,12 +212,6 @@ const refreshRate = async () => {
     useAlert(error?.message || 'Error al obtener tasa BCV');
   }
 };
-
-const toVE = (value, decimals) =>
-  Number(value).toLocaleString('es-VE', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
 
 const formatCurrency = value => {
   if (!value) return '—';

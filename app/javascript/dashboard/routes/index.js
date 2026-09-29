@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 
 import { frontendURL } from '../helper/URLHelper';
 import dashboard from './dashboard/dashboard.routes';
+import { MOBILE_ENTRY_ROUTE } from './dashboard/mobile/mobile.routes';
 import store from 'dashboard/store';
 import { validateLoggedInRoutes } from '../helper/routeHelpers';
 import { isOnOnboardingView } from 'v3/helpers/RouteHelper';
@@ -40,6 +41,11 @@ export const validateAuthenticateRoutePermission = async (to, next) => {
     ONBOARDING_STEPS.includes(userAccount?.onboarding_step) &&
     isAdmin &&
     isActive;
+
+  // /app/m has no account in the path (it is the installed app's start URL).
+  if (to.name === MOBILE_ENTRY_ROUTE) {
+    return next(frontendURL(`accounts/${routeAccountId}/m/conversations`));
+  }
 
   if (to.name === 'no_accounts' || !to.name) {
     const target = needsOnboarding
