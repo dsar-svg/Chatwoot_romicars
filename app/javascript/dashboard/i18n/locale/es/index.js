@@ -28,6 +28,7 @@ import labelsMgmt from './labelsMgmt.json';
 import login from './login.json';
 import macros from './macros.json';
 import mfa from './mfa.json';
+import mobile from './mobile.json';
 import onboarding from './onboarding.json';
 import report from './report.json';
 import resetPassword from './resetPassword.json';
@@ -71,6 +72,7 @@ export default {
   ...login,
   ...macros,
   ...mfa,
+  ...mobile,
   ...onboarding,
   ...report,
   ...resetPassword,

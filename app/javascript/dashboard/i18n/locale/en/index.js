@@ -41,6 +41,7 @@ import whatsappTemplates from './whatsappTemplates.json';
 import whatsappTemplateMgmt from './whatsappTemplateMgmt.json';
 import contentTemplates from './contentTemplates.json';
 import mfa from './mfa.json';
+import mobile from './mobile.json';
 import onboarding from './onboarding.json';
 import sessionLimit from './sessionLimit.json';
 import yearInReview from './yearInReview.json';
@@ -89,6 +90,7 @@ export default {
   ...whatsappTemplateMgmt,
   ...contentTemplates,
   ...mfa,
+  ...mobile,
   ...onboarding,
   ...sessionLimit,
   ...yearInReview,

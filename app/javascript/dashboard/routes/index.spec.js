@@ -61,6 +61,15 @@ describe('#validateAuthenticateRoutePermission', () => {
       };
     });
 
+    it('sends the installed app entry /app/m to the account', async () => {
+      await validateAuthenticateRoutePermission(
+        { name: 'mobile_entry', params: {} },
+        next
+      );
+
+      expect(next).toHaveBeenCalledWith('/app/accounts/1/m/conversations');
+    });
+
     describe('when route is not accessible to current user', () => {
       it('should redirect to dashboard', async () => {
         const to = {

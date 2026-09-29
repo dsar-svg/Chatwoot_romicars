@@ -1,0 +1,93 @@
+{
+  "MOBILE": {
+    "TABS": {
+      "CONVERSATIONS": "Conversaciones",
+      "CONTACTS": "Contactos",
+      "SETTINGS": "Ajustes"
+    },
+    "BACK": "Atrás",
+    "LOAD_MORE": "Cargar más",
+    "LOADING": "Cargando…",
+    "CONVERSATIONS": {
+      "TITLE": "Conversaciones",
+      "ASSIGNEE": {
+        "ME": "Mías",
+        "UNASSIGNED": "Sin asignar",
+        "ALL": "Todas"
+      },
+      "STATUS": {
+        "LABEL": "Estado",
+        "OPEN": "Abiertas",
+        "PENDING": "Con el bot",
+        "SNOOZED": "Pospuestas",
+        "RESOLVED": "Cerradas",
+        "ALL": "Todas"
+      },
+      "EMPTY": "No hay conversaciones en esta vista.",
+      "END": "No hay más conversaciones."
+    },
+    "CONVERSATION": {
+      "NOT_FOUND": "No se encontró la conversación.",
+      "RESOLVE": "Cerrar",
+      "REOPEN": "Reabrir",
+      "ACTIONS": "Acciones",
+      "ASSIGN_TO_ME": "Asignármela",
+      "ASSIGN": "Asignar a…",
+      "UNASSIGN": "Sin asignar",
+      "LABELS": "Etiquetas",
+      "SNOOZE": "Posponer",
+      "VIEW_CONTACT": "Ver contacto",
+      "SAVE": "Guardar",
+      "ASSIGNED_TO": "Asignada a {name}",
+      "UNASSIGNED": "Sin asignar",
+      "SNOOZE_OPTIONS": {
+        "UNTIL_NEXT_REPLY": "Hasta que responda",
+        "AN_HOUR_FROM_NOW": "Una hora",
+        "UNTIL_TOMORROW": "Hasta mañana a las 9",
+        "UNTIL_NEXT_WEEK": "Hasta el lunes a las 9"
+      },
+      "ASSIGNED": "Conversación asignada",
+      "LABELS_SAVED": "Etiquetas guardadas",
+      "SNOOZED": "Conversación pospuesta",
+      "FAILED": "No se pudo guardar. Intenta de nuevo."
+    },
+    "CONTACTS": {
+      "TITLE": "Contactos",
+      "SEARCH": "Buscar por nombre o teléfono",
+      "HINT": "Escribe al menos 2 letras para buscar.",
+      "EMPTY": "No se encontraron contactos.",
+      "CONVERSATIONS": "Conversaciones",
+      "NO_CONVERSATIONS": "Este contacto no tiene conversaciones.",
+      "CALL": "Llamar",
+      "WHATSAPP": "WhatsApp",
+      "NOT_FOUND": "No se encontró el contacto."
+    },
+    "SETTINGS": {
+      "TITLE": "Ajustes",
+      "BRANDS": "Marcas y modelos",
+      "PRICES": "Lista de precios",
+      "FULL_VERSION": "Abrir versión completa",
+      "LOGOUT": "Cerrar sesión"
+    },
+    "BRANDS": {
+      "TITLE": "Marcas",
+      "ADD": "Agregar marca",
+      "MODELS": "{count} modelos",
+      "EMPTY": "No hay marcas cargadas.",
+      "MODELS_TITLE": "Modelos de {brand}",
+      "ADD_MODEL": "Agregar modelo",
+      "NO_MODELS": "Esta marca no tiene modelos."
+    },
+    "PRICES": {
+      "TITLE": "Precios",
+      "ADD": "Agregar precio",
+      "SEARCH": "Buscar repuesto",
+      "ALL_BRANDS": "Todas las marcas",
+      "ALL_MODELS": "Todos los modelos",
+      "DIVISA": "Divisa",
+      "BCV": "Tasa BCV",
+      "COUNT": "{count} repuestos",
+      "EMPTY": "No hay precios que coincidan."
+    }
+  }
+}

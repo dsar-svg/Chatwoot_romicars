@@ -11,6 +11,7 @@ import { frontendURL } from '../../helper/URLHelper';
 import helpcenterRoutes from './helpcenter/helpcenter.routes';
 import campaignsRoutes from './campaigns/campaigns.routes';
 import { routes as captainRoutes } from './captain/captain.routes';
+import { routes as mobileRoutes } from './mobile/mobile.routes';
 import AppContainer from './Dashboard.vue';
 import Suspended from './suspended/Index.vue';
 import NoAccounts from './noAccounts/Index.vue';
@@ -19,6 +20,9 @@ import OnboardingInboxSetup from './onboarding/InboxSetup.vue';
 
 export default {
   routes: [
+    // Outside AppContainer: the installable mobile app has its own layout, without
+    // the sidebar.
+    ...mobileRoutes,
     {
       path: frontendURL('accounts/:accountId'),
       component: AppContainer,

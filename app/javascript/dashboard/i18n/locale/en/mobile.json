@@ -1,0 +1,93 @@
+{
+  "MOBILE": {
+    "TABS": {
+      "CONVERSATIONS": "Conversations",
+      "CONTACTS": "Contacts",
+      "SETTINGS": "Settings"
+    },
+    "BACK": "Back",
+    "LOAD_MORE": "Load more",
+    "LOADING": "Loading…",
+    "CONVERSATIONS": {
+      "TITLE": "Conversations",
+      "ASSIGNEE": {
+        "ME": "Mine",
+        "UNASSIGNED": "Unassigned",
+        "ALL": "All"
+      },
+      "STATUS": {
+        "LABEL": "Status",
+        "OPEN": "Open",
+        "PENDING": "With the bot",
+        "SNOOZED": "Snoozed",
+        "RESOLVED": "Resolved",
+        "ALL": "All"
+      },
+      "EMPTY": "No conversations in this view.",
+      "END": "No more conversations."
+    },
+    "CONVERSATION": {
+      "NOT_FOUND": "Conversation not found.",
+      "RESOLVE": "Resolve",
+      "REOPEN": "Reopen",
+      "ACTIONS": "Actions",
+      "ASSIGN_TO_ME": "Assign to me",
+      "ASSIGN": "Assign to…",
+      "UNASSIGN": "Unassigned",
+      "LABELS": "Labels",
+      "SNOOZE": "Snooze",
+      "VIEW_CONTACT": "View contact",
+      "SAVE": "Save",
+      "ASSIGNED_TO": "Assigned to {name}",
+      "UNASSIGNED": "Unassigned",
+      "SNOOZE_OPTIONS": {
+        "UNTIL_NEXT_REPLY": "Until next reply",
+        "AN_HOUR_FROM_NOW": "One hour",
+        "UNTIL_TOMORROW": "Until tomorrow at 9",
+        "UNTIL_NEXT_WEEK": "Until Monday at 9"
+      },
+      "ASSIGNED": "Conversation assigned",
+      "LABELS_SAVED": "Labels saved",
+      "SNOOZED": "Conversation snoozed",
+      "FAILED": "Could not save. Try again."
+    },
+    "CONTACTS": {
+      "TITLE": "Contacts",
+      "SEARCH": "Search by name or phone",
+      "HINT": "Type at least 2 characters to search.",
+      "EMPTY": "No contacts found.",
+      "CONVERSATIONS": "Conversations",
+      "NO_CONVERSATIONS": "This contact has no conversations.",
+      "CALL": "Call",
+      "WHATSAPP": "WhatsApp",
+      "NOT_FOUND": "Contact not found."
+    },
+    "SETTINGS": {
+      "TITLE": "Settings",
+      "BRANDS": "Brands and models",
+      "PRICES": "Price list",
+      "FULL_VERSION": "Open full version",
+      "LOGOUT": "Log out"
+    },
+    "BRANDS": {
+      "TITLE": "Brands",
+      "ADD": "Add brand",
+      "MODELS": "{count} models",
+      "EMPTY": "No brands yet.",
+      "MODELS_TITLE": "{brand} models",
+      "ADD_MODEL": "Add model",
+      "NO_MODELS": "This brand has no models."
+    },
+    "PRICES": {
+      "TITLE": "Prices",
+      "ADD": "Add price",
+      "SEARCH": "Search part",
+      "ALL_BRANDS": "All brands",
+      "ALL_MODELS": "All models",
+      "DIVISA": "Cash",
+      "BCV": "BCV rate",
+      "COUNT": "{count} parts",
+      "EMPTY": "No prices match."
+    }
+  }
+}

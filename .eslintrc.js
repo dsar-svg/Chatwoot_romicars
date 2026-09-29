@@ -1,4 +1,7 @@
 module.exports = {
+  // Stop here: a checkout nested inside another (git worktrees) would otherwise
+  // also load the parent's config and fail on the duplicate plugins.
+  root: true,
   extends: [
     'airbnb-base/legacy',
     'prettier',
