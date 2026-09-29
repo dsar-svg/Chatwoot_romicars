@@ -16,6 +16,9 @@ const { t } = useI18n();
 
 const assigneeType = ref(ASSIGNEE_TYPE.ME);
 const status = ref(STATUS_TYPE.OPEN);
+const inboxId = ref('');
+
+const inboxes = computed(() => getters['inboxes/getInboxes'].value);
 
 const assigneeTabs = computed(() => {
   const stats = getters['conversationStats/getStats'].value;
@@ -59,6 +62,7 @@ const isLoading = computed(() => getters.getChatListLoadingStatus.value);
 const filters = page => ({
   assigneeType: assigneeType.value,
   status: status.value,
+  inboxId: inboxId.value || undefined,
   sortBy: SORT_BY_TYPE.LAST_ACTIVITY_AT_DESC,
   page,
 });
@@ -97,29 +101,38 @@ const loadMore = () => {
   fetchPage(currentPage.value + 1);
 };
 
-watch([assigneeType, status], reload);
+watch([assigneeType, status, inboxId], reload);
 onMounted(reload);
 </script>
 
 <template>
   <div class="flex flex-col flex-1 min-h-0">
-    <MobileHeader :title="$t('MOBILE.CONVERSATIONS.TITLE')">
-      <template #end>
-        <select
-          v-model="status"
-          :aria-label="$t('MOBILE.CONVERSATIONS.STATUS.LABEL')"
-          class="w-auto h-8 py-0 mb-0 text-sm rounded-lg"
+    <MobileHeader :title="$t('MOBILE.CONVERSATIONS.TITLE')" />
+    <div class="flex flex-shrink-0 gap-2 px-3 pt-2">
+      <select
+        v-model="inboxId"
+        :aria-label="$t('MOBILE.CONVERSATIONS.INBOX.LABEL')"
+        class="flex-1 min-w-0 h-8 py-0 mb-0 text-sm rounded-lg"
+      >
+        <option value="">{{ $t('MOBILE.CONVERSATIONS.INBOX.ALL') }}</option>
+        <option v-for="inbox in inboxes" :key="inbox.id" :value="inbox.id">
+          {{ inbox.name }}
+        </option>
+      </select>
+      <select
+        v-model="status"
+        :aria-label="$t('MOBILE.CONVERSATIONS.STATUS.LABEL')"
+        class="flex-1 min-w-0 h-8 py-0 mb-0 text-sm rounded-lg"
+      >
+        <option
+          v-for="option in statusOptions"
+          :key="option.value"
+          :value="option.value"
         >
-          <option
-            v-for="option in statusOptions"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </option>
-        </select>
-      </template>
-    </MobileHeader>
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
     <div class="flex flex-shrink-0 gap-1 px-3 py-2 border-b border-n-weak">
       <button
         v-for="tab in assigneeTabs"

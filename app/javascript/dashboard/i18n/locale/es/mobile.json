@@ -15,6 +15,10 @@
         "UNASSIGNED": "Sin asignar",
         "ALL": "Todas"
       },
+      "INBOX": {
+        "LABEL": "Canal",
+        "ALL": "Todos los canales"
+      },
       "STATUS": {
         "LABEL": "Estado",
         "OPEN": "Abiertas",
