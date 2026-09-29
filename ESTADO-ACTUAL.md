@@ -243,12 +243,11 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
       `WHATSAPP_APP_SECRET` / `FB_APP_SECRET` en super admin **y** los tres nodos a la vez: si
       queda uno viejo, ese canal deja de entrar (401).
 - [ ] **Token de Telegram** hardcodeado en 4 nodos de alerta de n8n.
-- [ ] **Verificación de firma de WhatsApp (Chatwoot)**: código listo en el PR del 28/09, se activa
-      con el deploy. n8n ya re-firma el body limpio (`Calcular Firma WA` → header
-      `x-hub-signature-256`), igual que Instagram, que ya exige firma y funciona. **Después del
-      deploy**, mandar un WhatsApp de prueba y confirmar que entra; si no entra, los logs de
-      rails muestran 401 en `/webhooks/whatsapp/+584244205394` y hay que revisar que
-      `WHATSAPP_APP_SECRET` (o `FB_APP_SECRET`) sea el mismo secreto que usa n8n.
+- [x] **Verificación de firma de WhatsApp (Chatwoot)**: activa desde el 29/09 (PR #76 + App Secret
+      cargado en super admin → `WHATSAPP_APP_SECRET`, que hasta ese día estaba **vacío**, así que
+      la regla no se encendía). Probado: un WhatsApp real entró. Si algún día dejan de entrar,
+      los logs de rails muestran 401 en `/webhooks/whatsapp/...`: el secreto de super admin no
+      coincide con el de `Calcular Firma WA` en n8n.
 - [ ] **n8n no verifica la firma de Meta** en `Webhook Meta (POST)`: firma lo que le llegue. Quien
       conozca `n8n.supricom.com.ve/webhook/romicars-meta-referral` puede inyectar mensajes en los
       tres canales. Arreglo: opción `rawBody` en el webhook y comparar `x-hub-signature-256` contra
@@ -268,6 +267,19 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
       variantes 4x4/4x2, año y caja automática cuando cambian el precio; confirmar las marcas de
       `vehicle_brands` (piden Zotye, Chana, Kia, Terios); conversaciones con proveedores sin
       etiqueta (#194, #320).
+- [ ] **Segundo número de WhatsApp** `+58 412-9876030`, WABA "Romicars Ventas Digitales"
+      (`529004876962549`), otra línea de RomiCars. Está en el portafolio pero **Fuera de
+      internet**: falta la conexión con coexistence. El registro insertado de Chatwoot
+      (configuración `2113356415923718`) queda bloqueado con "Romi Cars no puede incorporar
+      clientes" porque el portafolio **no está verificado**. Camino que funciona: QR desde la
+      Bandeja de entrada de Business Suite, con una página sin WhatsApp vinculado (Romi Cars ya
+      tiene el +58 424-4205394), y después el formulario manual de Chatwoot. Luego: asignar la WABA
+      al usuario del sistema, limpiar el override del número (`clear_phone_number_callback_override`)
+      para que pase por n8n. No hace falta tocar n8n: Chatwoot elige la bandeja por el
+      `phone_number_id` del payload. El traspaso desde Facebook/Instagram sigue yendo al número
+      principal (primera bandeja de WhatsApp).
+- [ ] **Verificar el portafolio Romi Cars** en Meta (Centro de seguridad): habilita el registro
+      insertado y sube los límites de mensajes.
 - [ ] Conectar el bot a Instagram y WhatsApp cuando termine la etapa de pruebas en Facebook. En
       WhatsApp falta probar la regla `RC-` con el bot activo.
 - [ ] Probar el echo: escribir desde la app WhatsApp Business y ver si entra como saliente.
