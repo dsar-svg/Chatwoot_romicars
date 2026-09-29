@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, START_LOCATION } from 'vue-router';
 
 import { frontendURL } from '../helper/URLHelper';
 import dashboard from './dashboard/dashboard.routes';
@@ -69,17 +69,28 @@ export const validateAuthenticateRoutePermission = async (to, next) => {
   return nextRoute ? next(frontendURL(nextRoute)) : next();
 };
 
+// The installed app opens on its own screens. Logging in, and a start_url Android
+// cached from an older manifest, both land on the desktop dashboard; send that
+// first load to the mobile list. Later navigation (e.g. "full version") is left alone.
+export const isInstalledAppStart = (to, from) =>
+  from === START_LOCATION &&
+  to.name === 'home' &&
+  !!window.matchMedia?.('(display-mode: standalone)').matches;
+
 export const initalizeRouter = () => {
   const userAuthentication = store.dispatch('setUser');
 
-  router.beforeEach(async (to, _from, next) => {
+  router.beforeEach(async (to, from, next) => {
     AnalyticsHelper.page(to.name || '', {
       path: to.path,
       name: to.name,
     });
 
     await userAuthentication;
-    await validateAuthenticateRoutePermission(to, next, store);
+    if (isInstalledAppStart(to, from)) {
+      return next({ name: 'mobile_conversations', params: to.params });
+    }
+    return validateAuthenticateRoutePermission(to, next, store);
   });
 };
 

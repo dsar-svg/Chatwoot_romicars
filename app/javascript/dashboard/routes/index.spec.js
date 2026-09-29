@@ -1,4 +1,8 @@
-import { validateAuthenticateRoutePermission } from './index';
+import {
+  validateAuthenticateRoutePermission,
+  isInstalledAppStart,
+} from './index';
+import { START_LOCATION } from 'vue-router';
 import store from '../store'; // This import will be mocked
 import { vi } from 'vitest';
 
@@ -113,5 +117,27 @@ describe('#validateAuthenticateRoutePermission', () => {
         expect(next).toHaveBeenCalledWith();
       });
     });
+  });
+});
+
+describe('#isInstalledAppStart', () => {
+  const home = { name: 'home', params: { accountId: '1' } };
+  const setStandalone = matches => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches });
+  };
+
+  it('sends the installed app first load on the dashboard to mobile', () => {
+    setStandalone(true);
+    expect(isInstalledAppStart(home, START_LOCATION)).toBe(true);
+  });
+
+  it('leaves the browser, later navigation and other routes alone', () => {
+    setStandalone(false);
+    expect(isInstalledAppStart(home, START_LOCATION)).toBe(false);
+    setStandalone(true);
+    expect(isInstalledAppStart(home, { name: 'mobile_settings' })).toBe(false);
+    expect(
+      isInstalledAppStart({ name: 'inbox_conversation' }, START_LOCATION)
+    ).toBe(false);
   });
 });
