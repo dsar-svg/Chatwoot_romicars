@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import Auth from 'dashboard/api/auth';
-import { frontendURL } from 'dashboard/helper/URLHelper';
 import MobileHeader from '../components/MobileHeader.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 
@@ -24,9 +23,12 @@ const links = computed(() => [
   },
 ]);
 
-const fullVersionUrl = computed(() =>
-  frontendURL(`accounts/${accountId.value}/dashboard`)
-);
+// In-app navigation, not a page load, so the installed app does not bounce it
+// back to the mobile screens.
+const fullVersionRoute = computed(() => ({
+  name: 'home',
+  params: { accountId: accountId.value },
+}));
 </script>
 
 <template>
@@ -43,13 +45,13 @@ const fullVersionUrl = computed(() =>
         <span class="flex-1">{{ $t(link.label) }}</span>
         <Icon icon="i-lucide-chevron-right" class="size-4 text-n-slate-10" />
       </router-link>
-      <a
-        :href="fullVersionUrl"
+      <router-link
+        :to="fullVersionRoute"
         class="flex items-center gap-3 px-4 py-4 mt-6 text-sm border-y border-n-weak text-n-slate-12 active:bg-n-alpha-2"
       >
         <Icon icon="i-lucide-monitor" class="size-5 text-n-slate-11" />
         <span class="flex-1">{{ $t('MOBILE.SETTINGS.FULL_VERSION') }}</span>
-      </a>
+      </router-link>
       <button
         type="button"
         class="flex items-center gap-3 px-4 py-4 text-sm border-b border-n-weak text-n-ruby-11 active:bg-n-alpha-2"
