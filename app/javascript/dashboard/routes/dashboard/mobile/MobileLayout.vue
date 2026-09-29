@@ -3,11 +3,14 @@ import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
+import { usePolicy } from 'dashboard/composables/usePolicy';
+import { DASHBOARD_PERMISSIONS } from '../analytics/analytics.routes';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 
 const route = useRoute();
 const store = useStore();
 const { t } = useI18n();
+const { checkPermissions } = usePolicy();
 
 // The desktop sidebar loads these on boot; the mobile app lives outside it.
 onMounted(() => {
@@ -17,28 +20,37 @@ onMounted(() => {
   store.dispatch('attributes/get');
 });
 
-const tabs = computed(() => [
-  {
-    name: 'mobile_conversations',
-    label: t('MOBILE.TABS.CONVERSATIONS'),
-    icon: 'i-lucide-message-circle',
-  },
-  {
-    name: 'mobile_contacts',
-    label: t('MOBILE.TABS.CONTACTS'),
-    icon: 'i-lucide-contact',
-  },
-  {
-    name: 'mobile_settings',
-    label: t('MOBILE.TABS.SETTINGS'),
-    icon: 'i-lucide-settings',
-  },
-]);
+const tabs = computed(() =>
+  [
+    {
+      name: 'mobile_conversations',
+      label: t('MOBILE.TABS.CONVERSATIONS'),
+      icon: 'i-lucide-message-circle',
+    },
+    {
+      name: 'mobile_contacts',
+      label: t('MOBILE.TABS.CONTACTS'),
+      icon: 'i-lucide-contact',
+    },
+    {
+      name: 'mobile_dashboard',
+      label: t('MOBILE.TABS.DASHBOARD'),
+      icon: 'i-lucide-layout-dashboard',
+      permissions: DASHBOARD_PERMISSIONS,
+    },
+    {
+      name: 'mobile_settings',
+      label: t('MOBILE.TABS.SETTINGS'),
+      icon: 'i-lucide-settings',
+    },
+  ].filter(tab => checkPermissions(tab.permissions))
+);
 
 const activeTab = computed(() => {
   const name = String(route.name || '');
   if (name.startsWith('mobile_conversation')) return 'mobile_conversations';
   if (name.startsWith('mobile_contact')) return 'mobile_contacts';
+  if (name === 'mobile_dashboard') return name;
   return 'mobile_settings';
 });
 </script>
