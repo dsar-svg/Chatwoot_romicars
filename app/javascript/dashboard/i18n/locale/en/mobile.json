@@ -15,6 +15,10 @@
         "UNASSIGNED": "Unassigned",
         "ALL": "All"
       },
+      "INBOX": {
+        "LABEL": "Channel",
+        "ALL": "All channels"
+      },
       "STATUS": {
         "LABEL": "Status",
         "OPEN": "Open",
