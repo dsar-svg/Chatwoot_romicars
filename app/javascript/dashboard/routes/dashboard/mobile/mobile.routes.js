@@ -14,6 +14,8 @@ import MobileSettings from './settings/MobileSettings.vue';
 import MobileBrands from './settings/MobileBrands.vue';
 import MobileModels from './settings/MobileModels.vue';
 import MobilePrices from './settings/MobilePrices.vue';
+import Analytics from '../analytics/Analytics.vue';
+import { DASHBOARD_PERMISSIONS } from '../analytics/analytics.routes';
 
 const conversationPermissions = [...ROLES, ...CONVERSATION_PERMISSIONS];
 
@@ -46,6 +48,12 @@ export const routes = [
         name: 'mobile_conversation',
         meta: { permissions: conversationPermissions, hideTabs: true },
         component: MobileConversationDetail,
+      },
+      {
+        path: 'dashboard',
+        name: 'mobile_dashboard',
+        meta: { permissions: DASHBOARD_PERMISSIONS },
+        component: Analytics,
       },
       {
         path: 'contacts',
