@@ -27,10 +27,12 @@ function initials(name) {
     .toUpperCase();
 }
 
+// The average arrives as a float (496.8): unrounded, `mins % 60` printed "16.80000000000001m".
 function formatMinutes(mins) {
-  if (!mins || mins === 0) return '—';
-  if (mins < 60) return `${mins}m`;
-  return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  const total = Math.round(mins || 0);
+  if (!total) return '—';
+  if (total < 60) return `${total}m`;
+  return `${Math.floor(total / 60)}h ${total % 60}m`;
 }
 </script>
 
