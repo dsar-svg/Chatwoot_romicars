@@ -1,8 +1,9 @@
-# Estado actual — 28 de septiembre de 2026
+# Estado actual — 30 de septiembre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 28 de septiembre. Qué hace y qué no hace el bot, para
-vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)**.
+Actualizado al cierre de la sesión del 30 de septiembre. Qué hace el sistema, qué hace y qué no
+hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
+entregó en Word).
 
 ## Qué está funcionando hoy
 
@@ -213,13 +214,92 @@ minutes of inactivity"; y el webhook de WhatsApp **exige firma** cuando `WHATSAP
 está configurado, aunque el canal sea manual (acepta también `FB_APP_SECRET` e
 `INSTAGRAM_APP_SECRET`: es una sola app de Meta y n8n firma con ella).
 
+## 29–30/09 — app móvil, auditoría del dashboard, bot afinado y configuración para la entrega
+
+### Rails — todo mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #76 | Cierre `abandonado`/`derivado` sin "0 minutos de inactividad"; firma de WhatsApp exigida con `WHATSAPP_APP_SECRET` |
+| #77 | **App móvil (PWA)** en `/app/m`: conversaciones, detalle, contactos, marcas y precios. Instalable |
+| #78 | Vista previa de adjuntos en la lista móvil |
+| #79 | Filtro por canal en la app; iconos con fondo blanco (iOS) y maskable (Android) |
+| #80 | La app instalada abre en `/app/m` aunque el login o un `start_url` viejo manden al dashboard |
+| #81 | Pestaña Dashboard en la app, solo administradores y `report_manage` |
+| #82 | Auditoría del dashboard: leads solo si el cliente escribió (`Conversation.customer_wrote`), agentes = todos los miembros (eran solo rol `agent`), la IA ya no inventa causas con cierres en cero |
+| #83 | Etiqueta `interno` en `NON_LEAD_LABELS` (números propios, como el segundo WhatsApp) |
+| #84 | Tiempo de respuesta redondeado, orden de agentes por chats, contexto de IA con respuesta promedio y origen de las consultas |
+
+Rama `claude/guia-entrega` (sin mergear): esta actualización y la guía de entrega reescrita.
+
+**Por qué el dashboard daba cero:** en WhatsApp nadie había cerrado nunca una conversación con
+resultado (las 17 resueltas eran pruebas de Facebook), el bot solo corre en Facebook y ahí solo
+escribían contactos `proveedor`. Las cifras eran correctas; lo que faltaba era el registro.
+
+### n8n `Bot Atencion Cliente` (versión activa `5f70021f`)
+
+- **Nombres**: `Edit Fields5.cliente` limpia el perfil (emojis, títulos, mayúsculas, letras
+  decoradas con NFKC) y saluda con el primer nombre. Negocios, frases, usuarios con dígitos y
+  siglas cuentan como "falta nombre". Si solo hay nombre, `faltan` incluye `apellido`, que se
+  pide una sola vez. `guardar_nombre_cliente` guarda nombre y apellido juntos.
+- **`buscar_precio_repuesto` reescrito**:
+  - plurales y género normalizados (`delantera` = `delantero`);
+  - entre coincidencias exactas gana la que tiene más palabras en la **descripción** y la palabra
+    principal al inicio (el antirruido salía para "pastilla de freno" por su sinónimo);
+  - devuelve `precio_texto` ya redactado ("28$ a tasa BCV o 25$ en divisas"): el modelo invertía
+    los montos;
+  - si las exactas difieren por posición (delantera/trasera, izq./der., larga/corta, el par)
+    **no devuelve precios**, así el bot tiene que preguntar cuál.
+- **Prompt**: no ofrece confirmar disponibilidad; variantes de marca terminan en "¿cuál
+  prefieres?"; molestia o desconfianza → nota, prioridad `high` y `asignar_agente` (también en
+  Facebook, sin WhatsApp); tras guardar el apellido sigue con el primer nombre.
+- **`asignar_agente` y `crear_nota_privada`**: si el bot le promete al cliente pasarlo o
+  consultarlo, tiene que llamarlas en ese turno. En la pregunta técnica lo prometía y no lo hacía.
+- **`Responder en Chatwoot`**: los links markdown `[url](url)` se convierten en la URL sola antes
+  del guard de `wa.me` (Messenger los mostraba duplicados con corchetes).
+- **`Consultar Contacto`**: reintenta 5 veces cada 5 s. Durante un deploy un mensaje se perdió y
+  solo llegó la alerta de Telegram.
+- Probado en vivo desde Messenger (#807–#823): apellido una vez, variantes por posición y por
+  marca, precio único, foto, queja, técnica, venta perdida con motivo, compra con derivación, y
+  seguir escribiendo después del link (actualiza el pedido y mantiene el mismo `RC-`).
+
+### n8n `Resumen diario: lo que el bot no pudo responder` (`Ev6gat9QCzd9hoX3`)
+
+Todos los días a las 19:00 (America/Caracas): lee de Postgres las notas privadas del
+`AgentBot` del día y `product_inquiries` con `encontrado = false`, GPT-4o-mini separa lo que el
+bot no pudo resolver, y lo manda por Telegram (credencial `Api Telegram Dario`, chat
+`6281232133`). Probado: llegó el del 30/09.
+
+### Configuración de Chatwoot (hecha el 30/09)
+
+- **Asignación**: política `Reparto RomiCars` (id 1, round robin, `longest_waiting`, 100 por
+  hora, excluye inactivas > 168 h) en las cuatro bandejas. `assignment_v2` asigna solo a
+  miembros **conectados**; sin política no había reintento y por eso se acumulaban las sin
+  asignar. **Romi Cars** (inbox 2) tenía la auto-asignación apagada: ahora encendida.
+- **399 conversaciones de difusión cerradas** en WhatsApp (solo mensajes salientes, historial
+  completo). Quedó abierta la #556 (un vendedor escribió y el cliente no contestó).
+- **Etiquetas**: 18 proveedores de la lista de la clienta (6 existían, 12 creados como
+  contactos #788–#799), 10 tiendas marcadas por nombre (por confirmar), `logistica` en
+  "delivery Romicars" (#81), `interno` en "Romicars Ventas Digitales" (#42).
+- Excel entregado para la reunión: `Contactos_por_confirmar_RomiCars.xlsx` (14 por confirmar, 19
+  confirmados).
+- Contacto de prueba #27 restaurado ("Dario Medina", `proveedor`).
+
 ## Punto exacto donde quedamos
 
-1. **Deploy** del PR de Rails del 28/09 y verificar que siguen entrando los WhatsApp (ver
-   "Verificación de firma" en pendientes).
-2. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
-   Zelle = divisa, devoluciones.
-3. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
+Técnicamente listo; falta configuración y datos de la tienda. Para salir a producción:
+
+1. **Vendedores** (bloqueante): hoy solo existen Dario y Moises, y Dario es el único miembro de
+   las bandejas, así que todo lo asignado le cae a él. Crear las cuentas en **Ajustes →
+   Agentes** y agregarlos a las bandejas (sobre todo WABA RomiCars). Después, verificar que el
+   reparto les llegue y redistribuir lo que acumuló Dario.
+2. **Decisiones con la clienta**: bot en WhatsApp e Instagram (hoy solo Facebook) y seguimiento
+   automático (hoy `followups_enabled: false`).
+3. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
+   Zelle = divisa, devoluciones. Sin ellas el bot pasa esas preguntas a un vendedor.
+4. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
+5. Mergear `claude/guia-entrega`.
+6. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
 ```bash
@@ -229,9 +309,8 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-4. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
-   ejemplos en [GUIA-BOT.md](GUIA-BOT.md#plantilla-seguimiento_pedido). Cuando esté aprobada, el
-   vendedor la usa desde el editor fuera de la ventana de 24 h.
+7. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
+   ejemplos en [GUIA-BOT.md](GUIA-BOT.md#6-plantilla-seguimiento_pedido).
 
 ## Pendientes
 
@@ -243,12 +322,11 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
       `WHATSAPP_APP_SECRET` / `FB_APP_SECRET` en super admin **y** los tres nodos a la vez: si
       queda uno viejo, ese canal deja de entrar (401).
 - [ ] **Token de Telegram** hardcodeado en 4 nodos de alerta de n8n.
-- [ ] **Verificación de firma de WhatsApp (Chatwoot)**: código listo en el PR del 28/09, se activa
-      con el deploy. n8n ya re-firma el body limpio (`Calcular Firma WA` → header
-      `x-hub-signature-256`), igual que Instagram, que ya exige firma y funciona. **Después del
-      deploy**, mandar un WhatsApp de prueba y confirmar que entra; si no entra, los logs de
-      rails muestran 401 en `/webhooks/whatsapp/+584244205394` y hay que revisar que
-      `WHATSAPP_APP_SECRET` (o `FB_APP_SECRET`) sea el mismo secreto que usa n8n.
+- [x] **Verificación de firma de WhatsApp (Chatwoot)**: activa desde el 29/09 (PR #76 + App Secret
+      cargado en super admin → `WHATSAPP_APP_SECRET`, que hasta ese día estaba **vacío**, así que
+      la regla no se encendía). Probado: un WhatsApp real entró. Si algún día dejan de entrar,
+      los logs de rails muestran 401 en `/webhooks/whatsapp/...`: el secreto de super admin no
+      coincide con el de `Calcular Firma WA` en n8n.
 - [ ] **n8n no verifica la firma de Meta** en `Webhook Meta (POST)`: firma lo que le llegue. Quien
       conozca `n8n.supricom.com.ve/webhook/romicars-meta-referral` puede inyectar mensajes en los
       tres canales. Arreglo: opción `rawBody` en el webhook y comparar `x-hub-signature-256` contra
@@ -257,19 +335,37 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
 ### Otros
 
 - [x] Reprobar el bot con "chery orinoco, el largo" → cotiza 17 $ BCV / 15 $ divisas (28/09).
-- [x] **Contactos de prueba** (Dario Medina #27 y #310) etiquetados `proveedor` el 28/09: salen del
-      dashboard, pero **el bot ya no les contesta**. Para volver a probar, quitar la etiqueta.
-- [ ] **Página Erdu (inbox 1) no envía**: todo saliente falla con `Invalid appsecret_proof provided
-      in the API argument`. El token de la página es de otra app de Meta. Reautorizar la bandeja con
-      la cuenta de la app de RomiCars. Romi Cars (inbox 2) envía bien.
+- [x] **Contactos de prueba** (Dario Medina #27 y #310) etiquetados `proveedor`: salen del
+      dashboard, pero **el bot ya no les contesta**. Para volver a probar, quitar la etiqueta y
+      cerrar cada conversación entre escenario y escenario (la memoria del bot es por
+      conversación). Al terminar, volver a poner la etiqueta.
+- [ ] **Borrar la bandeja Erdu** (inbox 1, página de pruebas personal; no envía: `Invalid
+      appsecret_proof`). Lo hace el dueño.
 - [ ] **Kia no está en `vehicle_brands`**: el bot contesta "para el Kia Rio no manejamos repuestos",
       pero Juan vendió amortiguadores de Kia Rio por WhatsApp (#309). Cargar las marcas reales.
 - [ ] **Casos vistos en WhatsApp sin cubrir** (revisión de 60 conversaciones del 25–28/09):
       variantes 4x4/4x2, año y caja automática cuando cambian el precio; confirmar las marcas de
       `vehicle_brands` (piden Zotye, Chana, Kia, Terios); conversaciones con proveedores sin
       etiqueta (#194, #320).
-- [ ] Conectar el bot a Instagram y WhatsApp cuando termine la etapa de pruebas en Facebook. En
-      WhatsApp falta probar la regla `RC-` con el bot activo.
+- [ ] **Segundo número de WhatsApp** `+58 412-9876030`, WABA "Romicars Ventas Digitales"
+      (`529004876962549`), otra línea de RomiCars. Está en el portafolio pero **Fuera de
+      internet**: falta la conexión con coexistence. El registro insertado de Chatwoot
+      (configuración `2113356415923718`) queda bloqueado con "Romi Cars no puede incorporar
+      clientes" porque el portafolio **no está verificado**. Camino que funciona: QR desde la
+      Bandeja de entrada de Business Suite, con una página sin WhatsApp vinculado (Romi Cars ya
+      tiene el +58 424-4205394), y después el formulario manual de Chatwoot. Luego: asignar la WABA
+      al usuario del sistema, limpiar el override del número (`clear_phone_number_callback_override`)
+      para que pase por n8n. No hace falta tocar n8n: Chatwoot elige la bandeja por el
+      `phone_number_id` del payload. El traspaso desde Facebook/Instagram sigue yendo al número
+      principal (primera bandeja de WhatsApp).
+- [ ] **Verificar el portafolio Romi Cars** en Meta (Centro de seguridad): habilita el registro
+      insertado y sube los límites de mensajes.
+- [ ] Conectar el bot a Instagram y WhatsApp si la clienta lo decide. En WhatsApp falta probar la
+      regla `RC-` con el bot activo.
+- [ ] Detalles del bot: si el cliente ya dijo la marca ("la bomba Chery") igual pregunta cuál
+      prefiere; en la pregunta técnica no actualizó la prioridad.
+- [ ] Unos pocos perfiles que no se distinguen de un nombre ("aireaccel", "trabajo") se usan para
+      saludar.
 - [ ] Probar el echo: escribir desde la app WhatsApp Business y ver si entra como saliente.
 - [ ] Mensajes `This message is unavailable.`: sincronización de coexistence (error 131060).
       Ver si siguen apareciendo:
@@ -277,6 +373,9 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
 - [ ] Que el job de seguimiento mande la plantilla Utility cuando la ventana esté cerrada
       (hoy cancela como `fuera_de_ventana`).
 - [ ] RuboCop: ~140 offenses, casi todas heredadas en `romicars_analytics_controller.rb`.
+      `lint-frontend`, `lint-backend` y `security-scan` fallan en todos los PRs por deuda anterior.
+- [ ] La barra de comandos del escritorio busca rutas que el fork quitó (captain, portals,
+      attributes, automation, macros, applications) y llena la consola de errores.
 - [ ] `fake-indexeddb` no está en node_modules: los specs de frontend no corren local sin
       quitarlo de `setupFiles` (`vitest.config.ts`).
 
