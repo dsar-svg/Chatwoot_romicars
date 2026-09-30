@@ -73,7 +73,8 @@ El código `RC-…` es interno. El cliente no tiene que hacer nada con él, y el
 - **Tomar las conversaciones asignadas** y leer la **nota privada** que dejó el bot: tiene el carro,
   los repuestos, los precios dados y el motivo del pase.
 - **Cerrar con resultado** cuando termina (venta, perdida o consulta): alimenta el informe.
-- **Etiquetar `proveedor` o `logistica`** los números que no son clientes. Así no cuentan como
+- **Etiquetar `proveedor`, `logistica` o `interno`** los números que no son clientes
+  (`interno` = líneas propias de RomiCars, como el segundo WhatsApp). Así no cuentan como
   leads, no pasan por el bot y no reciben seguimiento.
 - **Fuera de la ventana de 24 h**, usar la plantilla `seguimiento_pedido` desde el editor, o
   contestar desde la app de WhatsApp Business del teléfono.

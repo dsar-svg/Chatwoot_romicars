@@ -110,11 +110,11 @@ class Conversation < ApplicationRecord
   }
   scope :with_sale, -> { where.not(sale_amount: nil) }
 
-  # Numbers the shop talks to that are not customers: suppliers and the delivery rider. On a
-  # conversation the label covers that thread; on the contact it covers every conversation
-  # with that number, past and future. Those skip the bot, the follow-ups and every figure
-  # on the RomiCars dashboard.
-  NON_LEAD_LABELS = %w[proveedor logistica].freeze
+  # Numbers the shop talks to that are not customers: suppliers, the delivery rider and the
+  # shop's own lines (`interno`, e.g. its second WhatsApp number). On a conversation the label
+  # covers that thread; on the contact it covers every conversation with that number, past
+  # and future. Those skip the bot, the follow-ups and every figure on the RomiCars dashboard.
+  NON_LEAD_LABELS = %w[proveedor logistica interno].freeze
   # Being a supplier is who the number is, so tagging one conversation tags the contact too.
   # `logistica` stays on the conversation: a customer's own thread can be about a delivery.
   SUPPLIER_LABEL = 'proveedor'.freeze

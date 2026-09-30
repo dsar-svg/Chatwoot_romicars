@@ -25,6 +25,13 @@ RSpec.describe Conversation do
 
       expect(account.conversations.leads).not_to include(old_thread)
     end
+
+    it 'leaves out the shop numbers tagged interno' do
+      own_line = create(:contact, account: account)
+      own_line.add_labels(['interno'])
+
+      expect(account.conversations.leads).not_to include(conversation_for(own_line))
+    end
   end
 
   describe 'when the contact is a supplier' do
