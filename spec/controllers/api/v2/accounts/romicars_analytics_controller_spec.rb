@@ -4,6 +4,15 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
   let(:account) { create(:account) }
   let!(:admin) { create(:user, account: account, role: :administrator) }
 
+  # The dashboard only counts conversations where the customer wrote. An incoming message
+  # reopens a resolved conversation, so put the status back afterwards.
+  def customer_wrote(conversation)
+    status = conversation.status
+    create(:message, account: account, conversation: conversation, message_type: :incoming)
+    conversation.update_columns(status: Conversation.statuses[status]) # rubocop:disable Rails/SkipsModelValidations
+    conversation
+  end
+
   describe 'GET /api/v2/accounts/{account.id}/romicars_analytics/win_loss' do
     let!(:lost_with_chat) do
       create(:conversation, account: account, status: :resolved, resolution_type: 'perdido',
@@ -21,9 +30,9 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
 
       create_list(:conversation, 2, account: account, status: :resolved, resolution_type: 'perdido',
                                     resolution_reason: 'sin_stock', requested_product: 'Bomba de agua',
-                                    resolved_at: 2.days.ago)
-      create(:conversation, account: account, status: :resolved, resolution_type: 'ganado',
-                            sale_amount: 120.5, sale_date: Date.current, resolved_at: 1.day.ago)
+                                    resolved_at: 2.days.ago).each { |conversation| customer_wrote(conversation) }
+      customer_wrote(create(:conversation, account: account, status: :resolved, resolution_type: 'ganado',
+                                           sale_amount: 120.5, sale_date: Date.current, resolved_at: 1.day.ago))
     end
 
     context 'when it is an unauthenticated user' do

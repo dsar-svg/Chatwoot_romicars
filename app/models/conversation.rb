@@ -122,6 +122,12 @@ class Conversation < ApplicationRecord
   scope :leads, lambda {
     where.not(id: non_lead_taggings('Conversation')).where.not(contact_id: non_lead_taggings('Contact'))
   }
+  # A broadcast sent from the WhatsApp Business app (coexistence) arrives as one outgoing
+  # echo per recipient, and each one opens a conversation. Until the customer answers
+  # there is nobody on the other side to count.
+  scope :customer_wrote, lambda {
+    where(Message.incoming.where('messages.conversation_id = conversations.id').arel.exists)
+  }
 
   # Straight against taggings, one column: `tagged_with` brings its own SELECT and cannot
   # sit inside a NOT IN.
