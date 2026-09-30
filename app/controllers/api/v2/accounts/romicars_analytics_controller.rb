@@ -231,7 +231,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       }
     end
 
-    render json: data.sort_by { |a| -a[:conversion] }.first(8)
+    # Ties (everyone at 0% until sales are recorded) go to whoever carries more chats.
+    render json: data.sort_by { |a| [-a[:conversion], -a[:assigned]] }.first(8)
   end
 
   def demand
@@ -478,7 +479,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def ai_insights_cache_key(account)
-    "romicars:ai_insights:v4:#{account.id}"
+    "romicars:ai_insights:v5:#{account.id}"
   end
 
   def openai_api_key
@@ -558,7 +559,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         sin_asignar: convs.where(status: :open, assignee_id: nil).count,
         alta_urgencia: convs.where(priority: %i[high urgent]).count,
         agentes: sellers(account).count,
-        agentes_con_chats_abiertos: convs.where(status: :open).where.not(assignee_id: nil).distinct.count(:assignee_id)
+        agentes_con_chats_abiertos: convs.where(status: :open).where.not(assignee_id: nil).distinct.count(:assignee_id),
+        # Over every lead, not only closed ones: the won/lost split below is empty until
+        # sellers record outcomes, and the model read that as "response time not tracked".
+        minutos_primera_respuesta_promedio: convs.where.not(first_reply_created_at: nil).average(FIRST_RESPONSE_MINUTES).to_f.round(1)
       },
       cierres: {
         # Closed without an outcome: the seller closed the chat but never said how it
@@ -631,6 +635,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     missing = inquiries.not_found.count
 
     {
+      # Without this the model told sellers to "register every inquiry"; they cannot.
+      origen: 'Las registra el bot solo, cada vez que busca un precio. Los agentes no las cargan.',
       consultas_registradas: total,
       no_encontrados: missing,
       pct_no_encontrado: percentage_of(missing, total),
