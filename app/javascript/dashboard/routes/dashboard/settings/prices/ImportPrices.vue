@@ -1,5 +1,6 @@
 <script>
 import { useAlert } from 'dashboard/composables';
+import VehiclePriceAPI from 'dashboard/api/vehiclePrices';
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Modal from '../../../../components/Modal.vue';
@@ -22,9 +23,25 @@ export default {
       loading: false,
       show: true,
       result: null,
+      downloading: false,
     };
   },
   methods: {
+    async downloadTemplate() {
+      this.downloading = true;
+      try {
+        const { data } = await VehiclePriceAPI.export();
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(data);
+        link.download = `precios-romicars-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } catch (error) {
+        useAlert('Error al descargar la plantilla');
+      } finally {
+        this.downloading = false;
+      }
+    },
     onFileChange(event) {
       this.file = event.target.files[0];
       this.result = null;
@@ -75,6 +92,19 @@ export default {
           <p class="text-xs text-n-slate-11 mt-2 mb-0">
             Columna opcional DISPONIBLE: SI o NO (vacía no cambia nada).
           </p>
+          <p class="text-xs text-n-slate-11 mt-2 mb-2">
+            La plantilla trae la lista actual: edita precios o DISPONIBLE,
+            agrega filas nuevas y súbela de nuevo.
+          </p>
+          <NextButton
+            label="Descargar plantilla (Excel)"
+            size="sm"
+            slate
+            faded
+            icon="i-lucide-download"
+            :is-loading="downloading"
+            @click="downloadTemplate"
+          />
         </div>
 
         <div class="mb-4">

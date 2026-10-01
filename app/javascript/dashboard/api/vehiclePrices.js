@@ -20,6 +20,10 @@ class VehiclePriceAPI extends ApiClient {
     return axios.patch(`${this.url}/bulk_availability`, { ids, available });
   }
 
+  export() {
+    return axios.get(`${this.url}/export`, { responseType: 'blob' });
+  }
+
   import(formData) {
     return axios.post(`${this.url}/import`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

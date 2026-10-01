@@ -40,6 +40,13 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
     render json: result, status: result[:success] ? :ok : :unprocessable_entity
   end
 
+  # The import template: the current list in the layout the import reads.
+  def export
+    send_data VehiclePriceExportService.new(Current.account).call,
+              filename: "precios-romicars-#{Time.zone.today}.xlsx",
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  end
+
   # Marks many parts sold out (or back in stock) at once, from the selection in the list.
   def bulk_availability
     available = ActiveModel::Type::Boolean.new.cast(params[:available])

@@ -133,6 +133,7 @@ Rails.application.routes.draw do
             collection do
               post :import
               patch :bulk_availability
+              get :export
             end
           end
           resources :exchange_rates, only: [:index, :show, :create] do

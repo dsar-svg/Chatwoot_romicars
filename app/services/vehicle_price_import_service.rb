@@ -88,23 +88,23 @@ class VehiclePriceImportService
 
       next if description.blank?
 
-      unless mapping
+      # The export writes MODELO as stored, so an exported row is found before normalizing it.
+      price = @account.vehicle_prices.find_by(description: description, variant: row['MODELO'].to_s.strip.presence) ||
+              @account.vehicle_prices.find_or_initialize_by(description: description, variant: variant.presence)
+      was_new = price.new_record?
+
+      # A part added from the dashboard has no MODELO the mapping knows, but it already has its
+      # brand and model, so a re-uploaded export still updates it.
+      if mapping
+        brand = @account.vehicle_brands.find_or_create_by!(name: mapping[0])
+        price.vehicle_brand = brand
+        price.vehicle_model = @account.vehicle_models.find_or_create_by!(vehicle_brand: brand, name: mapping[1])
+      elsif was_new
         @skipped << { row: i + 2, description: description, variant: variant }
         next
       end
 
-      brand = @account.vehicle_brands.find_or_create_by!(name: mapping[0])
-      model = @account.vehicle_models.find_or_create_by!(vehicle_brand: brand, name: mapping[1])
-
-      price = @account.vehicle_prices.find_or_initialize_by(
-        description: description,
-        variant: variant
-      )
-      was_new = price.new_record?
-
       price.assign_attributes(
-        vehicle_brand: brand,
-        vehicle_model: model,
         cost_usd: row['COSTO']&.to_d,
         divisa: row['DIVISA']&.to_i,
         monto_bs: row['MONTO Bs']&.to_d,
