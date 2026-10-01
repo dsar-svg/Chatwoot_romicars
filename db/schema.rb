@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_21_000001) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_01_000001) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1692,6 +1692,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_21_000001) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "synonyms"
+    t.boolean "available", default: true, null: false
     t.index ["account_id", "active"], name: "index_vehicle_prices_on_account_id_and_active"
     t.index ["account_id", "vehicle_brand_id"], name: "index_vehicle_prices_on_account_id_and_vehicle_brand_id"
     t.index ["account_id", "vehicle_model_id"], name: "index_vehicle_prices_on_account_id_and_vehicle_model_id"

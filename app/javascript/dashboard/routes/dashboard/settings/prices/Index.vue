@@ -198,6 +198,17 @@ const deletePrice = async id => {
   }
 };
 
+// One click from the list: the store marks a part sold out far more often than it edits it.
+const toggleAvailable = async price => {
+  const available = !price.available;
+  try {
+    await store.dispatch('vehiclePrices/update', { id: price.id, available });
+    useAlert(available ? 'Marcado como disponible' : 'Marcado como agotado');
+  } catch (error) {
+    useAlert(error?.message || 'Error al actualizar precio');
+  }
+};
+
 const confirmDeletion = () => {
   loading[activePrice.value.id] = true;
   closeDeletePopup();
@@ -431,6 +442,12 @@ const goToPage = p => {
                     class="text-sm font-medium text-n-slate-12 whitespace-normal"
                   >
                     {{ price.description }}
+                    <span
+                      v-if="!price.available"
+                      class="px-1.5 py-px ltr:ml-1 rtl:mr-1 rounded-full bg-n-ruby-3 text-[11px] font-semibold text-n-ruby-11"
+                    >
+                      Agotado
+                    </span>
                   </span>
                   <div
                     v-if="synonymsOf(price).length"
@@ -493,8 +510,21 @@ const goToPage = p => {
                 </span>
               </BaseTableCell>
 
-              <BaseTableCell align="end" class="w-24">
+              <BaseTableCell align="end" class="w-32">
                 <div class="flex gap-3 justify-end flex-shrink-0">
+                  <Button
+                    v-tooltip.top="
+                      price.available ? 'Marcar agotado' : 'Marcar disponible'
+                    "
+                    :icon="
+                      price.available
+                        ? 'i-lucide-package-x'
+                        : 'i-lucide-package-check'
+                    "
+                    slate
+                    sm
+                    @click="toggleAvailable(price)"
+                  />
                   <Button
                     v-tooltip.top="'Editar'"
                     icon="i-woot-edit-pen"

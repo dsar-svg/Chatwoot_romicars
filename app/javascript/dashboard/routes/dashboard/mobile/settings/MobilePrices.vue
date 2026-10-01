@@ -142,6 +142,12 @@ onMounted(async () => {
           <span class="text-sm font-medium text-n-slate-12">
             {{ price.description }}
           </span>
+          <span
+            v-if="!price.available"
+            class="text-xs font-semibold text-n-ruby-11"
+          >
+            {{ $t('MOBILE.PRICES.SOLD_OUT') }}
+          </span>
           <span class="text-xs truncate text-n-slate-11">
             {{ vehicleOf(price) }}
           </span>

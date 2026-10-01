@@ -39,6 +39,7 @@ export default {
       vehicle_brand_id: this.price.brand?.id || null,
       vehicle_model_id: this.price.model?.id || null,
       active: this.price.active !== false,
+      available: this.price.available !== false,
       loading: false,
       show: true,
     };
@@ -111,6 +112,7 @@ export default {
           vehicle_brand_id: this.vehicle_brand_id,
           vehicle_model_id: this.vehicle_model_id || null,
           active: this.active,
+          available: this.available,
         });
         useAlert('Precio actualizado correctamente');
         this.onClose();
@@ -244,6 +246,13 @@ export default {
             class="!w-auto"
           />
           <label for="price-active" class="!mb-0 !pb-0"> Activo </label>
+          <input
+            id="price-available"
+            v-model="available"
+            type="checkbox"
+            class="!w-auto ltr:ml-4 rtl:mr-4"
+          />
+          <label for="price-available" class="!mb-0 !pb-0"> Disponible </label>
         </div>
 
         <div class="flex flex-row justify-end w-full gap-2 px-0 py-2">

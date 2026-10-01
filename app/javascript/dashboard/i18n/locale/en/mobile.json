@@ -92,7 +92,8 @@
       "DIVISA": "Cash",
       "BCV": "BCV rate",
       "COUNT": "{count} parts",
-      "EMPTY": "No prices match."
+      "EMPTY": "No prices match.",
+      "SOLD_OUT": "Sold out"
     }
   }
 }
