@@ -87,10 +87,11 @@ export default {
         <div class="mb-4">
           <p class="text-sm text-n-slate-11 mb-2">Formato esperado del CSV:</p>
           <code class="text-xs text-n-slate-11 bg-n-alpha-2 px-2 py-1 rounded">
-            DESCRIPCION,MODELO,COSTO,DIVISA,MONTO Bs,BOLIVARES
+            DESCRIPCION,MODELO,COSTO,DIVISA,SINONIMOS,DISPONIBLE
           </code>
           <p class="text-xs text-n-slate-11 mt-2 mb-0">
-            Columna opcional DISPONIBLE: SI o NO (vacía no cambia nada).
+            Los montos en bolívares se calculan solos con la tasa BCV.
+            DISPONIBLE: SI o NO (vacía no cambia nada).
           </p>
           <p class="text-xs text-n-slate-11 mt-2 mb-2">
             La plantilla trae la lista actual: edita precios o DISPONIBLE,

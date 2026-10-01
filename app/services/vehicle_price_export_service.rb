@@ -4,10 +4,11 @@
 # store can download it, edit prices or the DISPONIBLE column in Excel and upload it back.
 # Built by hand with rubyzip (already a dependency of roo): no gem writes xlsx in this bundle, and
 # a CSV opens as a single column in Excel when the regional list separator is ";".
+# The bolivar amounts are left out: VehiclePrice computes them from DIVISA and the latest rate.
 class VehiclePriceExportService
-  HEADERS = ['DESCRIPCION', 'MODELO', 'COSTO', 'DIVISA', 'MONTO Bs', 'BOLIVARES', 'SINONIMOS', 'DISPONIBLE'].freeze
-  COLUMNS = ('A'..'H').to_a.freeze
-  WIDTHS = [50, 16, 10, 10, 14, 12, 40, 12].freeze
+  HEADERS = %w[DESCRIPCION MODELO COSTO DIVISA SINONIMOS DISPONIBLE].freeze
+  COLUMNS = ('A'..'F').to_a.freeze
+  WIDTHS = [50, 16, 10, 10, 40, 12].freeze
 
   XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
   MAIN = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
@@ -61,8 +62,7 @@ class VehiclePriceExportService
 
   def rows
     @account.vehicle_prices.ordered.map do |price|
-      [price.description, price.variant, price.cost_usd, price.divisa, price.monto_bs, price.bolivares,
-       price.synonyms, price.available ? 'SI' : 'NO']
+      [price.description, price.variant, price.cost_usd, price.divisa, price.synonyms, price.available ? 'SI' : 'NO']
     end
   end
 
