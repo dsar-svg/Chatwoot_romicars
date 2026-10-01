@@ -72,6 +72,9 @@ export default {
           <code class="text-xs text-n-slate-11 bg-n-alpha-2 px-2 py-1 rounded">
             DESCRIPCION,MODELO,COSTO,DIVISA,MONTO Bs,BOLIVARES
           </code>
+          <p class="text-xs text-n-slate-11 mt-2 mb-0">
+            Columna opcional DISPONIBLE: SI o NO (vacía no cambia nada).
+          </p>
         </div>
 
         <div class="mb-4">

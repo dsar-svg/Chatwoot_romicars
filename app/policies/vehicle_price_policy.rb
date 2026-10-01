@@ -25,4 +25,8 @@ class VehiclePricePolicy < ApplicationPolicy
   def import?
     account_user.administrator?
   end
+
+  def bulk_availability?
+    account_user.administrator?
+  end
 end

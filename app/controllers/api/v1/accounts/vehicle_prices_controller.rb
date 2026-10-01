@@ -40,6 +40,16 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
     render json: result, status: result[:success] ? :ok : :unprocessable_entity
   end
 
+  # Marks many parts sold out (or back in stock) at once, from the selection in the list.
+  def bulk_availability
+    available = ActiveModel::Type::Boolean.new.cast(params[:available])
+    return render json: { error: 'available is required' }, status: :bad_request if available.nil?
+
+    updated = Current.account.vehicle_prices.where(id: Array(params[:ids]))
+                     .update_all(available: available, updated_at: Time.current)
+    render json: { updated: updated }
+  end
+
   private
 
   def fetch_price

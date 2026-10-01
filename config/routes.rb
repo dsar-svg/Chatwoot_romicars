@@ -132,6 +132,7 @@ Rails.application.routes.draw do
           resources :vehicle_prices, only: [:index, :show, :create, :update, :destroy] do
             collection do
               post :import
+              patch :bulk_availability
             end
           end
           resources :exchange_rates, only: [:index, :show, :create] do

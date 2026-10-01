@@ -111,6 +111,9 @@ class VehiclePriceImportService
         bolivares: row['BOLIVARES']&.to_i,
         synonyms: row['SINONIMOS']&.to_s&.strip
       )
+      # Optional column: a file without it leaves availability as it was.
+      available = parse_available(row['DISPONIBLE'])
+      price.available = available unless available.nil?
 
       if price.save
         was_new ? created += 1 : updated += 1
@@ -127,6 +130,13 @@ class VehiclePriceImportService
       total: rows.size,
       errors: errors
     }
+  end
+
+  def parse_available(value)
+    text = value.to_s.strip.downcase
+    return if text.empty?
+
+    %w[no n 0 false falso agotado].exclude?(text)
   end
 
   def normalize_variant(value)
