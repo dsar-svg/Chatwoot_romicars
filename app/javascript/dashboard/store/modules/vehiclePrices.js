@@ -72,6 +72,22 @@ const actions = {
     }
   },
 
+  bulkAvailability: async function bulkAvailability(
+    { commit },
+    { ids, available }
+  ) {
+    commit(types.default.SET_VEHICLE_PRICE_UI_FLAG, { updatingItem: true });
+    try {
+      const response = await VehiclePriceAPI.bulkAvailability(ids, available);
+      commit(types.default.SET_VEHICLE_PRICES_AVAILABLE, { ids, available });
+      return response.data;
+    } catch (error) {
+      return throwErrorMessage(error);
+    } finally {
+      commit(types.default.SET_VEHICLE_PRICE_UI_FLAG, { updatingItem: false });
+    }
+  },
+
   import: async function importPrices({ commit }, formData) {
     commit(types.default.SET_VEHICLE_PRICE_UI_FLAG, { importing: true });
     try {
@@ -93,6 +109,12 @@ const mutations = {
   [types.default.ADD_VEHICLE_PRICE]: MutationHelpers.create,
   [types.default.EDIT_VEHICLE_PRICE]: MutationHelpers.update,
   [types.default.DELETE_VEHICLE_PRICE]: MutationHelpers.destroy,
+  [types.default.SET_VEHICLE_PRICES_AVAILABLE](_state, { ids, available }) {
+    const selected = new Set(ids);
+    _state.records.forEach(record => {
+      if (selected.has(record.id)) record.available = available;
+    });
+  },
 };
 
 export default {

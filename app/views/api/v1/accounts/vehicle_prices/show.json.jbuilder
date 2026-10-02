@@ -9,6 +9,7 @@ json.payload do
   json.monto_bs @price.monto_bs
   json.bolivares @price.bolivares
   json.active @price.active
+  json.available @price.available
   json.synonyms @price.synonyms
   json.brand do
     json.id @price.vehicle_brand.id

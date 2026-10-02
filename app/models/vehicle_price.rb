@@ -7,6 +7,8 @@ class VehiclePrice < ApplicationRecord
 
   validates :description, presence: true
 
+  before_save :reprice_in_bolivares
+
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:description) }
   scope :by_brand, ->(brand_id) { where(vehicle_brand_id: brand_id) if brand_id.present? }
@@ -36,4 +38,18 @@ class VehiclePrice < ApplicationRecord
       s: search, t: threshold
     ).order(Arel.sql(order_sql))
   }
+
+  private
+
+  # The bolivar amounts always derive from divisa and the latest rate, with the same math as
+  # ExchangeRate.recalculate_prices!. Without this a price saved between two rate updates (an
+  # import with those columns empty, an edit of divisa) kept blank or stale amounts for hours,
+  # and the bot quotes the stored ones.
+  def reprice_in_bolivares
+    equiv_13 = account.exchange_rates.ordered.first&.equiv_13
+    return unless divisa && equiv_13&.positive?
+
+    self.monto_bs = (divisa * equiv_13).round(2)
+    self.bolivares = (monto_bs / (equiv_13 / ExchangeRate::IVA_MULTIPLIER)).round
+  end
 end

@@ -198,6 +198,62 @@ const deletePrice = async id => {
   }
 };
 
+// One click from the list: the store marks a part sold out far more often than it edits it.
+const toggleAvailable = async price => {
+  const available = !price.available;
+  try {
+    await store.dispatch('vehiclePrices/update', { id: price.id, available });
+    useAlert(available ? 'Marcado como disponible' : 'Marcado como agotado');
+  } catch (error) {
+    useAlert(error?.message || 'Error al actualizar precio');
+  }
+};
+
+// Bulk availability: select rows (or every filtered result) and mark them at once.
+const selected = ref(new Set());
+
+const allFilteredSelected = computed(
+  () =>
+    filteredRecords.value.length > 0 &&
+    filteredRecords.value.every(p => selected.value.has(p.id))
+);
+
+const toggleSelected = id => {
+  if (selected.value.has(id)) selected.value.delete(id);
+  else selected.value.add(id);
+};
+
+const toggleSelectAll = () => {
+  selected.value = allFilteredSelected.value
+    ? new Set()
+    : new Set(filteredRecords.value.map(p => p.id));
+};
+
+const selectAllLabel = computed(
+  () => `Seleccionar los ${filteredRecords.value.length} resultados`
+);
+
+const clearSelection = () => {
+  selected.value = new Set();
+};
+
+// A selection made under other filters would act on rows the user no longer sees.
+watch([debouncedQuery, filterBrand, filterModel], clearSelection);
+
+const markSelected = async available => {
+  const ids = [...selected.value];
+  try {
+    await store.dispatch('vehiclePrices/bulkAvailability', { ids, available });
+    const done = available
+      ? 'marcados como disponibles'
+      : 'marcados como agotados';
+    useAlert(`${ids.length} ${done}`);
+    clearSelection();
+  } catch (error) {
+    useAlert(error?.message || 'Error al actualizar precios');
+  }
+};
+
 const confirmDeletion = () => {
   loading[activePrice.value.id] = true;
   closeDeletePopup();
@@ -250,6 +306,7 @@ const formatBs = value => {
 const deleteMessage = computed(() => `"${activePrice.value.description}"?`);
 
 const tableHeaders = computed(() => [
+  'Seleccionar',
   'Repuesto',
   'Vehículo',
   'Costo USD',
@@ -393,6 +450,41 @@ const goToPage = p => {
         </span>
       </div>
 
+      <div
+        v-if="selected.size"
+        class="flex flex-wrap items-center gap-3 px-4 py-2 mb-4 rounded-xl bg-n-alpha-2"
+      >
+        <span class="text-sm font-medium text-n-slate-12 tabular-nums">
+          {{ selected.size.toLocaleString('es-VE') }} seleccionados
+        </span>
+        <Button
+          label="Marcar agotados"
+          size="sm"
+          ruby
+          faded
+          icon="i-lucide-package-x"
+          :is-loading="uiFlags.updatingItem"
+          @click="markSelected(false)"
+        />
+        <Button
+          label="Marcar disponibles"
+          size="sm"
+          teal
+          faded
+          icon="i-lucide-package-check"
+          :is-loading="uiFlags.updatingItem"
+          @click="markSelected(true)"
+        />
+        <Button
+          label="Quitar selección"
+          size="sm"
+          slate
+          link
+          class="ltr:ml-auto rtl:mr-auto"
+          @click="clearSelection"
+        />
+      </div>
+
       <BaseTable
         :headers="tableHeaders"
         :items="pagedRecords"
@@ -404,11 +496,18 @@ const goToPage = p => {
               : ''
         "
       >
-        <template #header-0>{{ tableHeaders[0] }}</template>
-        <template #header-1>{{ tableHeaders[1] }}</template>
-        <template #header-2>
-          <span class="block text-end">{{ tableHeaders[2] }}</span>
+        <template #header-0>
+          <input
+            v-tooltip.top="selectAllLabel"
+            type="checkbox"
+            class="!w-auto !mb-0"
+            :aria-label="selectAllLabel"
+            :checked="allFilteredSelected"
+            @change="toggleSelectAll"
+          />
         </template>
+        <template #header-1>{{ tableHeaders[1] }}</template>
+        <template #header-2>{{ tableHeaders[2] }}</template>
         <template #header-3>
           <span class="block text-end">{{ tableHeaders[3] }}</span>
         </template>
@@ -419,18 +518,36 @@ const goToPage = p => {
           <span class="block text-end">{{ tableHeaders[5] }}</span>
         </template>
         <template #header-6>
-          <span class="sr-only">{{ tableHeaders[6] }}</span>
+          <span class="block text-end">{{ tableHeaders[6] }}</span>
+        </template>
+        <template #header-7>
+          <span class="sr-only">{{ tableHeaders[7] }}</span>
         </template>
 
         <template #row="{ items }">
           <BaseTableRow v-for="price in items" :key="price.id" :item="price">
             <template #default>
+              <BaseTableCell class="w-8">
+                <input
+                  type="checkbox"
+                  class="!w-auto !mb-0"
+                  :aria-label="price.description"
+                  :checked="selected.has(price.id)"
+                  @change="toggleSelected(price.id)"
+                />
+              </BaseTableCell>
               <BaseTableCell class="min-w-56">
                 <div class="flex flex-col gap-1.5">
                   <span
                     class="text-sm font-medium text-n-slate-12 whitespace-normal"
                   >
                     {{ price.description }}
+                    <span
+                      v-if="!price.available"
+                      class="px-1.5 py-px ltr:ml-1 rtl:mr-1 rounded-full bg-n-ruby-3 text-[11px] font-semibold text-n-ruby-11"
+                    >
+                      Agotado
+                    </span>
                   </span>
                   <div
                     v-if="synonymsOf(price).length"
@@ -493,8 +610,21 @@ const goToPage = p => {
                 </span>
               </BaseTableCell>
 
-              <BaseTableCell align="end" class="w-24">
+              <BaseTableCell align="end" class="w-32">
                 <div class="flex gap-3 justify-end flex-shrink-0">
+                  <Button
+                    v-tooltip.top="
+                      price.available ? 'Marcar agotado' : 'Marcar disponible'
+                    "
+                    :icon="
+                      price.available
+                        ? 'i-lucide-package-x'
+                        : 'i-lucide-package-check'
+                    "
+                    slate
+                    sm
+                    @click="toggleAvailable(price)"
+                  />
                   <Button
                     v-tooltip.top="'Editar'"
                     icon="i-woot-edit-pen"

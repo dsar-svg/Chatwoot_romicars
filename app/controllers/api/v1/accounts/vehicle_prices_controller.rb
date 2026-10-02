@@ -40,6 +40,23 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
     render json: result, status: result[:success] ? :ok : :unprocessable_entity
   end
 
+  # The import template: the current list in the layout the import reads.
+  def export
+    send_data VehiclePriceExportService.new(Current.account).call,
+              filename: "precios-romicars-#{Time.zone.today}.xlsx",
+              type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  end
+
+  # Marks many parts sold out (or back in stock) at once, from the selection in the list.
+  def bulk_availability
+    available = ActiveModel::Type::Boolean.new.cast(params[:available])
+    return render json: { error: 'available is required' }, status: :bad_request if available.nil?
+
+    updated = Current.account.vehicle_prices.where(id: Array(params[:ids]))
+                     .update_all(available: available, updated_at: Time.current)
+    render json: { updated: updated }
+  end
+
   private
 
   def fetch_price
@@ -49,7 +66,7 @@ class Api::V1::Accounts::VehiclePricesController < Api::V1::Accounts::BaseContro
   def price_params
     params.require(:vehicle_price).permit(
       :vehicle_brand_id, :vehicle_model_id, :description,
-      :variant, :cost_usd, :divisa, :monto_bs, :bolivares, :active, :synonyms
+      :variant, :cost_usd, :divisa, :monto_bs, :bolivares, :active, :available, :synonyms
     )
   end
 end

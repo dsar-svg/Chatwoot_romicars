@@ -92,7 +92,8 @@
       "DIVISA": "Divisa",
       "BCV": "Tasa BCV",
       "COUNT": "{count} repuestos",
-      "EMPTY": "No hay precios que coincidan."
+      "EMPTY": "No hay precios que coincidan.",
+      "SOLD_OUT": "Agotado"
     }
   }
 }

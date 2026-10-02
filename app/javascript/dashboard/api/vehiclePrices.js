@@ -1,3 +1,4 @@
+/* global axios */
 import ApiClient from './ApiClient';
 
 class VehiclePriceAPI extends ApiClient {
@@ -13,6 +14,14 @@ class VehiclePriceAPI extends ApiClient {
     const query = params.toString();
     const url = query ? `${this.url}?${query}` : this.url;
     return axios.get(url);
+  }
+
+  bulkAvailability(ids, available) {
+    return axios.patch(`${this.url}/bulk_availability`, { ids, available });
+  }
+
+  export() {
+    return axios.get(`${this.url}/export`, { responseType: 'blob' });
   }
 
   import(formData) {
