@@ -149,4 +149,25 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
       end
     end
   end
+
+  describe 'win_loss with no closes left in the window' do
+    # The narrative of an earlier run, saved while the old closes were still in the window.
+    before do
+      memory = {
+        'perdidas' => { 'ids' => [15], 'patrones' => [{ 'hallazgo' => 'Viejo', 'conversaciones' => [15] }] },
+        'narrative' => { 'perdidas' => { 'resumen' => 'Se perdieron todas las consultas', 'patrones' => [] } }
+      }
+      Redis::Alfred.setex("romicars:win_loss:memory:v2:#{account.id}", memory.to_json, 1.day.to_i)
+    end
+
+    it 'does not describe closes that are no longer there' do
+      with_modified_env OPENAI_API_KEY: 'test-key' do
+        get "/api/v2/accounts/#{account.id}/romicars_analytics/win_loss",
+            params: { refresh: 1 }, headers: admin.create_new_auth_token, as: :json
+      end
+
+      body = response.parsed_body
+      expect(body['perdidas']).to include('total' => 0, 'resumen' => 'Sin cierres perdidos registrados en el período.', 'patrones' => [])
+    end
+  end
 end
