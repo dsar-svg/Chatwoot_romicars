@@ -1,7 +1,7 @@
-# Estado actual — 30 de septiembre de 2026
+# Estado actual — 2 de octubre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 30 de septiembre. Qué hace el sistema, qué hace y qué no
+Actualizado al cierre de la sesión del 2 de octubre. Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -285,21 +285,64 @@ bot no pudo resolver, y lo manda por Telegram (credencial `Api Telegram Dario`, 
   confirmados).
 - Contacto de prueba #27 restaurado ("Dario Medina", `proveedor`).
 
+## 01–02/10 — disponibilidad de repuestos y pruebas de entrega
+
+### Rails — mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #87 | **Disponibilidad**: columna `vehicle_prices.available` (default `true`), distinta de `active` (inactivo = el bot no lo ve). Botón agotado/disponible por fila, casilla en el editor (también en la app), etiqueta "Agotado". **Marcado masivo**: casillas por fila y "seleccionar todos los resultados" → `PATCH vehicle_prices/bulk_availability` (solo administradores). **Plantilla Excel**: `GET vehicle_prices/export` arma un .xlsx a mano con rubyzip (`VehiclePriceExportService`) con DESCRIPCION, MODELO, COSTO, DIVISA, SINONIMOS, DISPONIBLE; la importación lee DISPONIBLE (SI/NO, vacío no cambia) y actualiza filas creadas desde el dashboard en vez de saltarlas. **Bolívares al guardar**: `VehiclePrice#reprice_in_bolivares` calcula `monto_bs` y `bolivares` con la última tasa en cada guardado (antes solo al actualizar la tasa, y el bot cotiza con lo guardado) |
+| #88 | Win/loss del dashboard: con 0 cierres en el período reutilizaba la narrativa guardada en Redis (decía "se perdieron todas" citando chats de prueba #15/#17/#18). Ahora un lado sin cierres lleva el resumen fijo y sin patrones; claves `win_loss:v4` y `win_loss:memory:v2`. Guía de entrega actualizada |
+
+### n8n `Bot Atencion Cliente` (versión activa `cc67b084`, anterior `5f70021f`)
+
+- `buscar_precio_repuesto` devuelve `disponible`; si está agotado anula los precios y
+  `precio_texto` = "AGOTADO: …".
+- Prompt: con `disponible=true` confirma "sí lo tenemos" (nunca aparta ni reserva); agotado → lo
+  dice sin precio y ofrece vendedor (nota + `asignar_agente`) o cierra `perdido`/`sin_stock`. Se
+  quitó la regla de "nunca confirmar disponibilidad".
+
+### Probado el 02/10 sobre la imagen desplegada
+
+- Messenger con el contacto #27 (#901–#902): agotado → sin precio y ofrece vendedor; acepta →
+  nota y asignación por `Reparto RomiCars`; disponible → "sí lo tenemos, 6$ a tasa BCV o 5$ en
+  divisas"; compra → link de WhatsApp con `RC-`. Ejecuciones de n8n sin error (~20 s por
+  respuesta). Datos de prueba restaurados (#337 disponible, #27 con `proveedor`).
+- Exportación (.xlsx válido, 78 KB) y marcado masivo por API.
+- Dashboard escritorio y app móvil: todos los endpoints 200 en 100–200 ms; cifras coherentes
+  (354 leads, 0 % conversión porque nadie cerró con resultado); sin desborde horizontal en 375 px.
+- Resumen diario por Telegram corrió el 30/09 y el 01/10 a las 19:00.
+
 ## Punto exacto donde quedamos
 
-Técnicamente listo; falta configuración y datos de la tienda. Para salir a producción:
+Técnicamente listo y probado en Facebook. Para salir a producción:
 
 1. **Vendedores** (bloqueante): hoy solo existen Dario y Moises, y Dario es el único miembro de
-   las bandejas, así que todo lo asignado le cae a él. Crear las cuentas en **Ajustes →
-   Agentes** y agregarlos a las bandejas (sobre todo WABA RomiCars). Después, verificar que el
-   reparto les llegue y redistribuir lo que acumuló Dario.
-2. **Decisiones con la clienta**: bot en WhatsApp e Instagram (hoy solo Facebook) y seguimiento
-   automático (hoy `followups_enabled: false`).
-3. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
+   las bandejas, así que todo lo asignado le cae a él (417 conversaciones el 02/10). Crear las
+   cuentas en **Ajustes → Agentes** y agregarlos a las bandejas (sobre todo WABA RomiCars).
+   Después, verificar que el reparto les llegue y redistribuir lo que acumuló Dario.
+2. **Probar el bot en las otras bandejas antes de dejarlo encendido** (bloqueante). Todo lo
+   probado fue en Facebook (Romi Cars, inbox 2). Encenderlo de a una bandeja y probar con el
+   número o la cuenta de Dario:
+   - **WhatsApp (WABA RomiCars, inbox 4)**: que no conteste en conversaciones que ya atiende un
+     vendedor (unas 360 abiertas, muchas llevadas desde la app del teléfono por coexistence); el
+     flujo propio de WhatsApp (pasa directo a vendedor, sin derivar); la regla `RC-` con el bot
+     activo; la ventana de 24 h.
+   - **Instagram (somosromicars)**: no se probó nunca. Mismo flujo que Facebook (deriva a
+     WhatsApp).
+   - Después de cada prueba, resolver la conversación y dejar el contacto como estaba.
+3. **Marcar los agotados antes de encender el bot en más bandejas**: los 2.139 repuestos están
+   `available = true`, así que el bot dice "sí lo tenemos" a todo. Lo más rápido: Importar →
+   Descargar plantilla, poner NO en DISPONIBLE y subirla.
+4. **Decisiones con la clienta**: qué bandejas lleva el bot y seguimiento automático (hoy
+   `followups_enabled: false`). Que los vendedores **cierren con resultado**: sin eso el
+   dashboard queda en 0 % de conversión.
+5. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
    Zelle = divisa, devoluciones. Sin ellas el bot pasa esas preguntas a un vendedor.
-4. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
-5. Mergear `claude/guia-entrega`.
-6. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
+6. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
+7. **Tarjeta Productos Profit**: sin conectar le muestra a la clienta "Agrega PROFIT_API_URL…".
+   Decidir si se oculta mientras no esté conectada.
+8. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
 ```bash
@@ -309,7 +352,7 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-7. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
+9. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
    ejemplos en [GUIA-BOT.md](GUIA-BOT.md#6-plantilla-seguimiento_pedido).
 
 ## Pendientes
@@ -360,8 +403,7 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
       principal (primera bandeja de WhatsApp).
 - [ ] **Verificar el portafolio Romi Cars** en Meta (Centro de seguridad): habilita el registro
       insertado y sube los límites de mensajes.
-- [ ] Conectar el bot a Instagram y WhatsApp si la clienta lo decide. En WhatsApp falta probar la
-      regla `RC-` con el bot activo.
+- [ ] Conectar el bot a Instagram y WhatsApp: ver el punto 2 de "Punto exacto donde quedamos".
 - [ ] Detalles del bot: si el cliente ya dijo la marca ("la bomba Chery") igual pregunta cuál
       prefiere; en la pregunta técnica no actualizó la prioridad.
 - [ ] Unos pocos perfiles que no se distinguen de un nombre ("aireaccel", "trabajo") se usan para
