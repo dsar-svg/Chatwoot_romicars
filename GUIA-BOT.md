@@ -108,7 +108,21 @@ lo dice así ("no se están registrando los resultados").
 - **Variante / modelo**: para qué carro es.
 - **Sinónimos**: otras formas de llamarla (balata, pastillas, eje de levas…). Un sinónimo que
   falta es un repuesto que el bot no encuentra.
-- **Precio en divisas y a tasa BCV**, y la tasa del día.
+- **Precio en divisas**. El precio a tasa BCV y el monto en bolívares se calculan solos con la
+  tasa del día, que se actualiza cada 6 horas.
+- **Disponible**: si se apaga, el repuesto queda **Agotado** y el bot dice que no lo hay, sin dar
+  precio. Encendido (lo normal), el bot confirma que lo tienen. "Activo" es otra cosa: un
+  repuesto inactivo el bot no lo ve, como si no existiera.
+
+Para marcar agotados:
+
+- **Uno**: el botón de la caja en la fila del repuesto, o la casilla "Disponible" al editarlo
+  (también desde la app del teléfono).
+- **Varios a la vez**: filtrar o buscar, marcar las casillas (la del encabezado selecciona todos
+  los resultados) y **Marcar agotados** o **Marcar disponibles**.
+- **Desde Excel**: **Importar → Descargar plantilla** baja la lista completa en Excel. Se cambia la
+  columna DISPONIBLE (SI / NO), los precios o se agregan filas al final, y se sube con el mismo
+  botón Importar.
 
 ### App para el teléfono
 
@@ -155,7 +169,10 @@ la ventana de 24 h.
   - Si viene en **marcas o calidades distintas** (original de planta, original Chery, Bosch), da
     los precios de todas y pregunta cuál prefiere.
   - Si el cliente manda una **lista**, cotiza cada repuesto y dice cuáles no hay.
-  - Si una pieza no está, lo dice y ofrece avisar cuando entre.
+  - Si la pieza está marcada **Disponible**, confirma que la tienen. Nunca la aparta ni la reserva.
+  - Si está **Agotada**, lo dice sin dar precio y ofrece que un vendedor le busque una alternativa
+    o le avise cuando llegue. Si el cliente acepta, deja la nota y pasa a vendedor.
+  - Si una pieza no está en la lista, lo dice y ofrece avisar cuando entre.
 - **Entiende audios y fotos**: transcribe el audio y describe la foto. Una foto le dice qué pieza
   es, nunca de qué carro: siempre pide marca y modelo.
 - **Responde preguntas frecuentes** (ubicación, envíos, delivery, garantía, métodos de pago,
@@ -197,7 +214,7 @@ El código `RC-…` es interno. El cliente no tiene que hacer nada con él.
 
 | Caso | Qué hace el bot | Por qué |
 |---|---|---|
-| **Confirmar si hay unidades** | Da el precio y pregunta si lo quiere. Si le preguntan si hay, dice que el vendedor lo confirma al cerrar el pedido | La lista de precios no tiene cantidades. Nunca dice "lo tengo" ni "te lo aparto" |
+| **Saber cuántas unidades hay** | Dice "sí lo tenemos" o "está agotado" según la marca Disponible de la lista | La lista no lleva cantidades: lo que dice es tan cierto como la marca que mantiene la tienda. Nunca aparta ni reserva |
 | **Fotos de la pieza, la marca o el empaque** | Dice que un asesor se las manda y pasa a vendedor | No hay catálogo de fotos |
 | **Medidas, número de parte, compatibilidad** ("¿le sirve al Arauca?") | Pasa a vendedor con la pregunta | La lista no trae esos datos. Una medida equivocada le daña el carro al cliente |
 | **Preguntas que no están en las FAQ** (horario, costo del delivery, políticas…) | Dice que lo confirma con el equipo y pasa a vendedor | No inventa. Se resuelve cargando la FAQ |
@@ -223,6 +240,8 @@ Otros límites conocidos:
 - **Estar conectado** (disponible) para recibir conversaciones.
 - **Leer la nota privada** que dejó el bot antes de contestar: tiene el carro, los repuestos, los
   precios dados y el motivo del pase.
+- **Marcar agotado** lo que se acabe y volver a marcarlo disponible cuando llegue: si no, el bot
+  dice que hay algo que no hay.
 - **Confirmar la disponibilidad** antes de cerrar la venta.
 - **Cerrar con resultado** (ganada, perdida o consulta): es lo que alimenta el dashboard.
 - **Etiquetar** `proveedor`, `logistica` o `interno` los números que no son clientes.
@@ -237,8 +256,8 @@ El bot solo es tan bueno como estos datos:
   **Faltan**: horario, promociones vigentes, costo del delivery por zona, si Zelle cuenta como
   divisa y la política de devoluciones. Cada promoción se carga como una FAQ con la palabra
   "promoción" en la pregunta, qué incluye, el precio y para qué carro.
-- **Lista de precios**: descripción, variante, sinónimos y precios. Revisar el resumen diario para
-  saber qué repuestos o sinónimos faltan.
+- **Lista de precios**: descripción, variante, sinónimos, precio en divisas y si está disponible.
+  Revisar el resumen diario para saber qué repuestos o sinónimos faltan.
 - **Marcas y modelos**: lo que no está cargado, el bot lo trata como una marca que no se trabaja.
 - **Vendedores**: cada vendedor necesita su cuenta y ser miembro de las bandejas donde atiende.
 
