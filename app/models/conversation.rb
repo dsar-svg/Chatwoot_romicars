@@ -118,6 +118,9 @@ class Conversation < ApplicationRecord
   # Being a supplier is who the number is, so tagging one conversation tags the contact too.
   # `logistica` stays on the conversation: a customer's own thread can be about a delivery.
   SUPPLIER_LABEL = 'proveedor'.freeze
+  # A contact tagged this way gets the bot on every inbox, connected or not: it is how the bot is
+  # tried on a new channel without turning it on for that channel's real customers.
+  BOT_TESTER_LABEL = 'prueba-bot'.freeze
 
   scope :leads, lambda {
     where.not(id: non_lead_taggings('Conversation')).where.not(contact_id: non_lead_taggings('Contact'))
@@ -418,8 +421,18 @@ class Conversation < ApplicationRecord
 
     return handle_campaign_status if campaign.present?
 
+    return assign_bot_to_tester if contact.label_list.include?(BOT_TESTER_LABEL)
+
     # A supplier goes straight to a person: the bot only answers conversations assigned to it.
     set_active_bot_conversation if inbox.active_bot? && !non_lead_contact?
+  end
+
+  def assign_bot_to_tester
+    bot = inbox.agent_bot_inbox&.active? ? inbox.agent_bot : AgentBotInbox.active.where(account_id: account_id).order(:id).first&.agent_bot
+    return if bot.blank? || assignee_id.present?
+
+    self.status = :pending
+    self.assignee_agent_bot = bot
   end
 
   def handle_campaign_status

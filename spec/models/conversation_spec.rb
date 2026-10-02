@@ -806,6 +806,35 @@ RSpec.describe Conversation do
     end
   end
 
+  describe '#botinbox: when the contact is a bot tester' do
+    let!(:bot_inbox) { create(:agent_bot_inbox) }
+    let(:account) { bot_inbox.account }
+    let(:inbox) { create(:inbox, account: account) }
+    let(:tester) { create(:contact, account: account).tap { |c| c.add_labels([described_class::BOT_TESTER_LABEL, 'proveedor']) } }
+
+    it 'hands the tester to the account bot on an inbox without one' do
+      conversation = create(:conversation, account: account, inbox: inbox, contact: tester)
+
+      expect(conversation.status).to eq('pending')
+      expect(conversation.assignee_agent_bot).to eq(bot_inbox.agent_bot)
+    end
+
+    it 'leaves everyone else on that inbox with people' do
+      conversation = create(:conversation, account: account, inbox: inbox)
+
+      expect(conversation.status).to eq('open')
+      expect(conversation.assignee_agent_bot).to be_nil
+    end
+
+    it 'stays open when the account has no bot connected anywhere' do
+      bot_inbox.inactive!
+      conversation = create(:conversation, account: account, inbox: inbox, contact: tester)
+
+      expect(conversation.status).to eq('open')
+      expect(conversation.assignee_agent_bot).to be_nil
+    end
+  end
+
   describe '#botintegration: when conversation created in inbox with dialogflow integration' do
     let(:inbox) { create(:inbox) }
     let(:hook) { create(:integrations_hook, :dialogflow, inbox: inbox) }
