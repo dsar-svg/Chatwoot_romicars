@@ -847,7 +847,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def win_loss_cache_key(account)
-    "romicars:win_loss:v3:#{account.id}"
+    "romicars:win_loss:v4:#{account.id}"
   end
 
   def build_win_loss(account)
@@ -892,7 +892,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def win_loss_memory_key(account)
-    "romicars:win_loss:memory:v1:#{account.id}"
+    "romicars:win_loss:memory:v2:#{account.id}"
   end
 
   # { 'perdidas' => { 'ids' => [], 'patrones' => [] }, 'ganadas' => {...}, 'narrative' => {} }
@@ -1080,6 +1080,14 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     facts[:perdidas][:patrones] = read_patterns(narrative.dig('perdidas', 'patrones'), samples[:perdidas], stored[:perdidas])
     facts[:ganadas][:patrones]  = read_patterns(narrative.dig('ganadas', 'patrones'), samples[:ganadas], stored[:ganadas])
     facts[:conversaciones_analizadas] = analysed_count(memory, samples)
+    drop_narrative_without_cases(facts)
+  end
+
+  # The stored narrative is reused while no new chats come in, so a side with no closes left in
+  # the window kept describing old ones (it said every lead was lost with zero losses).
+  def drop_narrative_without_cases(facts)
+    facts[:perdidas].merge!(resumen: default_loss_summary(facts), patrones: []) unless facts[:perdidas][:total].positive?
+    facts[:ganadas].merge!(resumen: default_win_summary(facts), patrones: []) unless facts[:ganadas][:total].positive?
     facts
   end
 
