@@ -480,7 +480,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def ai_insights_cache_key(account)
-    "romicars:ai_insights:v5:#{account.id}"
+    RomicarsInsightsCache.ai_insights_key(account.id)
   end
 
   def openai_api_key
@@ -848,7 +848,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def win_loss_cache_key(account)
-    "romicars:win_loss:v4:#{account.id}"
+    RomicarsInsightsCache.win_loss_key(account.id)
   end
 
   def build_win_loss(account)

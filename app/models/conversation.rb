@@ -199,6 +199,7 @@ class Conversation < ApplicationRecord
   before_create :ensure_waiting_since
 
   after_update_commit :execute_after_update_commit_callbacks
+  after_update_commit :clear_ai_insights_cache, if: :outcome_changed?
   after_create_commit :notify_conversation_creation
   # after_commit runs bottom-up here (load_defaults 7.0): this goes after the display id is
   # loaded and before the creation event, so the event already carries the labels.
@@ -359,6 +360,16 @@ class Conversation < ApplicationRecord
   end
 
   private
+
+  # The AI answers on the dashboard are cached for hours; a close with an outcome, or a
+  # corrected one, is the only thing that changes what they should say.
+  def outcome_changed?
+    saved_change_to_resolution_type? || saved_change_to_resolution_reason? || saved_change_to_sale_amount?
+  end
+
+  def clear_ai_insights_cache
+    RomicarsInsightsCache.clear(account_id)
+  end
 
   def execute_after_update_commit_callbacks
     handle_resolved_status_change
