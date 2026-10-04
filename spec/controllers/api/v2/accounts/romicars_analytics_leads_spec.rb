@@ -34,6 +34,16 @@ RSpec.describe 'RomiCars Analytics leads', type: :request do
     expect(kpis['conversion']).to eq(50.0)
   end
 
+  it 'leaves out the contacts used to try the bot' do
+    lead(contact: customer)
+    tester = create(:contact, account: account)
+    tester.add_labels(['prueba-bot'])
+    lead(contact: tester, status: :resolved, resolution_type: 'ganado', sale_amount: 15)
+
+    expect(get_json('overview')['kpis']).to include('total_leads' => 1, 'conversion' => 0)
+    expect(get_json('resolution')['ganado']['count']).to eq(0)
+  end
+
   it 'leaves out broadcast recipients who never wrote' do
     lead(contact: customer)
     # What a broadcast from the WhatsApp Business app leaves: a new contact and an open

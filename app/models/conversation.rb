@@ -134,11 +134,15 @@ class Conversation < ApplicationRecord
 
   # Straight against taggings, one column: `tagged_with` brings its own SELECT and cannot
   # sit inside a NOT IN.
-  def self.non_lead_taggings(taggable_type)
+  def self.non_lead_taggings(taggable_type, labels = NON_LEAD_LABELS)
     ActsAsTaggableOn::Tagging.joins(:tag)
-                             .where(taggable_type: taggable_type, context: 'labels', tags: { name: NON_LEAD_LABELS })
+                             .where(taggable_type: taggable_type, context: 'labels', tags: { name: labels })
                              .select(:taggable_id)
   end
+
+  # Only for the figures. A tester is not in NON_LEAD_LABELS because those also skip the bot
+  # and the follow-ups, which are the very things being tried.
+  scope :without_bot_testers, -> { where.not(contact_id: non_lead_taggings('Contact', BOT_TESTER_LABEL)) }
 
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }

@@ -439,9 +439,10 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   # Suppliers and the rider out (Conversation.leads), and only conversations where the
-  # customer wrote: a WhatsApp broadcast opens one per recipient.
+  # customer wrote: a WhatsApp broadcast opens one per recipient. Bot testers out too: their
+  # made-up requests were most of the demand panel.
   def lead_conversations(account)
-    account.conversations.leads.customer_wrote
+    account.conversations.leads.without_bot_testers.customer_wrote
   end
 
   def lead_contacts(account)
