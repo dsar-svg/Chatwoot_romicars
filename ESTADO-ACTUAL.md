@@ -1,7 +1,7 @@
-# Estado actual — 2 de octubre de 2026
+# Estado actual — 4 de octubre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 2 de octubre. Qué hace el sistema, qué hace y qué no
+Actualizado al cierre de la sesión del 4 de octubre. Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -313,24 +313,64 @@ bot no pudo resolver, y lo manda por Telegram (credencial `Api Telegram Dario`, 
   (354 leads, 0 % conversión porque nadie cerró con resultado); sin desborde horizontal en 375 px.
 - Resumen diario por Telegram corrió el 30/09 y el 01/10 a las 19:00.
 
+## 04/10 — bot probado en WhatsApp e Instagram
+
+Las pruebas se hicieron con el contacto #23 (Dario Medina, etiqueta `prueba-bot`, #90), que
+recibe el bot en cualquier bandeja aunque la bandeja no lo tenga conectado. WhatsApp e Instagram
+siguen **sin bot para los clientes reales**.
+
+### Rails — mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #90 | Etiqueta `prueba-bot` en el contacto: su conversación nueva va al bot de la bandeja o, si no tiene, al que ya corre en otra |
+| #91 | **Traspaso tras posponer**: una conversación que el bot pospuso volvía como `open` con el bot asignado, y `asignar_agente` (que solo contaba desde `pending`) no asignaba a nadie ni saltaba la alerta de Telegram. Ahora: si el cliente escribe vuelve a `pending`; si vence la fecha pasa a los vendedores (`bot_handoff!`); y el toggle a `open` del bot suelta una conversación abierta que todavía tenga. **`prueba-bot` fuera del dashboard** (`Conversation.without_bot_testers`, solo cifras: el bot y el seguimiento los siguen tratando como clientes) |
+| #92 | **Insights IA al día**: un cierre con resultado (o uno corregido) borra la caché de `ai_insights` y `win_loss` (`RomicarsInsightsCache`); sin cierres sigue valiendo 3 h. Botón **Actualizar análisis** en la pestaña |
+
+### Probado en vivo (conversaciones #935–#946)
+
+- **WhatsApp**: variantes por posición, cotización y paso a vendedor sin link; el bot callado con
+  vendedor asignado; FAQ; marca no cargada (Kia); pregunta técnica; cliente molesto (prioridad
+  alta); lista de tres repuestos; pérdida por precio con motivo; posponer hasta una fecha y volver
+  antes (con #91 desplegado); tres mensajes en ráfaga (una sola respuesta); cambio de vehículo;
+  intento de manipulación; pedir una persona; repuesto agotado; respuesta del vendedor desde
+  Chatwoot (llega al teléfono) y cierre `ganado`.
+- **Instagram** (cuenta `sam_dar1219`): cotización con variantes, link `wa.me` con código `RC-`,
+  llegada por WhatsApp con fusión de contactos y cierre `derivado`, teléfono inválido, FAQ de
+  garantía y pregunta técnica con vendedor asignado.
+- **Dashboard**: la venta de prueba movió conversión, ventas y crédito del vendedor. Con #91
+  desplegado quedó en **376 leads, 0 cierres y 0 consultas**: todo lo que mostraban Resolución y
+  Demanda venía del contacto de prueba.
+- Sin vendedor en línea llega la alerta de Telegram "Cliente esperando vendedor".
+
+### Fallos y detalles que siguen abiertos
+
+- **El bot inventa el horario.** `buscar_faq` devuelve vacío (no hay FAQ de horario) y aun así
+  GPT-4o contestó "lunes a viernes 8 a 5, sábados 8 a 12", contra lo que dice el prompt. Se
+  corrige cargando la FAQ; mientras falte, el riesgo sigue.
+- El filtro de aceite del Chery Orinoco quedó **agotado** en producción desde las pruebas del
+  02/10. Confirmar si es real.
+- Detalles del bot: preguntó el motivo de la pérdida cuando el cliente ya había dicho "muy caro";
+  con dos marcas cotizadas y un "la quiero" no preguntó cuál; no volvió a guardar el vehículo
+  cuando el cliente lo corrigió.
+- Insights IA y Operación muestran dos "conversión" distintas (ganadas ÷ ganadas + perdidas
+  contra ventas ÷ leads); el texto de la IA dice `FacebookPage` y minutos sin convertir.
+- Sin probar: ventana de 24 h, envío de fotos, teléfono válido en Instagram y el vencimiento de
+  un pospuesto (solo lo cubre el spec).
+- En esta máquina no hay Postgres, `node_modules` ni `gh`: los specs y ESLint de #91 y #92 solo
+  corrieron en CI.
+
 ## Punto exacto donde quedamos
 
-Técnicamente listo y probado en Facebook. Para salir a producción:
+Bot probado en Facebook, WhatsApp e Instagram. Para salir a producción:
 
 1. **Vendedores** (bloqueante): hoy solo existen Dario y Moises, y Dario es el único miembro de
    las bandejas, así que todo lo asignado le cae a él (417 conversaciones el 02/10). Crear las
    cuentas en **Ajustes → Agentes** y agregarlos a las bandejas (sobre todo WABA RomiCars).
    Después, verificar que el reparto les llegue y redistribuir lo que acumuló Dario.
-2. **Probar el bot en las otras bandejas antes de dejarlo encendido** (bloqueante). Todo lo
-   probado fue en Facebook (Romi Cars, inbox 2). Encenderlo de a una bandeja y probar con el
-   número o la cuenta de Dario:
-   - **WhatsApp (WABA RomiCars, inbox 4)**: que no conteste en conversaciones que ya atiende un
-     vendedor (unas 360 abiertas, muchas llevadas desde la app del teléfono por coexistence); el
-     flujo propio de WhatsApp (pasa directo a vendedor, sin derivar); la regla `RC-` con el bot
-     activo; la ventana de 24 h.
-   - **Instagram (somosromicars)**: no se probó nunca. Mismo flujo que Facebook (deriva a
-     WhatsApp).
-   - Después de cada prueba, resolver la conversación y dejar el contacto como estaba.
+2. **Conectar el bot a WhatsApp e Instagram** cuando la clienta lo decida. Ya está probado en
+   las dos con `prueba-bot` (04/10). Al conectarlo a WhatsApp (inbox 4) solo toma las
+   conversaciones **nuevas**: las ~375 abiertas ya tienen vendedor y el bot no contesta ahí.
 3. **Marcar los agotados antes de encender el bot en más bandejas**: los 2.139 repuestos están
    `available = true`, así que el bot dice "sí lo tenemos" a todo. Lo más rápido: Importar →
    Descargar plantilla, poner NO en DISPONIBLE y subirla.
@@ -403,7 +443,8 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
       principal (primera bandeja de WhatsApp).
 - [ ] **Verificar el portafolio Romi Cars** en Meta (Centro de seguridad): habilita el registro
       insertado y sube los límites de mensajes.
-- [ ] Conectar el bot a Instagram y WhatsApp: ver el punto 2 de "Punto exacto donde quedamos".
+- [x] Probar el bot en Instagram y WhatsApp (04/10, con `prueba-bot`). Falta conectarlo: punto 2
+      de "Punto exacto donde quedamos".
 - [ ] Detalles del bot: si el cliente ya dijo la marca ("la bomba Chery") igual pregunta cuál
       prefiere; en la pregunta técnica no actualizó la prioridad.
 - [ ] Unos pocos perfiles que no se distinguen de un nombre ("aireaccel", "trabajo") se usan para
