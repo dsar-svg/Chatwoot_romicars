@@ -14,10 +14,14 @@ RSpec.describe CacheKeysHelper do
   end
 
   describe '#fetch_value_for_key' do
-    it 'returns the zero epoch time if no value is cached' do
+    it 'issues a key and keeps it when no value is cached' do
+      prefixed_cache_key = helper.get_prefixed_cache_key(account_id, 'another-key')
+      Redis::Alfred.delete(prefixed_cache_key)
+
       result = helper.fetch_value_for_key(account_id, 'another-key')
 
-      expect(result).to eq('0000000000')
+      expect(result.to_i).to be_within(5).of(Time.now.utc.to_i)
+      expect(helper.fetch_value_for_key(account_id, 'another-key')).to eq(result)
     end
 
     it 'returns a cached value if it exists' do

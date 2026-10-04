@@ -9,7 +9,10 @@ module CacheKeysHelper
 
     return value_from_cache if value_from_cache.present?
 
-    # zero epoch time: 1970-01-01 00:00:00 UTC
-    '0000000000'
+    # An expired key gets a new one, never a constant. With the old fixed '0000000000', a
+    # browser that had cached its list under that value took every later expiry as "nothing
+    # changed" and kept showing inboxes from weeks ago. `nx` so two requests agree on one key.
+    Redis::Alfred.set(prefixed_cache_key, Time.now.utc.to_i, nx: true, ex: CacheKeys::CACHE_KEYS_EXPIRY.to_i)
+    Redis::Alfred.get(prefixed_cache_key)
   end
 end
