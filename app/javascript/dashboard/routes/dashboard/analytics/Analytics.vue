@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import api from 'dashboard/api/romicarsAnalytics';
 import { useAlert } from 'dashboard/composables';
 import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
+import Button from 'dashboard/components-next/button/Button.vue';
 import AIInsights from './components/AIInsights.vue';
 import KPICards from './components/KPICards.vue';
 import LeadMetrics from './components/LeadMetrics.vue';
@@ -90,21 +91,34 @@ async function loadDemand() {
   }
 }
 
-async function loadAIInsights() {
+async function loadAIInsights(options) {
   try {
-    const { data } = await api.getAIInsights();
+    const { data } = await api.getAIInsights(options);
     aiInsights.value = data;
   } finally {
     loading.value.aiInsights = false;
   }
 }
 
-async function loadWinLoss() {
+async function loadWinLoss(options) {
   try {
-    const { data } = await api.getWinLoss();
+    const { data } = await api.getWinLoss(options);
     winLoss.value = data;
   } finally {
     loading.value.winLoss = false;
+  }
+}
+
+// The server keeps both answers for hours. This asks the model again on demand.
+async function regenerateInsights() {
+  loading.value.aiInsights = true;
+  loading.value.winLoss = true;
+  const results = await Promise.allSettled([
+    loadAIInsights({ refresh: true }),
+    loadWinLoss({ refresh: true }),
+  ]);
+  if (results.some(({ status }) => status === 'rejected')) {
+    useAlert('No se pudo actualizar el análisis');
   }
 }
 
@@ -258,6 +272,17 @@ onUnmounted(() => {
       </div>
 
       <div v-show="activeTab === 1" class="flex flex-col gap-6">
+        <div class="flex justify-end">
+          <Button
+            slate
+            faded
+            sm
+            icon="i-lucide-refresh-cw"
+            label="Actualizar análisis"
+            :is-loading="loading.aiInsights || loading.winLoss"
+            @click="regenerateInsights"
+          />
+        </div>
         <!-- AI Insights -->
         <AIInsights
           :insights="aiInsights.insights"

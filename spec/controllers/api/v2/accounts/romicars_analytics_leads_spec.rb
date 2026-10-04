@@ -44,6 +44,18 @@ RSpec.describe 'RomiCars Analytics leads', type: :request do
     expect(get_json('resolution')['ganado']['count']).to eq(0)
   end
 
+  it 'drops the cached AI answers when a conversation closes with an outcome' do
+    conversation = lead(contact: customer)
+    keys = [RomicarsInsightsCache.ai_insights_key(account.id), RomicarsInsightsCache.win_loss_key(account.id)]
+    keys.each { |key| Redis::Alfred.setex(key, '{}', 1.hour) }
+
+    conversation.update!(priority: :high)
+    expect(keys.map { |key| Redis::Alfred.get(key) }).to all(be_present)
+
+    conversation.resolve_with_outcome(resolution_type: 'ganado', sale_amount: 40)
+    expect(keys.map { |key| Redis::Alfred.get(key) }).to all(be_nil)
+  end
+
   it 'leaves out broadcast recipients who never wrote' do
     lead(contact: customer)
     # What a broadcast from the WhatsApp Business app leaves: a new contact and an open

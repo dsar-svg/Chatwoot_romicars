@@ -22,8 +22,11 @@ class RomicarsDashboardAPI extends ApiClient {
     return axios.get(`${this.url}/contact_locations`);
   }
 
-  getAIInsights() {
-    return axios.get(`${this.url}/ai_insights`);
+  // `refresh` skips the server cache and asks the model again.
+  getAIInsights({ refresh = false } = {}) {
+    return axios.get(`${this.url}/ai_insights`, {
+      params: refresh ? { refresh: 1 } : {},
+    });
   }
 
   getProfit() {
@@ -38,8 +41,10 @@ class RomicarsDashboardAPI extends ApiClient {
     return axios.get(`${this.url}/requested_products`);
   }
 
-  getWinLoss() {
-    return axios.get(`${this.url}/win_loss`);
+  getWinLoss({ refresh = false } = {}) {
+    return axios.get(`${this.url}/win_loss`, {
+      params: refresh ? { refresh: 1 } : {},
+    });
   }
 
   getMiniMetricsDetail(type) {
