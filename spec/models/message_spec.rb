@@ -252,6 +252,12 @@ RSpec.describe Message do
       expect(message.conversation.open?).to be true
     end
 
+    it 'returns a conversation the bot snoozed to the bot when the contact writes' do
+      conversation.update!(status: :snoozed, assignee_agent_bot: create(:agent_bot, account: conversation.account))
+      message.save!
+      expect(message.conversation.pending?).to be true
+    end
+
     it 'will not reopen if the conversation is muted' do
       conversation.resolved!
       conversation.mute!

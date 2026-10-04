@@ -268,9 +268,14 @@ class Conversation < ApplicationRecord
 
   def bot_handoff!(dispatch_event: true)
     update(waiting_since: Time.current) if waiting_since.blank?
+    held_open = open?
     self.assignee_agent_bot = nil
     open!
+    # The assignment is queued by the change to open; already open, nothing queued it.
     dispatch_bot_handoff_event if dispatch_event
+    return unless held_open && inbox.auto_assignment_v2_enabled? && should_run_auto_assignment?
+
+    AutoAssignment::AssignmentJob.enqueue_for_inbox(inbox_id)
   end
 
   def dispatch_bot_handoff_event

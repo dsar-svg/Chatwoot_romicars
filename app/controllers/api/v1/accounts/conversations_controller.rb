@@ -110,7 +110,11 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   def bot_handoff?
     return false unless Current.user.is_a?(AgentBot)
 
-    @conversation.status == 'pending' && params[:status] == 'open'
+    return false unless params[:status] == 'open'
+
+    # Open but still held by the bot: without the handoff the bot would keep the
+    # conversation it just told the customer it was passing to a seller.
+    @conversation.pending? || (@conversation.open? && @conversation.assignee_agent_bot_id.present?)
   end
 
   def toggle_priority

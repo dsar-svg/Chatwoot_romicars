@@ -18,5 +18,14 @@ RSpec.describe Conversations::ReopenSnoozedConversationsJob do
       expect(snoozed_till_tomorrow.reload.status).to eq 'snoozed'
       expect(snoozed_indefinitely.reload.status).to eq 'snoozed'
     end
+
+    it 'hands a conversation the bot snoozed over to the sellers' do
+      snoozed_till_5_minutes_ago.update!(assignee_agent_bot: create(:agent_bot, account: snoozed_till_5_minutes_ago.account))
+
+      described_class.perform_now
+
+      expect(snoozed_till_5_minutes_ago.reload.status).to eq 'open'
+      expect(snoozed_till_5_minutes_ago.assignee_agent_bot).to be_nil
+    end
   end
 end
