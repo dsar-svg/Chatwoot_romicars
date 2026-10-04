@@ -414,7 +414,7 @@ class Message < ApplicationRecord
     return if conversation.muted?
     return unless incoming?
 
-    conversation.open! if conversation.snoozed?
+    reopen_snoozed_conversation if conversation.snoozed?
 
     reopen_resolved_conversation if conversation.resolved?
   end
@@ -429,6 +429,12 @@ class Message < ApplicationRecord
 
   def captain_pending_conversation?
     false
+  end
+
+  # A conversation the bot snoozed is still the bot's: back to pending, so its handoff to a
+  # seller is the pending -> open change that releases the bot and runs the assignment.
+  def reopen_snoozed_conversation
+    conversation.assignee_agent_bot_id.present? ? conversation.pending! : conversation.open!
   end
 
   def reopen_resolved_conversation

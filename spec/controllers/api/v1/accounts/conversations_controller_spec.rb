@@ -638,6 +638,20 @@ RSpec.describe 'Conversations API', type: :request do
           .with(Events::Types::CONVERSATION_BOT_HANDOFF, kind_of(Time), conversation: pending_conversation, notifiable_assignee_change: false,
                                                                         changed_attributes: anything, performed_by: anything)
       end
+
+      it 'releases the bot when it hands off a conversation that is already open' do
+        create(:agent_bot_inbox, inbox: inbox, agent_bot: agent_bot)
+        pending_conversation.update!(status: 'open', assignee_agent_bot: agent_bot)
+
+        post "/api/v1/accounts/#{account.id}/conversations/#{pending_conversation.display_id}/toggle_status",
+             headers: { api_access_token: agent_bot.access_token.token },
+             params: { status: 'open' },
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(pending_conversation.reload.status).to eq('open')
+        expect(pending_conversation.assignee_agent_bot).to be_nil
+      end
     end
   end
 
