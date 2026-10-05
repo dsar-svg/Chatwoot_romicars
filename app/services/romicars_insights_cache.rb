@@ -3,11 +3,11 @@
 # reads the sale instead of waiting out the TTL.
 class RomicarsInsightsCache
   def self.ai_insights_key(account_id)
-    "romicars:ai_insights:v5:#{account_id}"
+    "romicars:ai_insights:v6:#{account_id}"
   end
 
   def self.win_loss_key(account_id)
-    "romicars:win_loss:v4:#{account_id}"
+    "romicars:win_loss:v5:#{account_id}"
   end
 
   def self.clear(account_id)

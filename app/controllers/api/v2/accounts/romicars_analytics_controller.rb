@@ -42,6 +42,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       el vendedor los marca al cerrar. Si casi no hay cierres, o `cerradas_sin_resultado`
       es la mayoría, dilo así ("no se están registrando los resultados") en vez de
       concluir que nadie compró o que falta atención.
+    - `cierres.conversion_pct` es la conversión, la misma que muestra el panel: clientes
+      que compraron sobre leads. `cierres.tasa_de_cierre_pct` es otra cosa (ganadas sobre
+      ganadas + perdidas): llámala "tasa de cierre", nunca "conversión".
+    - Los tiempos vienen en minutos. Si pasan de 60, escríbelos en horas y minutos
+      (311.7 → "5 h 12 min").
     - Escribe en español de Venezuela, directo y sin relleno.
 
     Devuelve EXACTAMENTE un objeto JSON con esta forma, con 6 elementos ordenados de
@@ -92,8 +97,18 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
                 "patrones":[{"hallazgo":"","evidencia":"","accion":"","conversaciones":[3]}]}}
 
     Usa como claves exactamente los `motivo` y `clave` que trae el JSON de entrada.
+    - `ganadas.tasa_conversion_pct` es la conversión, la misma que muestra el panel: clientes
+      que compraron sobre leads. `ganadas.tasa_de_cierre_pct` es otra cosa (ganadas sobre
+      ganadas + perdidas): llámala "tasa de cierre", nunca "conversión".
+    - Los tiempos vienen en minutos. Si pasan de 60, escríbelos en horas y minutos
+      (311.7 → "5 h 12 min").
     Español de Venezuela, directo, sin relleno.
   PROMPT
+
+  CHANNEL_LABELS = {
+    'FacebookPage' => 'Facebook', 'Instagram' => 'Instagram', 'Whatsapp' => 'WhatsApp',
+    'WebWidget' => 'Web', 'Api' => 'API', 'Email' => 'Email', 'Telegram' => 'Telegram'
+  }.freeze
 
   LOSS_LABELS = {
     'sin_stock' => 'Sin stock',
@@ -154,13 +169,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     # and the one a customer reopens two days later are the same lead, and the contacts a
     # handoff merges already share one id. Suppliers and the rider are out (Conversation.leads).
     convs_30 = lead_conversations(account).where(created_at: since_30..now)
-    total    = convs_30.distinct.count(:contact_id)
-    ganado   = convs_30.where(status: :resolved, resolution_type: 'ganado').distinct.count(:contact_id)
 
     render json: {
       kpis: {
-        total_leads:  total,
-        conversion:   total.positive? ? (ganado.to_f / total * 100).round(1) : 0,
+        total_leads:  convs_30.distinct.count(:contact_id),
+        conversion:   lead_conversion_pct(convs_30),
         active_chats: lead_conversations(account).where(status: :open).count
       },
       mini_metrics: {
@@ -445,6 +458,14 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     account.conversations.leads.without_bot_testers.customer_wrote
   end
 
+  # The one "conversión" of the dashboard: customers who bought over leads, both counted per
+  # contact. The AI used to get won over won + lost under the same name and the two tabs
+  # showed different conversions.
+  def lead_conversion_pct(conversations)
+    percentage_of(conversations.where(status: :resolved, resolution_type: 'ganado').distinct.count(:contact_id),
+                  conversations.distinct.count(:contact_id))
+  end
+
   def lead_contacts(account)
     account.contacts.where.not(id: Conversation.non_lead_taggings('Contact'))
            .where(id: lead_conversations(account).select(:contact_id))
@@ -572,7 +593,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         ganado: ganado,
         perdido: perdido,
         consulta: by_type.fetch('consulta', 0),
-        tasa_conversion_pct: percentage_of(ganado, ganado + perdido)
+        conversion_pct: lead_conversion_pct(convs),
+        tasa_de_cierre_pct: percentage_of(ganado, ganado + perdido)
       },
       ventas: sales_context(resolved),
       perdidas: loss_context(resolved, perdido),
@@ -652,9 +674,15 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   # `group(a).group(b).count` keys on [a, b] tuples, which serialise to JSON as unreadable
   # stringified arrays. Nest them so the prompt stays legible.
+  # 'Channel::FacebookPage' reached the AI text as "FacebookPage".
+  def channel_label(value)
+    name = value.to_s.split('::').last.to_s
+    CHANNEL_LABELS.fetch(name, name)
+  end
+
   def nest_pair_counts(counts)
     counts.each_with_object({}) do |((outer, inner), count), acc|
-      label = outer.to_s.split('::').last.to_s
+      label = channel_label(outer)
       label = 'sin_definir' if label.blank?
       (acc[label] ||= {})[inner.to_s] = count
     end
@@ -734,11 +762,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       }
     end
 
-    if ctx[:cierres][:tasa_conversion_pct] < 20 && (ctx[:cierres][:ganado] + ctx[:cierres][:perdido]).positive?
+    if ctx[:cierres][:tasa_de_cierre_pct] < 20 && (ctx[:cierres][:ganado] + ctx[:cierres][:perdido]).positive?
       insights << {
         priority: 'alta', category: 'conversion',
-        title: 'Conversión por debajo del objetivo',
-        description: "#{ctx[:cierres][:tasa_conversion_pct]}% de cierres ganados sobre " \
+        title: 'Tasa de cierre por debajo del objetivo',
+        description: "#{ctx[:cierres][:tasa_de_cierre_pct]}% de cierres ganados sobre " \
                      "#{ctx[:cierres][:ganado] + ctx[:cierres][:perdido]} conversaciones cerradas (objetivo ≥ 20%).",
         action: 'Revisar el proceso de seguimiento de las conversaciones que quedan sin cerrar.'
       }
@@ -893,7 +921,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def win_loss_memory_key(account)
-    "romicars:win_loss:memory:v2:#{account.id}"
+    "romicars:win_loss:memory:v3:#{account.id}"
   end
 
   # { 'perdidas' => { 'ids' => [], 'patrones' => [] }, 'ganadas' => {...}, 'narrative' => {} }
@@ -955,7 +983,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         id: conversation.display_id,
         motivo: conversation.resolution_reason,
         agente: conversation.assignee&.name,
-        canal: conversation.inbox&.channel_type.to_s.split('::').last,
+        canal: channel_label(conversation.inbox&.channel_type),
         nota_de_cierre: conversation.resolution_notes.presence,
         mensajes: transcript_lines(conversation)
       }
@@ -993,7 +1021,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       },
       ganadas: {
         total: ctx[:cierres][:ganado],
-        tasa_conversion_pct: ctx[:cierres][:tasa_conversion_pct],
+        tasa_conversion_pct: ctx[:cierres][:conversion_pct],
+        tasa_de_cierre_pct: ctx[:cierres][:tasa_de_cierre_pct],
         monto_total_usd: ctx[:ventas][:monto_total_usd],
         ticket_promedio_usd: ctx[:ventas][:ticket_promedio_usd],
         resumen: nil,
@@ -1129,7 +1158,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     ganadas = facts[:ganadas]
     return 'Sin cierres ganados registrados en el período.' unless ganadas[:total].positive?
 
-    "#{ganadas[:total]} conversaciones ganadas (#{ganadas[:tasa_conversion_pct]}% de los cierres) " \
+    "#{ganadas[:total]} conversaciones ganadas (#{ganadas[:tasa_de_cierre_pct]}% de los cierres) " \
       "por #{ganadas[:monto_total_usd]} USD, con ticket promedio de #{ganadas[:ticket_promedio_usd]} USD."
   end
 end
