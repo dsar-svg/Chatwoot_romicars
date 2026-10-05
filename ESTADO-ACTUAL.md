@@ -1,7 +1,7 @@
-# Estado actual — 4 de octubre de 2026
+# Estado actual — 5 de octubre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 4 de octubre. Qué hace el sistema, qué hace y qué no
+Actualizado al cierre de la sesión del 5 de octubre (día de entrega). Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -345,20 +345,42 @@ siguen **sin bot para los clientes reales**.
 
 ### Fallos y detalles que siguen abiertos
 
-- **El bot inventa el horario.** `buscar_faq` devuelve vacío (no hay FAQ de horario) y aun así
+- ~~**El bot inventa el horario.**~~ Resuelto el 05/10 (FAQ de horario cargada y `SIN_RESPUESTA` en `buscar_faq`). `buscar_faq` devuelve vacío (no hay FAQ de horario) y aun así
   GPT-4o contestó "lunes a viernes 8 a 5, sábados 8 a 12", contra lo que dice el prompt. Se
   corrige cargando la FAQ; mientras falte, el riesgo sigue.
-- El filtro de aceite del Chery Orinoco quedó **agotado** en producción desde las pruebas del
-  02/10. Confirmar si es real.
-- Detalles del bot: preguntó el motivo de la pérdida cuando el cliente ya había dicho "muy caro";
+- El filtro de aceite del Chery Orinoco (#1408) sigue **agotado** en producción. No lo marcaron
+  las pruebas del 02/10 (ese día solo se tocó la horquilla #337, y se restauró); seguramente fue
+  la prueba de agotado del 04/10. Confirmar con la clienta si es real.
+- ~~Detalles del bot~~ (resuelto el 05/10): preguntó el motivo de la pérdida cuando el cliente ya había dicho "muy caro";
   con dos marcas cotizadas y un "la quiero" no preguntó cuál; no volvió a guardar el vehículo
   cuando el cliente lo corrigió.
-- Insights IA y Operación muestran dos "conversión" distintas (ganadas ÷ ganadas + perdidas
+- ~~Dos conversiones~~ (resuelto el 05/10, #95): Insights IA y Operación mostraban dos "conversión" distintas (ganadas ÷ ganadas + perdidas
   contra ventas ÷ leads); el texto de la IA dice `FacebookPage` y minutos sin convertir.
 - Sin probar: ventana de 24 h, envío de fotos, teléfono válido en Instagram y el vencimiento de
   un pospuesto (solo lo cubre el spec).
 - En esta máquina no hay Postgres, `node_modules` ni `gh`: los specs y ESLint de #91 y #92 solo
   corrieron en CI.
+
+## 05/10 — detalles del bot y una sola conversión (entrega)
+
+### Rails
+- #95 `claude/entrega-detalles`: **una sola "conversión"** en todo el dashboard (clientes que compraron ÷ leads, `lead_conversion_pct`). La tarjeta Ganadas y los prompts de la IA usan esa; ganadas ÷ (ganadas + perdidas) pasa a llamarse `tasa_de_cierre_pct` y la IA no puede llamarla conversión. Canales legibles para la IA (`Facebook`, no `FacebookPage`) y tiempos en horas. Claves `ai_insights:v6`, `win_loss:v5`, `win_loss:memory:v3`.
+
+### n8n `Bot Atencion Cliente` (versión activa `0a88b09c`, anterior `c602f65b`)
+- Paso 5: si el cliente ya dijo por qué no compra ("muy caro", "tarda mucho", "no lo tienen") cierra `perdido` con ese motivo en el mismo turno, sin preguntar. Misma excepción en `cerrar_conversacion`.
+- Paso 3 (a2 en Facebook/Instagram, a0 en WhatsApp): con varias opciones cotizadas, un "la quiero" sin decir cuál pregunta cuál; no deriva ni pasa a vendedor.
+- Si el cliente corrige el vehículo, `validar_vehiculo` + `guardar_vehiculo` antes de recotizar.
+- `buscar_faq` sin coincidencias devuelve una fila `SIN_RESPUESTA` que manda dejar nota y asignar (antes prometía "lo confirmo con el equipo" sin hacer nada). Nunca escribe horario sin FAQ.
+- Pregunta técnica: `actualizar_prioridad` high.
+
+### Probado en vivo (Messenger, contacto #23 `prueba-bot`, #973–#978)
+- Dos bombas de agua + "la quiero" → "¿cuál de las dos prefieres?" (falló con la primera versión: el paso 3 le ganaba; corregido).
+- "perdón, es para un chery arauca" → guardó CHERY ARAUCA y recotizó.
+- "no gracias, está muy caro" → cerrada `perdido` / `precio`, textual "esta muy caro", sin preguntar.
+- Horario con la FAQ cargada hoy → "hasta las 5:00 PM".
+- Delivery a Maracay (sin FAQ) → nota y asignación por `Reparto RomiCars`.
+- "la bomba de agua chery para el arauca" listó las dos: "Chery" es también la marca del carro, ambiguo de verdad.
+- El contacto #27 ya no existe: se unió al #23 en las pruebas del 04/10.
 
 ## Punto exacto donde quedamos
 
