@@ -157,7 +157,7 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
         'perdidas' => { 'ids' => [15], 'patrones' => [{ 'hallazgo' => 'Viejo', 'conversaciones' => [15] }] },
         'narrative' => { 'perdidas' => { 'resumen' => 'Se perdieron todas las consultas', 'patrones' => [] } }
       }
-      Redis::Alfred.setex("romicars:win_loss:memory:v2:#{account.id}", memory.to_json, 1.day.to_i)
+      Redis::Alfred.setex("romicars:win_loss:memory:v3:#{account.id}", memory.to_json, 1.day.to_i)
     end
 
     it 'does not describe closes that are no longer there' do
@@ -168,6 +168,27 @@ RSpec.describe 'RomiCars Analytics API', type: :request do
 
       body = response.parsed_body
       expect(body['perdidas']).to include('total' => 0, 'resumen' => 'Sin cierres perdidos registrados en el período.', 'patrones' => [])
+    end
+  end
+
+  describe 'one conversion across the dashboard' do
+    before do
+      customer_wrote(create(:conversation, account: account, status: :resolved, resolution_type: 'ganado', resolved_at: 1.day.ago))
+      customer_wrote(create(:conversation, account: account, status: :resolved, resolution_type: 'perdido',
+                                           resolution_reason: 'precio', resolved_at: 1.day.ago))
+      customer_wrote(create(:conversation, account: account, status: :open))
+    end
+
+    # 1 buyer out of 3 leads. Won over won + lost (50%) is the close rate, a different figure.
+    it 'reports the same conversion in Operación and in the win/loss panel' do
+      with_modified_env OPENAI_API_KEY: nil do
+        get "/api/v2/accounts/#{account.id}/romicars_analytics/overview", headers: admin.create_new_auth_token, as: :json
+        expect(response.parsed_body['kpis']['conversion']).to eq(33.3)
+
+        get "/api/v2/accounts/#{account.id}/romicars_analytics/win_loss", headers: admin.create_new_auth_token, as: :json
+      end
+
+      expect(response.parsed_body['ganadas']).to include('tasa_conversion_pct' => 33.3, 'tasa_de_cierre_pct' => 50.0)
     end
   end
 end
