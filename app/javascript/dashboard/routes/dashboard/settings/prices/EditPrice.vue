@@ -76,8 +76,7 @@ export default {
     },
     calculatedBolivares() {
       if (this.calculatedCostBs === null) return null;
-      const tasaBcv = this.latestRate.equiv_13 / 1.13;
-      return Math.round(this.calculatedCostBs / tasaBcv);
+      return Math.round(this.calculatedCostBs / this.latestRate.rate);
     },
   },
   watch: {

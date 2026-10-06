@@ -19,20 +19,28 @@ class Api::V1::Accounts::ExchangeRatesController < Api::V1::Accounts::BaseContro
 
   def fetch_current
     result = ExchangeRate.fetch_bcv_rate
-    if result
-      today = Date.current
-      @rate = Current.account.exchange_rates.find_or_initialize_by(effective_date: today)
-      @rate.assign_attributes(result.merge(effective_date: today))
-      @rate.save!
+    return render json: { error: 'No se pudo obtener la tasa BCV' }, status: :unprocessable_entity unless result
 
-      # Single UPDATE shared with FetchExchangeRatesJob. This used to load and save every
-      # price row one at a time, inside the request.
-      ExchangeRate.recalculate_prices!(Current.account, result[:equiv_13])
+    # Same path as FetchExchangeRatesJob: store under the rate's own date, reprice in one UPDATE.
+    @rate = ExchangeRate.apply!(Current.account, result)
+    render :show
+  end
 
-      render :show
-    else
-      render json: { error: 'No se pudo obtener la tasa BCV' }, status: :unprocessable_entity
+  # Changes what is added to the BCV rate. The latest rate's equivalent and every price are
+  # redone with it right away: the bot quotes the stored amounts.
+  def markup
+    percent = BigDecimal(params[:percent].to_s, exception: false)
+    unless percent&.between?(0, 100)
+      return render json: { error: 'El porcentaje debe estar entre 0 y 100' }, status: :unprocessable_entity
     end
+
+    Current.account.update!(price_markup_percent: percent.to_s('F'))
+    @rate = Current.account.exchange_rates.ordered.first
+    return render json: { payload: nil, markup_percent: percent } if @rate.nil?
+
+    @rate.update!(equiv_13: ExchangeRate.equiv_for(@rate.rate, percent))
+    ExchangeRate.recalculate_prices!(Current.account, @rate)
+    render :show
   end
 
   private
