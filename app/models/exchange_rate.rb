@@ -97,9 +97,21 @@ class ExchangeRate < ApplicationRecord
   end
   private_class_method :plausible?
 
+  # bcv.org.ve sends the wrong intermediate certificate. Browsers fetch the right one on their
+  # own; OpenSSL does not, and every request from the server failed verification. The missing
+  # intermediates live in config/certs and are added to the system roots, so the chain is
+  # still verified in full. If the BCV changes its CA this fails again and the fallback answers.
+  def self.cert_store
+    OpenSSL::X509::Store.new.tap do |store|
+      store.set_default_paths
+      Rails.root.glob('config/certs/*.pem').each { |path| store.add_cert(OpenSSL::X509::Certificate.new(path.read)) }
+    end
+  end
+  private_class_method :cert_store
+
   def self.http_get(url)
     uri = URI(url)
-    Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https',
+    Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https', cert_store: cert_store,
                                         open_timeout: OPEN_TIMEOUT, read_timeout: READ_TIMEOUT) do |http|
       request = Net::HTTP::Get.new(uri)
       # The BCV site answers 403 to clients without a browser-like agent.
