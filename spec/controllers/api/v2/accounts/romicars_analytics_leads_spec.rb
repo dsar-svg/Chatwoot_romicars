@@ -56,6 +56,14 @@ RSpec.describe 'RomiCars Analytics leads', type: :request do
     expect(keys.map { |key| Redis::Alfred.get(key) }).to all(be_nil)
   end
 
+  it 'leaves out conversations from before the launch, not their customers' do
+    lead(contact: customer, status: :resolved).add_labels(['previo-arranque'])
+    expect(get_json('overview')['kpis']['total_leads']).to eq(0)
+
+    lead(contact: customer)
+    expect(get_json('overview')['kpis']['total_leads']).to eq(1)
+  end
+
   it 'leaves out broadcast recipients who never wrote' do
     lead(contact: customer)
     # What a broadcast from the WhatsApp Business app leaves: a new contact and an open

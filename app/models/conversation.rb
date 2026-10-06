@@ -144,6 +144,13 @@ class Conversation < ApplicationRecord
   # and the follow-ups, which are the very things being tried.
   scope :without_bot_testers, -> { where.not(contact_id: non_lead_taggings('Contact', BOT_TESTER_LABEL)) }
 
+  # Conversations from before the shop started working from here: they were answered from
+  # the phone, nobody closed them with an outcome, and counted they bury the real figures
+  # under hundreds of leads with no result. Tagged and kept, not deleted; only the figures
+  # skip them. On the conversation, never the contact: the same customer writing again is a lead.
+  PRE_LAUNCH_LABEL = 'previo-arranque'.freeze
+  scope :without_pre_launch, -> { where.not(id: non_lead_taggings('Conversation', PRE_LAUNCH_LABEL)) }
+
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }

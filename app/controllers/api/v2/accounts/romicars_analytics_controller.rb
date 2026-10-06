@@ -455,7 +455,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # customer wrote: a WhatsApp broadcast opens one per recipient. Bot testers out too: their
   # made-up requests were most of the demand panel.
   def lead_conversations(account)
-    account.conversations.leads.without_bot_testers.customer_wrote
+    account.conversations.leads.without_bot_testers.without_pre_launch.customer_wrote
   end
 
   # The one "conversión" of the dashboard: customers who bought over leads, both counted per
