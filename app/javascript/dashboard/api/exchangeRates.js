@@ -8,6 +8,10 @@ class ExchangeRateAPI extends ApiClient {
   fetchCurrent() {
     return axios.post(`${this.url}/fetch_current`);
   }
+
+  updateMarkup(percent) {
+    return axios.patch(`${this.url}/markup`, { percent });
+  }
 }
 
 export default new ExchangeRateAPI();

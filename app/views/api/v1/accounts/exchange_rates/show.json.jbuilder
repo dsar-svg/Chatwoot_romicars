@@ -8,3 +8,5 @@ json.payload do
   json.source @rate.source
   json.created_at @rate.created_at
 end
+
+json.markup_percent Current.account.price_markup_percent

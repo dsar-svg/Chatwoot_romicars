@@ -11,4 +11,5 @@ end
 
 json.meta {
   json.count @rates.size
+  json.markup_percent Current.account.price_markup_percent
 }

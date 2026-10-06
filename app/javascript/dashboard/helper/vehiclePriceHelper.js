@@ -1,5 +1,6 @@
 // Price math shared by the settings price list and the mobile app. `rate` is the
-// latest exchange rate record: equiv_13 is the BCV rate plus 13%.
+// latest exchange rate record: equiv_13 is the BCV rate plus the shop's markup (the name
+// dates from when that was a fixed 13%).
 
 export const calcCostBs = (divisa, rate) => {
   if (!divisa || !rate) return null;
@@ -9,8 +10,7 @@ export const calcCostBs = (divisa, rate) => {
 export const calcBolivares = (divisa, rate) => {
   const montoBs = calcCostBs(divisa, rate);
   if (montoBs === null) return null;
-  const tasaBcv = rate.equiv_13 / 1.13;
-  return Math.round(montoBs / tasaBcv);
+  return Math.round(montoBs / rate.rate);
 };
 
 export const toVE = (value, decimals) =>

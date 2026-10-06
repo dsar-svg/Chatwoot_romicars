@@ -50,6 +50,11 @@ const rateFlags = computed(() => getters['exchangeRates/getUIFlags'].value);
 const brands = computed(() => getters['vehicleBrands/getBrands'].value);
 const models = computed(() => getters['vehicleModels/getModels'].value);
 const latestRate = computed(() => getters['exchangeRates/getLatestRate'].value);
+const markupPercent = computed(
+  () => getters['exchangeRates/getMarkupPercent'].value
+);
+const editingMarkup = ref(false);
+const markupDraft = ref('');
 
 const filteredModels = computed(() => {
   if (!filterBrand.value) return [];
@@ -260,6 +265,43 @@ const confirmDeletion = () => {
   deletePrice(activePrice.value.id);
 };
 
+// 13 -> "13", 13.5 -> "13,5"
+const formatPercent = value => toVE(value, Number.isInteger(value) ? 0 : 1);
+
+const rateSourceLabel = computed(() =>
+  latestRate.value?.source === 'bcv.org.ve'
+    ? 'fuente: BCV'
+    : 'fuente: respaldo (el BCV no respondió)'
+);
+
+const startMarkupEdit = () => {
+  markupDraft.value = String(markupPercent.value);
+  editingMarkup.value = true;
+};
+
+// Saving reprices the whole list on the server; the rows here recompute from the new rate.
+const saveMarkup = async () => {
+  const percent = Number(String(markupDraft.value).replace(',', '.'));
+  if (
+    markupDraft.value === '' ||
+    Number.isNaN(percent) ||
+    percent < 0 ||
+    percent > 100
+  ) {
+    useAlert('El porcentaje debe ser un número entre 0 y 100');
+    return;
+  }
+  try {
+    await store.dispatch('exchangeRates/updateMarkup', percent);
+    editingMarkup.value = false;
+    useAlert(
+      `Porcentaje actualizado a ${formatPercent(percent)}%. Precios recalculados`
+    );
+  } catch (error) {
+    useAlert(error?.message || 'No se pudo actualizar el porcentaje');
+  }
+};
+
 const refreshRate = async () => {
   try {
     await store.dispatch('exchangeRates/fetchCurrent');
@@ -401,15 +443,50 @@ const goToPage = p => {
             <span
               class="text-[11px] font-semibold tracking-widest text-n-slate-11"
             >
-              EQUIV. 13%
+              EQUIV. {{ formatPercent(markupPercent) }}%
             </span>
             <span class="text-base font-semibold tabular-nums">
               {{ formatBs(latestRate.equiv_13) }}
             </span>
           </div>
+          <div v-if="editingMarkup" class="flex items-center gap-2">
+            <input
+              v-model="markupDraft"
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              aria-label="Porcentaje sobre la tasa BCV"
+              class="!mb-0 !h-8 !w-20 !px-2 !text-sm tabular-nums rounded-lg bg-n-alpha-black2 border border-n-weak text-n-slate-12"
+              @keyup.enter="saveMarkup"
+              @keyup.esc="editingMarkup = false"
+            />
+            <Button
+              label="Guardar"
+              size="sm"
+              :is-loading="rateFlags.updatingMarkup"
+              @click="saveMarkup"
+            />
+            <Button
+              label="Cancelar"
+              size="sm"
+              slate
+              link
+              :disabled="rateFlags.updatingMarkup"
+              @click="editingMarkup = false"
+            />
+          </div>
+          <Button
+            v-else
+            label="Cambiar porcentaje"
+            size="sm"
+            link
+            icon="i-lucide-pencil"
+            @click="startMarkupEdit"
+          />
           <span class="text-xs text-n-slate-11">
-            Actualizada {{ formatDate(latestRate.effective_date) }} · se
-            recalcula sola cada 6 horas
+            Fecha valor {{ formatDate(latestRate.effective_date) }} ·
+            {{ rateSourceLabel }} · se revisa sola cada hora
           </span>
         </template>
         <Button

@@ -62,6 +62,8 @@ class Account < ApplicationRecord
   # Read by ConversationFollowupsJob; toggled from Settings > Conversation workflow.
   store_accessor :settings, :followups_enabled, :followups_silence_hours, :followups_message_cotizado, :followups_message_sin_stock,
                  :followups_message_consulta, :followups_message_derivado, :followups_message_generico
+  # What is added to the BCV rate for a customer paying in bolivars; set from Settings > Prices.
+  store_accessor :settings, :price_markup_percent
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async
@@ -193,6 +195,11 @@ class Account < ApplicationRecord
 
     enrichment_key = format(Redis::Alfred::ACCOUNT_ONBOARDING_ENRICHMENT, account_id: id)
     Redis::Alfred.exists?(enrichment_key) ? 'enrichment' : step
+  end
+
+  # Stored as text in `settings`; unset means the 13% the shop has always used.
+  def price_markup_percent
+    super.presence&.to_d || ExchangeRate::DEFAULT_MARKUP_PERCENT
   end
 
   def reset_cache_keys

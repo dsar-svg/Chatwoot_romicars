@@ -24,4 +24,8 @@ class ExchangeRatePolicy < ApplicationPolicy
   def fetch_current?
     account_user.administrator?
   end
+
+  def markup?
+    account_user.administrator?
+  end
 end

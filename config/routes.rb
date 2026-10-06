@@ -139,6 +139,7 @@ Rails.application.routes.draw do
           resources :exchange_rates, only: [:index, :show, :create] do
             collection do
               post :fetch_current
+              patch :markup
             end
           end
           resources :bot_logs, only: [:index, :show]

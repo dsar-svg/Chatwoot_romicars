@@ -46,10 +46,10 @@ class VehiclePrice < ApplicationRecord
   # import with those columns empty, an edit of divisa) kept blank or stale amounts for hours,
   # and the bot quotes the stored ones.
   def reprice_in_bolivares
-    equiv_13 = account.exchange_rates.ordered.first&.equiv_13
-    return unless divisa && equiv_13&.positive?
+    latest = account.exchange_rates.ordered.first
+    return unless divisa && latest&.equiv_13&.positive? && latest.rate.positive?
 
-    self.monto_bs = (divisa * equiv_13).round(2)
-    self.bolivares = (monto_bs / (equiv_13 / ExchangeRate::IVA_MULTIPLIER)).round
+    self.monto_bs = (divisa * latest.equiv_13).round(2)
+    self.bolivares = (monto_bs / latest.rate).round
   end
 end
