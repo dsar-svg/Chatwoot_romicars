@@ -250,6 +250,8 @@
     "YEAR_IN_REVIEW": "Resumen del año",
     "KEYBOARD_SHORTCUTS": "Atajos de teclado",
     "APPEARANCE": "Cambiar apariencia",
+    "LIGHT_MODE": "Cambiar a modo claro",
+    "DARK_MODE": "Cambiar a modo oscuro",
     "SUPER_ADMIN_CONSOLE": "Consola SuperAdmin",
     "DOCS": "Leer la documentación",
     "CHANGELOG": "Notas de versión",
