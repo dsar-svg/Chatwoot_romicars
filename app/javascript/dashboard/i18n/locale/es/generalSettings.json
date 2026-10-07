@@ -44,6 +44,14 @@
         "TITLE": "ID de Cuenta",
         "NOTE": "Este ID es necesario si estás construyendo una integración basada en API"
       },
+      "BOT_WAIT": {
+        "TITLE": "Espera del bot con clientes recurrentes",
+        "NOTE": "En horario comercial, cuando escribe un cliente que ya había escrito antes, la conversación va primero a los vendedores. Si ninguno le responde en este tiempo, por el panel o desde el teléfono, el bot la toma. Los clientes nuevos y los que escriben fuera de horario los atiende el bot de inmediato.",
+        "LABEL": "Minutos de espera",
+        "HELP": "Entre 1 y 120.",
+        "ERROR": "Los minutos tienen que ser un número entero entre 1 y 120.",
+        "SAVED": "Tiempo de espera guardado"
+      },
       "FOLLOWUPS": {
         "TITLE": "Seguimiento automático",
         "NOTE": "Si un cliente deja de responder durante 5 horas, se le envía un recordatorio entre las 8 am y las 8 pm. Si tampoco responde en 48 horas, la conversación se cierra como abandonada. Las conversaciones con un agente asignado solo reciben una nota privada y nunca se cierran solas, y las etiquetadas como proveedor o logistica quedan fuera.",

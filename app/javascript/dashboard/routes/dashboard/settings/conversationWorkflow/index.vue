@@ -8,6 +8,7 @@ import SettingsLayout from '../SettingsLayout.vue';
 import ConversationRequiredAttributes from 'dashboard/components-next/ConversationWorkflow/ConversationRequiredAttributes.vue';
 import AutoResolve from 'dashboard/routes/dashboard/settings/account/components/AutoResolve.vue';
 import FollowupsSettings from 'dashboard/routes/dashboard/settings/account/components/FollowupsSettings.vue';
+import BotWaitSettings from 'dashboard/routes/dashboard/settings/account/components/BotWaitSettings.vue';
 
 const { accountId } = useAccount();
 const isFeatureEnabledonAccount = useMapGetter(
@@ -41,6 +42,7 @@ const showRequiredAttributes = computed(() => {
 
     <template #body>
       <div class="flex flex-col gap-6 mt-4">
+        <BotWaitSettings />
         <FollowupsSettings />
         <AutoResolve v-if="showAutoResolutionConfig" />
         <ConversationRequiredAttributes
