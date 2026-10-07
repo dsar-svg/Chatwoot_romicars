@@ -1,6 +1,7 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import Button from 'dashboard/components-next/button/Button.vue';
+import ThemeToggleButton from 'dashboard/components-next/sidebar/ThemeToggleButton.vue';
 
 const props = defineProps({
   title: { type: String, default: '' },
@@ -43,5 +44,6 @@ const goBack = () => {
       </p>
     </div>
     <slot name="end" />
+    <ThemeToggleButton />
   </header>
 </template>

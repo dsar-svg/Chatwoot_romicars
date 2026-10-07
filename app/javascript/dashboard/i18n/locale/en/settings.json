@@ -250,6 +250,8 @@
     "YEAR_IN_REVIEW": "Year in Review",
     "KEYBOARD_SHORTCUTS": "Keyboard shortcuts",
     "APPEARANCE": "Change appearance",
+    "LIGHT_MODE": "Switch to light mode",
+    "DARK_MODE": "Switch to dark mode",
     "SUPER_ADMIN_CONSOLE": "SuperAdmin console",
     "DOCS": "Read documentation",
     "CHANGELOG": "Changelog",
