@@ -67,6 +67,7 @@ class Message < ApplicationRecord
   before_validation :prevent_message_flooding
   before_save :ensure_processed_message_content
   before_save :ensure_in_reply_to
+  before_create :hold_bot_reply_after_seller
 
   validates :account_id, presence: true
   validates :inbox_id, presence: true
@@ -335,12 +336,30 @@ class Message < ApplicationRecord
     claim_whatsapp_handoff
   end
 
-  # A seller who writes in a conversation the bot holds, from Chatwoot or from the WhatsApp or
-  # Instagram app on the phone, takes it over. The bot used to keep answering on top of them.
-  def release_bot_to_seller
-    return unless conversation.assignee_agent_bot_id.present? && human_response? && !private?
+  SELLER_TOOK_OVER = 'seller_took_over_at'.freeze
 
-    conversation.update!(assignee_agent_bot: nil, status: :open, assignee: sender.is_a?(User) ? sender : conversation.assignee)
+  # A seller who writes in a conversation, from Chatwoot or from the WhatsApp or Instagram app on
+  # the phone, takes it over: the bot is taken off and the conversation is marked, so the bot
+  # stays quiet in it from then on. It used to keep answering on top of them.
+  def release_bot_to_seller
+    return unless human_response? && !private?
+
+    bot_held = conversation.assignee_agent_bot_id.present?
+    return if !bot_held && conversation.additional_attributes&.key?(SELLER_TOOK_OVER)
+
+    attributes = { additional_attributes: (conversation.additional_attributes || {}).merge(SELLER_TOOK_OVER => created_at.iso8601) }
+    attributes.merge!(assignee_agent_bot: nil, status: :open, assignee: sender.is_a?(User) ? sender : conversation.assignee) if bot_held
+    conversation.update!(attributes)
+  end
+
+  # The bot takes about 20 seconds to answer. A reply that lands after a seller wrote is kept as a
+  # private note, for the seller to read, instead of reaching the customer next to theirs. The bot
+  # handing over on its own (asignar_agente) does not mark the conversation, so its goodbye goes out.
+  def hold_bot_reply_after_seller
+    return unless outgoing? && !private? && sender.is_a?(AgentBot)
+    return unless conversation.additional_attributes&.key?(SELLER_TOOK_OVER)
+
+    self.private = true
   end
 
   # A customer arriving from Instagram or Facebook through the bot's wa.me link. Only the
