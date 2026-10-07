@@ -19,6 +19,8 @@ RSpec.describe VehiclePriceExportService do
                                             divisa: 25, bolivares: 28, cost_usd: 12.5, available: false)
     manual = account.vehicle_prices.create!(vehicle_brand: brand, description: 'Bomba de agua & sello', variant: 'Tiggo 4 Pro',
                                             divisa: 40)
+    # Edited on screen only: the file has no column for it, so it stays out of the export.
+    account.vehicle_prices.create!(description: 'Combo de filtros', kind: 'combo', divisa: 14)
     xlsx = described_class.new(account).call
     mapped.update!(available: true, divisa: 1)
     manual.update!(divisa: 1)

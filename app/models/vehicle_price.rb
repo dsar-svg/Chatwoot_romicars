@@ -1,14 +1,21 @@
 # frozen_string_literal: true
 
 class VehiclePrice < ApplicationRecord
+  # A combo bundles parts at one price; a promotion is a deal the bot offers, with or without
+  # a price. Both are read by the bot from this table, parts only by the part search.
+  KINDS = %w[repuesto combo promocion].freeze
+
   belongs_to :account
-  belongs_to :vehicle_brand
+  belongs_to :vehicle_brand, optional: true
   belongs_to :vehicle_model, optional: true
 
   validates :description, presence: true
+  validates :kind, inclusion: { in: KINDS }
+  validates :vehicle_brand, presence: true, if: :part?
 
   before_save :reprice_in_bolivares
 
+  scope :parts, -> { where(kind: 'repuesto') }
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(:description) }
   scope :by_brand, ->(brand_id) { where(vehicle_brand_id: brand_id) if brand_id.present? }
@@ -38,6 +45,10 @@ class VehiclePrice < ApplicationRecord
       s: search, t: threshold
     ).order(Arel.sql(order_sql))
   }
+
+  def part?
+    kind == 'repuesto'
+  end
 
   private
 

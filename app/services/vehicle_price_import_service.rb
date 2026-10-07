@@ -89,8 +89,9 @@ class VehiclePriceImportService
       next if description.blank?
 
       # The export writes MODELO as stored, so an exported row is found before normalizing it.
-      price = @account.vehicle_prices.find_by(description: description, variant: row['MODELO'].to_s.strip.presence) ||
-              @account.vehicle_prices.find_or_initialize_by(description: description, variant: variant.presence)
+      # Parts only: the file has no column for combos and promotions, which are edited on screen.
+      price = @account.vehicle_prices.parts.find_by(description: description, variant: row['MODELO'].to_s.strip.presence) ||
+              @account.vehicle_prices.parts.find_or_initialize_by(description: description, variant: variant.presence)
       was_new = price.new_record?
 
       # A part added from the dashboard has no MODELO the mapping knows, but it already has its

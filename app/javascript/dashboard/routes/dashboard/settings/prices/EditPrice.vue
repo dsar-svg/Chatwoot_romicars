@@ -6,6 +6,7 @@ import { useAlert } from 'dashboard/composables';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
 import Modal from '../../../../components/Modal.vue';
+import { PRICE_KINDS, kindOf } from './priceKinds';
 
 export default {
   name: 'EditVehiclePrice',
@@ -40,15 +41,29 @@ export default {
       vehicle_model_id: this.price.model?.id || null,
       active: this.price.active !== false,
       available: this.price.available !== false,
+      details: this.price.details || '',
+      ends_on: this.price.ends_on || null,
       loading: false,
       show: true,
     };
   },
-  validations: {
-    description: { required },
-    vehicle_brand_id: { required },
+  // A combo or promotion without a brand applies to every brand.
+  validations() {
+    return {
+      description: { required },
+      vehicle_brand_id: this.isPart ? { required } : {},
+    };
   },
   computed: {
+    kind() {
+      return kindOf(this.price);
+    },
+    kindInfo() {
+      return PRICE_KINDS[this.kind];
+    },
+    isPart() {
+      return this.kind === 'repuesto';
+    },
     brands() {
       return this.$store.getters['vehicleBrands/getBrands'];
     },
@@ -59,7 +74,10 @@ export default {
       );
     },
     brandOptions() {
-      return this.brands.map(b => ({ value: b.id, label: b.name }));
+      const options = this.brands.map(b => ({ value: b.id, label: b.name }));
+      return this.isPart
+        ? options
+        : [{ value: null, label: 'Todas las marcas' }, ...options];
     },
     modelOptions() {
       return [
@@ -110,6 +128,8 @@ export default {
           bolivares: this.bolivares,
           vehicle_brand_id: this.vehicle_brand_id,
           vehicle_model_id: this.vehicle_model_id || null,
+          details: this.details,
+          ends_on: this.ends_on || null,
           active: this.active,
           available: this.available,
         });
@@ -129,8 +149,8 @@ export default {
   <Modal v-model:show="show" :on-close="onClose">
     <div class="flex flex-col h-auto overflow-auto">
       <woot-modal-header
-        header-title="Editar Precio"
-        header-content="Modifica el precio del repuesto"
+        :header-title="`Editar ${kindInfo.column.toLowerCase()}`"
+        header-content="El bot lee los cambios al instante"
       />
       <form class="flex flex-col w-full" @submit.prevent="updatePrice">
         <div class="w-full">
@@ -139,19 +159,39 @@ export default {
             <input
               v-model="description"
               type="text"
-              placeholder="Ej: AMORTIGUADOR TRASERO"
+              :placeholder="kindInfo.placeholder"
               @blur="v$.description.$touch"
             />
           </label>
         </div>
 
+        <div v-if="!isPart" class="w-full">
+          <label>
+            {{ kindInfo.detailsLabel }}
+            <textarea
+              v-model="details"
+              rows="3"
+              :placeholder="kindInfo.detailsPlaceholder"
+            />
+          </label>
+        </div>
+
+        <div v-if="kind === 'promocion'" class="w-full">
+          <label>
+            Válida hasta
+            <input v-model="ends_on" type="date" />
+          </label>
+        </div>
+
         <div class="w-full mb-4">
-          <label :class="{ error: v$.vehicle_brand_id.$error }">Marca *</label>
+          <label :class="{ error: v$.vehicle_brand_id.$error }">
+            {{ isPart ? 'Marca *' : 'Marca' }}
+          </label>
           <ComboBox
             v-model="vehicle_brand_id"
             :options="brandOptions"
             :has-error="v$.vehicle_brand_id.$error"
-            placeholder="Seleccionar marca"
+            :placeholder="isPart ? 'Seleccionar marca' : 'Todas las marcas'"
             search-placeholder="Buscar marca..."
             empty-state="Sin marcas"
             @update:model-value="v$.vehicle_brand_id.$touch()"
@@ -170,7 +210,7 @@ export default {
           />
         </div>
 
-        <div class="w-full">
+        <div v-if="isPart" class="w-full">
           <label>
             Variante
             <input

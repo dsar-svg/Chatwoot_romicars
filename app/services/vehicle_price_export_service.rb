@@ -61,7 +61,7 @@ class VehiclePriceExportService
   private
 
   def rows
-    @account.vehicle_prices.ordered.map do |price|
+    @account.vehicle_prices.parts.ordered.map do |price|
       [price.description, price.variant, price.cost_usd, price.divisa, price.synonyms, price.available ? 'SI' : 'NO']
     end
   end
