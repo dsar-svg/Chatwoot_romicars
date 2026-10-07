@@ -1,7 +1,7 @@
 # Estado actual — 6 de octubre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 6 de octubre. Qué hace el sistema, qué hace y qué no
+Actualizado al cierre de la sesión del 6 de octubre (noche): **la tienda arrancó a trabajar desde aquí**. Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -413,35 +413,95 @@ que el job de cada hora la traiga solo.
   repuesto consultó. Se combina con los filtros de marca y modelo de la audiencia. Mandarla en
   masa a quien no consultó nada arriesga que Meta la pase a Marketing.
 
-### Estado de la cuenta al 06/10
+## 06/10 (noche) — arranque: corte, bot en las cuatro bandejas, horario y reparto
 
-- Agentes: Dario y Moises (administradores), **ventas 01** y **Ventas 02** (agentes).
-- 539 conversaciones abiertas (504 en WhatsApp, 32 en Instagram), 531 a nombre de Dario y 8 sin
-  asignar. 939 contactos. 446 leads en 30 días, 0 cierres con resultado.
-- **Pendiente de decidir**: qué hacer con esas conversaciones abiertas que nadie atendió antes
-  de arrancar a medir (ver "Punto exacto").
+### Corte del arranque: 06/10 a las 7:40 pm
+
+- Las **986 conversaciones** creadas antes de esa hora llevan la etiqueta `previo-arranque` y
+  están cerradas (541 seguían abiertas). No se borraron, ni ellas ni los contactos: la mayoría
+  se había atendido desde la app del teléfono, y de 941 contactos solo 1 tenía vehículo.
+- El dashboard no las cuenta (#100). La etiqueta va en la conversación, no en el contacto: el
+  mismo cliente que vuelve abre una conversación nueva y es un lead.
+- Se hizo por la API de acciones masivas (`POST bulk_actions`). Ninguna bandeja tiene encuesta
+  ni saludo, así que cerrar no le escribió a nadie.
+
+### Rails — mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #100 | `Conversation.without_pre_launch`: las cifras del dashboard saltan `previo-arranque` |
+| #101 | **Aviso de fuera de horario al traspasar**: cuando el bot pasa a vendedor con la bandeja cerrada, 20 s después sale el mensaje de fuera de horario de la bandeja (`Conversations::OutOfOfficeNoticeJob`). El aviso nativo se calla mientras el bot tiene la conversación: salía con el primer mensaje, encima de la respuesta del bot |
+| #102 | **Link de WhatsApp alternado** entre las líneas (`WhatsappHandoff.whatsapp_number`, contador en Redis; la conversación guarda `wa_numero` y repite el suyo). **Seguimiento solo con la tienda abierta**: espera el horario comercial de la bandeja, sin cancelarse |
+| #103 | **Seguimiento con plantilla**: fuera de las 24 h, si la bandeja tiene `seguimiento_pedido` aprobada y hubo un repuesto cotizado, sale la plantilla (nombre, o "buen día" si el perfil no tiene uno, y el repuesto). `STALE_AFTER` pasó de 1 a 3 días |
+| #104 | **Asignar a vendedores desconectados**: con `account.settings['assign_offline_agents']` el reparto usa a todos los miembros de la bandeja. Apagado es la regla de Chatwoot (solo conectados). Sin interruptor en pantalla: se cambia con `PATCH /api/v1/accounts/1` |
+
+### n8n `Bot Atencion Cliente` (versión activa `27476e59`, anterior `0a88b09c`)
+
+- El guard de `Responder en Chatwoot` acepta links `wa.me` de las dos líneas (`584244205394`
+  y `584129876030`). Al agregar una línea hay que sumarla ahí o sus links se reemplazan por el
+  link pelado sin código.
+
+### Configuración hecha el 06/10
+
+- **Bot conectado a las cuatro bandejas**: Romi Cars (2), somosromicars (3), WABA RomiCars (4) y
+  WABA Romi 2 (5, `+58 412-9876030`, la segunda línea, ya conectada). La bandeja Erdu ya no existe.
+- **Horario comercial** en las cuatro: lunes a viernes 8:00–17:00, sábados 8:00–13:00, domingo
+  cerrado, `America/Caracas`. Texto: "En este momento estamos fuera de horario. Tu solicitud
+  quedó registrada y un vendedor te atenderá apenas abramos." Se edita por bandeja en
+  **Ajustes → Entradas → Horario comercial**. Ese mismo horario gobierna el seguimiento.
+- **Reparto**: `assign_offline_agents: true`. Política `Reparto RomiCars` también en WABA Romi 2
+  (sin política el tope por defecto es 5 asignaciones por vendedor cada 5 minutos, y la sexta
+  se quedaba sin asignar).
+- **Miembros**: WABA RomiCars → Ventas 1; WABA Romi 2 → ventas 2. **Instagram y Facebook sin
+  miembros**: ahí los traspasos quedan sin asignar.
+- **Porcentaje sobre la tasa BCV: 15 %** (lo subió el dueño desde Ajustes → Precios).
+- Agentes: Dario y Moises (administradores), Susel, Ventas 1 y ventas 2.
+
+### Probado en producción el 06/10 por la noche (contacto #23, #1030–#1043)
+
+- Bot en la línea principal, la segunda línea e Instagram: cotiza, deja nota y pasa a vendedor o
+  manda el link.
+- Aviso de fuera de horario: nada con el primer mensaje; 20 s después del traspaso, el aviso.
+- Dos traspasos seguidos desde Instagram: uno a cada línea, cada uno con su código. Llegada por
+  la segunda línea con el código: origen cerrado `derivado` y contactos unidos.
+- Reparto con los vendedores desconectados: asignó a Ventas 1 y a ventas 2, y repartió las que
+  estaban esperando.
+- Dashboard tras el corte: 7 leads, 0 cierres, 0 consultas (10 leads al cierre de la sesión).
+
+### Sin probar
+
+- El seguimiento (#102 y #103): sigue apagado. Al encenderlo le escribe a clientes reales, y
+  cada plantilla la cobra Meta como mensaje de utilidad. No se envió ninguna plantilla real.
+- El vencimiento de un pospuesto y que el job de la tasa la traiga solo cada hora.
+- **Respuestas a estados de WhatsApp**: no se sabe cómo llegan (texto normal, "mensaje no
+  disponible" o no llegan). En 235 conversaciones revisadas no apareció ninguna identificable.
+  Pendiente mirar la primera que entre.
+
+### Visto de paso
+
+- En la segunda línea el primer mensaje de un chat llegó como "This message is unavailable." y
+  el bot contestó un saludo genérico. Una vez; vigilar.
+- Un vendedor contestó a mano desde la app de Instagram una conversación que llevaba el bot, y
+  ofreció una promoción (filtros de aire, aceite y gasolina por 12 $) que no está en las FAQ.
+  Acordar quién contesta en Instagram y cargar la promoción.
+- WhatsApp Web no escribe en el cuadro de mensaje justo después de abrir un chat por URL: hay
+  que hacer clic en el cuadro y comprobar con una captura que el mensaje salió.
 
 ## Punto exacto donde quedamos
 
-Bot probado en Facebook, WhatsApp e Instagram. Para salir a producción:
+En producción desde el 06/10 a las 7:40 pm, con el bot en las cuatro bandejas. Lo que falta:
 
-0. **Las conversaciones abiertas de antes del arranque** (539 el 06/10): mientras sigan abiertas
-   y a nombre de Dario, el dashboard arranca con cientos de leads sin resultado. Decidir si se
-   cierran y se sacan de las cifras, o se borran. Los contactos conviene conservarlos.
-
-1. **Vendedores**: ya existen **ventas 01** y **Ventas 02** (06/10). Falta confirmar que son
-   miembros de las bandejas (sobre todo WABA RomiCars), que el reparto les llega y
-   redistribuir lo que acumuló Dario (531 abiertas).
-2. **Conectar el bot a WhatsApp e Instagram** cuando la clienta lo decida. Ya está probado en
-   las dos con `prueba-bot` (04/10). Al conectarlo a WhatsApp (inbox 4) solo toma las
-   conversaciones **nuevas**: las ~375 abiertas ya tienen vendedor y el bot no contesta ahí.
-3. **Marcar los agotados antes de encender el bot en más bandejas**: los 2.139 repuestos están
+1. **Miembros en Instagram y Facebook** (bloqueante): somosromicars y Romi Cars no tienen
+   vendedores, así que lo que el bot pasa a vendedor ahí queda sin asignar. Hay 2 abiertas así.
+2. **Segunda línea**: falta la plantilla `seguimiento_pedido` en la WABA "Romicars Ventas
+   Digitales" (el 04/10 Meta respondía que no tenía permiso; reintentar ahora que está conectada).
+3. **Marcar los agotados**: el bot ya contesta en todas las bandejas y los 2.139 repuestos están
    `available = true`, así que el bot dice "sí lo tenemos" a todo. Lo más rápido: Importar →
    Descargar plantilla, poner NO en DISPONIBLE y subirla.
-4. **Decisiones con la clienta**: qué bandejas lleva el bot y seguimiento automático (hoy
-   `followups_enabled: false`). Que los vendedores **cierren con resultado**: sin eso el
-   dashboard queda en 0 % de conversión.
-5. **FAQs que faltan**, con datos de la tienda: horario, promociones, costo de delivery por zona,
+4. **Encender el seguimiento** cuando se decida (hoy `followups_enabled: false`); con 5 horas
+   de silencio y el horario comercial, entre semana cae dentro de las 24 h. Que los vendedores
+   **cierren con resultado**: sin eso el dashboard queda en 0 % de conversión.
+5. **FAQs que faltan**, con datos de la tienda: promociones, costo de delivery por zona,
    Zelle = divisa, devoluciones. Sin ellas el bot pasa esas preguntas a un vendedor.
 6. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
 7. **Tarjeta Productos Profit**: sin conectar le muestra a la clienta "Agrega PROFIT_API_URL…".
@@ -456,8 +516,7 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-9. **Plantilla `seguimiento_pedido`**: lista en el número principal (06/10). Falta en la segunda
-   línea, cuando ese número esté conectado.
+9. **Respuestas a estados de WhatsApp**: ver cómo llega la primera y decidir qué hace el bot.
 
 ## Pendientes
 
