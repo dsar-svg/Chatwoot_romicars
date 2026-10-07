@@ -66,7 +66,8 @@ class Account < ApplicationRecord
   store_accessor :settings, :price_markup_percent
   # Read by Inbox#available_agents: hand conversations to inbox members who are not online.
   store_accessor :settings, :assign_offline_agents
-  # Minutes a returning customer waits for a seller in business hours before the bot answers.
+  # Minutes a returning customer waits for a seller in business hours before the bot answers;
+  # set from Settings > Conversation workflow.
   store_accessor :settings, :bot_wait_minutes
   include AccountCaptainAutoResolve
 
@@ -207,7 +208,7 @@ class Account < ApplicationRecord
 
   def bot_wait_minutes
     minutes = super.to_i
-    minutes.positive? ? [minutes, 120].min : 5
+    minutes.positive? ? [minutes, 120].min : 20
   end
 
   # Stored as text in `settings`; unset means the 13% the shop has always used.

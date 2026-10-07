@@ -21,9 +21,13 @@ class Conversations::BotTakeoverJob < ApplicationJob
 
   private
 
+  # Only the inbox's own bot: if it was disconnected while the customer waited, the sellers keep the
+  # conversation. A tester (prueba-bot) gets the account's bot on any inbox, as on creation.
   def takeover_bot(conversation)
-    inbox_bot = conversation.inbox.agent_bot if conversation.inbox.agent_bot_inbox&.active?
-    inbox_bot || AgentBotInbox.active.where(account_id: conversation.account_id).order(:id).first&.agent_bot
+    return conversation.inbox.agent_bot if conversation.inbox.agent_bot_inbox&.active?
+    return unless conversation.contact.label_list.include?(Conversation::BOT_TESTER_LABEL)
+
+    AgentBotInbox.active.where(account_id: conversation.account_id).order(:id).first&.agent_bot
   end
 
   # The same delivery AgentBotListener makes for a new message; the payload is built now, so it

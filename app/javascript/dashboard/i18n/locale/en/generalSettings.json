@@ -44,6 +44,14 @@
         "TITLE": "Account ID",
         "NOTE": "This ID is required if you are building an API based integration"
       },
+      "BOT_WAIT": {
+        "TITLE": "Bot wait for returning customers",
+        "NOTE": "During business hours, a customer who wrote before goes to the sellers first. If none of them replies within this time, from the dashboard or the phone, the bot takes the conversation. New customers and anyone writing outside business hours get the bot right away.",
+        "LABEL": "Minutes to wait",
+        "HELP": "Between 1 and 120.",
+        "ERROR": "Minutes must be a whole number between 1 and 120.",
+        "SAVED": "Wait time saved"
+      },
       "FOLLOWUPS": {
         "TITLE": "Automatic follow-up",
         "NOTE": "If a customer stops replying for 5 hours, they get a reminder between 8 am and 8 pm. If they still do not reply within 48 hours, the conversation is closed as abandoned. Conversations with an assigned agent only get a private note and are never closed automatically, and those labelled proveedor or logistica are left out.",
