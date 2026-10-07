@@ -25,6 +25,9 @@ class MessageTemplates::HookExecutionService
     return false if conversation.tweet?
     # should not send for outbound messages
     return false unless message.incoming?
+    # The bot is answering: "we are closed" on top of its reply would be false. The notice
+    # goes out when it hands off to a seller (Conversations::OutOfOfficeNoticeJob).
+    return false if conversation.assignee_agent_bot_id.present?
     # prevents sending out-of-office message if an agent has sent a message in last 5 minutes
     # ensures better UX by not interrupting active conversations at the end of business hours
     return false if conversation.messages.outgoing.where(private: false).exists?(['created_at > ?', 5.minutes.ago])

@@ -285,6 +285,7 @@ class Conversation < ApplicationRecord
     open!
     # The assignment is queued by the change to open; already open, nothing queued it.
     dispatch_bot_handoff_event if dispatch_event
+    Conversations::OutOfOfficeNoticeJob.set(wait: Conversations::OutOfOfficeNoticeJob::WAIT).perform_later(self) if inbox.out_of_office?
     return unless held_open && inbox.auto_assignment_v2_enabled? && should_run_auto_assignment?
 
     AutoAssignment::AssignmentJob.enqueue_for_inbox(inbox_id)
