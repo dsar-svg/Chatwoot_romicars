@@ -270,6 +270,23 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.last.status).to eq('pending')
     end
 
+    it 'holds the nudge while the shop is closed and sends it once it opens' do
+      inbox.update!(working_hours_enabled: true, timezone: 'UTC')
+      inbox.working_hours.update_all(closed_all_day: true, open_all_day: false) # rubocop:disable Rails/SkipsModelValidations
+
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+        expect(ConversationFollowup.find_by(conversation: conversation).status).to eq('pending')
+
+        inbox.working_hours.update_all(closed_all_day: false, open_all_day: true) # rubocop:disable Rails/SkipsModelValidations
+        described_class.new.perform
+      end
+
+      expect(ConversationFollowup.find_by(conversation: conversation).status).to eq('sent')
+    end
+
     it 'leaves a private note for the seller instead of writing to the customer' do
       agent = create(:user, account: account)
       conversation = nil

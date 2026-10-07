@@ -113,11 +113,11 @@ class ConversationFollowupsJob < ApplicationJob
   end
 
   def send_due(account)
-    # Outside 8am-8pm nothing goes out. The rows stay pending and the next morning's tick
-    # picks them up.
-    return unless ConversationFollowup.sendable_now?
+    ConversationFollowup.due.where(account_id: account.id).includes(conversation: :inbox).find_each do |followup|
+      # Held, not cancelled: the row stays pending and the first tick with the shop open
+      # picks it up.
+      next unless shop_open?(followup.conversation.inbox)
 
-    ConversationFollowup.due.where(account_id: account.id).find_each do |followup|
       reason = disqualified(followup)
       next followup.cancel!(reason) if reason
 
@@ -125,6 +125,14 @@ class ConversationFollowupsJob < ApplicationJob
     rescue StandardError => e
       Rails.logger.error "[Followups] send failed for followup #{followup.id}: #{e.class}: #{e.message}"
     end
+  end
+
+  # A nudge only earns its keep if someone can take the answer: the customer who replies
+  # "yes, I want it" at 11pm gets the bot and then waits for a seller until morning. So it
+  # goes out inside the inbox's own business hours, the same ones that drive the out-of-office
+  # notice. An inbox without business hours keeps the old 8am-8pm window.
+  def shop_open?(inbox)
+    inbox.working_hours_enabled? ? inbox.working_now? : ConversationFollowup.sendable_now?
   end
 
   # Everything that can change during the five hours between scheduling and sending. The
