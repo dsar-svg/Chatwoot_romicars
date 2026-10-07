@@ -32,6 +32,18 @@ RSpec.describe WhatsappHandoff do
       expect(described_class.start(origin.reload)[:code]).to eq(first)
     end
 
+    it 'takes turns between the lines when the shop has two, and keeps a conversation on its own' do
+      create(:channel_whatsapp, account: account, phone_number: '+584129876030', sync_templates: false, validate_provider_config: false)
+      other = create(:conversation, account: account, inbox: instagram_inbox)
+      number = ->(conversation) { described_class.start(conversation)[:link][%r{wa\.me/(\d+)}, 1] }
+
+      first = number.call(origin)
+      second = number.call(other)
+
+      expect([first, second]).to contain_exactly('584244205394', '584129876030')
+      expect(number.call(origin.reload)).to eq(first)
+    end
+
     it 'refuses when the account has no WhatsApp number to send them to' do
       whatsapp_channel.destroy!
 

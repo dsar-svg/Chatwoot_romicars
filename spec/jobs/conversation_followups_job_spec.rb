@@ -216,6 +216,35 @@ RSpec.describe ConversationFollowupsJob do
         expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'fuera_de_ventana')
       end
 
+      context 'with the follow-up template approved on that line' do
+        before do
+          whatsapp_channel.update!(message_templates: [{ 'name' => 'seguimiento_pedido', 'language' => 'es', 'status' => 'APPROVED',
+                                                         'components' => [{ 'type' => 'BODY', 'text' => 'Hola {{1}}, ... {{2}} ...' }] }])
+        end
+
+        it 'sends the template for a quoted part once the window has closed' do
+          travel_to(midday) do
+            conversation = whatsapp_conversation(customer_wrote_at: 30.hours.ago) && Conversation.last
+            create(:product_inquiry, conversation: conversation, account: account, repuesto_buscado: 'kit de clutch', encontrado: true)
+            job.perform
+          end
+
+          expect(ConversationFollowup.last.status).to eq('sent')
+          expect(Message.outgoing.last.additional_attributes['template_params']).to include(
+            'name' => 'seguimiento_pedido', 'processed_params' => { 'body' => { '1' => 'Ricardo', '2' => 'kit de clutch' } }
+          )
+        end
+
+        it 'still cancels when there is no quoted part to name' do
+          travel_to(midday) do
+            whatsapp_conversation(customer_wrote_at: 30.hours.ago)
+            job.perform
+          end
+
+          expect(ConversationFollowup.last).to have_attributes(status: 'cancelled', cancel_reason: 'fuera_de_ventana')
+        end
+      end
+
       it 'still sends while the window is open' do
         travel_to(midday) do
           whatsapp_conversation(customer_wrote_at: 7.hours.ago)
@@ -268,6 +297,23 @@ RSpec.describe ConversationFollowupsJob do
       end
 
       expect(ConversationFollowup.last.status).to eq('pending')
+    end
+
+    it 'holds the nudge while the shop is closed and sends it once it opens' do
+      inbox.update!(working_hours_enabled: true, timezone: 'UTC')
+      inbox.working_hours.update_all(closed_all_day: true, open_all_day: false) # rubocop:disable Rails/SkipsModelValidations
+
+      conversation = nil
+      travel_to(midday) do
+        conversation = quiet_conversation
+        job.perform
+        expect(ConversationFollowup.find_by(conversation: conversation).status).to eq('pending')
+
+        inbox.working_hours.update_all(closed_all_day: false, open_all_day: true) # rubocop:disable Rails/SkipsModelValidations
+        described_class.new.perform
+      end
+
+      expect(ConversationFollowup.find_by(conversation: conversation).status).to eq('sent')
     end
 
     it 'leaves a private note for the seller instead of writing to the customer' do
