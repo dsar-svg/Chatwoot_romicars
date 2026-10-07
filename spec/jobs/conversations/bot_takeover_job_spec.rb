@@ -61,6 +61,13 @@ RSpec.describe Conversations::BotTakeoverJob do
       expect(conversation.reload.assignee_agent_bot).to be_nil
     end
 
+    it 'leaves it with the sellers when the bot was disconnected from the inbox meanwhile' do
+      bot_inbox.destroy!
+
+      expect { described_class.perform_now(conversation) }.not_to have_enqueued_job(AgentBots::WebhookJob)
+      expect(conversation.reload.assignee_agent_bot).to be_nil
+    end
+
     it 'stays out of a closed conversation' do
       conversation.resolved!
 
