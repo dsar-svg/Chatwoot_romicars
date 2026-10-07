@@ -46,9 +46,18 @@ class ConversationFollowupsJob < ApplicationJob
 
   ASSISTED_LABEL = 'seguimiento-pendiente'
 
-  # A pending follow-up older than this is not sent. Rows only wait this long when the job
-  # was switched off, and switching it back on must not fire a week of stale nudges at once.
-  STALE_AFTER = 1.day
+  # The approved WhatsApp template that carries the nudge once the 24 hours have passed:
+  # "Hola {{1}}, te escribimos de Romicars por el {{2}} que consultaste. ¿Seguimos con tu
+  # pedido?". Utility, so it can only speak about something the customer asked for.
+  TEMPLATE_NAME = 'seguimiento_pedido'
+  TEMPLATE_LANGUAGE = 'es'
+  # {{1}} when the profile name is a dot or an emoji: "Hola buen día, te escribimos...".
+  TEMPLATE_NAMELESS_GREETING = 'buen día'
+
+  # A pending follow-up older than this is not sent. A nudge held for the shop to open waits
+  # from Saturday afternoon to Monday morning; longer than that, the job was switched off,
+  # and switching it back on must not fire a week of stale nudges at once.
+  STALE_AFTER = 3.days
 
   # Off unless an admin switches it on for the account, from Settings > Conversation
   # workflow. This job writes to real customers on its own every fifteen minutes, so it
@@ -151,7 +160,10 @@ class ConversationFollowupsJob < ApplicationJob
     # Past 24 hours since the customer's last message, anything but a template is refused.
     # Chatwoot would still create the message, as `failed` — so the seller sees a reminder in
     # the thread that never reached the customer. A private note has no window.
-    return 'fuera_de_ventana' if followup.mode == 'auto' && outside_messaging_window?(conversation)
+    # ...unless the approved template can carry it (see #template_for).
+    if followup.mode == 'auto' && outside_messaging_window?(conversation) && template_for(followup).blank?
+      return 'fuera_de_ventana'
+    end
 
     nil
   end
@@ -164,6 +176,8 @@ class ConversationFollowupsJob < ApplicationJob
       # A seller owns this one. Auto-sending on their behalf is how they find out what was
       # promised only when the customer answers.
       leave_note(conversation, body, followup.motivo)
+    elsif outside_messaging_window?(conversation)
+      body = send_template(conversation, template_for(followup))
     else
       conversation.messages.create!(
         account_id: conversation.account_id,
@@ -175,6 +189,48 @@ class ConversationFollowupsJob < ApplicationJob
     end
 
     followup.update!(status: 'sent', sent_at: Time.current, mensaje: body)
+  end
+
+  # The template's two blanks, or nil when it cannot be used: only WhatsApp has templates,
+  # the inbox must have this one approved, and it speaks of "the part you asked about", so
+  # there has to be a quoted part to name. Everything else stays cancelled past the window.
+  def template_for(followup)
+    conversation = followup.conversation
+    channel = conversation.inbox.channel
+    return unless followup.etapa == 'cotizado' && channel.is_a?(Channel::Whatsapp)
+
+    repuesto = last_inquiry(conversation)&.repuesto_buscado.to_s.squish
+    return if repuesto.blank? || !template_approved?(channel)
+
+    { '1' => first_name_of(conversation.contact) || TEMPLATE_NAMELESS_GREETING, '2' => repuesto }
+  end
+
+  def template_approved?(channel)
+    Array(channel.message_templates).any? do |template|
+      template['name'] == TEMPLATE_NAME && template['language'].to_s.casecmp?(TEMPLATE_LANGUAGE) &&
+        template['status'].to_s.casecmp?('approved')
+    end
+  end
+
+  def first_name_of(contact)
+    name = contact&.name.to_s.split.first.to_s
+    name if name.match?(/\A\p{L}{2,}\z/)
+  end
+
+  # `content` is only what the seller reads in the thread; WhatsApp sends the template with
+  # the two values. Returns that text so the follow-up row records what the customer got.
+  def send_template(conversation, values)
+    body = "Hola #{values['1']}, te escribimos de Romicars por el #{values['2']} que consultaste. ¿Seguimos con tu pedido?"
+    conversation.messages.create!(
+      account_id: conversation.account_id,
+      inbox_id: conversation.inbox_id,
+      message_type: :outgoing,
+      sender: sender_for(conversation),
+      content: body,
+      additional_attributes: { 'template_params' => { 'name' => TEMPLATE_NAME, 'category' => 'UTILITY', 'language' => TEMPLATE_LANGUAGE,
+                                                      'processed_params' => { 'body' => values } } }
+    )
+    body
   end
 
   def leave_note(conversation, body, motivo)
