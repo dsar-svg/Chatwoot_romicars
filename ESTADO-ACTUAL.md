@@ -516,9 +516,28 @@ precios no cambiaron (comprobado fila por fila). Respaldo de los valores anterio
 Probado en vivo (Messenger, #1089): "disco de croche del Orinoco" cotiza el de crochet, "disco
 de freno" pregunta delantero o trasero, "bastón de agua del Arauca" cotiza la tubería principal.
 
-### Rails — rama `claude/bot-sin-emojis`
+### Rails — rama `claude/bot-sin-emojis` (mergeada, #109)
 
 - Mensajes de seguimiento sin emojis.
+
+### Marca con un solo modelo (n8n, versión activa `3ef0a0d5`)
+
+"Haima" sola es la Haima 7 (igual Zotye y Chana, que tienen un modelo). `validar_vehiculo`
+devuelve `unico_modelo_de_la_marca` y el bot ya no pregunta el modelo. Probado en vivo (#1095).
+
+### Combos y promociones — rama `claude/combos-promociones` (sin mergear)
+
+Pestañas Repuestos / Combos / Promociones en Lista de Precios. Son filas de `vehicle_prices`
+con `kind` (`repuesto`, `combo`, `promocion`), más `details` (qué incluye o condiciones) y
+`ends_on` (promos con vencimiento). La marca solo es obligatoria en repuestos: un combo o
+promo sin marca vale para todas. Importar y exportar siguen siendo solo repuestos.
+
+**Después de desplegar, en n8n** (antes no: la columna `kind` no existe y la búsqueda fallaría):
+- `buscar_precio_repuesto`: agregar `AND vp.kind = 'repuesto'` en `candidatos`.
+- Tool nueva `buscar_combos_promociones` (Postgres) sobre `kind IN ('combo','promocion')`,
+  activas, sin vencer, de su marca/modelo o sin marca.
+- Prompt: la sección PROMOCIONES Y COMBOS y "Promos al cotizar" usan esa tool en vez de
+  `buscar_faq`.
 
 ## Punto exacto donde quedamos
 
