@@ -19,15 +19,17 @@ class ConversationFollowupsJob < ApplicationJob
   # price list, not that a unit is on the shelf. Offering to hold one, or to warn the
   # customer when it arrives, would be inventing. Only `sin_stock` speaks about
   # availability, and it can, because `encontrado: false` is a recorded fact.
+  #
+  # No emojis and no exclamation marks: the shop asked for it, they read as a bot.
   MESSAGES = {
-    'cotizado' => '¿sigues interesado en {repuesto}? Te confirmo disponibilidad 🔧',
+    'cotizado' => '¿sigues interesado en {repuesto}? Te confirmo disponibilidad',
     'sin_stock' => 'todavía no me llega {repuesto}. ¿Te aviso apenas entre?',
-    'consulta' => '¿estabas buscando algún repuesto en particular? Te lo reviso 🔧',
+    'consulta' => '¿estabas buscando algún repuesto en particular? Te lo reviso',
     # Sent the wa.me link and never showed up on WhatsApp. Asking for the number is the
     # fallback: the bot saves it and a seller writes from the phone.
-    'derivado' => '¿pudiste escribirnos por WhatsApp? Si prefieres, déjame tu número y te escribimos nosotros 📲',
+    'derivado' => '¿pudiste escribirnos por WhatsApp? Si prefieres, déjame tu número y te escribimos nosotros',
     # Used whenever the chosen text names the part and we do not know which part it was.
-    'generico' => '¿sigues necesitando lo que me consultaste? Te lo reviso 🔧'
+    'generico' => '¿sigues necesitando lo que me consultaste? Te lo reviso'
   }.freeze
 
   PART_TOKEN = '{repuesto}'

@@ -487,6 +487,39 @@ que el job de cada hora la traiga solo.
 - WhatsApp Web no escribe en el cuadro de mensaje justo después de abrir un chat por URL: hay
   que hacer clic en el cuadro y comprobar con una captura que el mensaje salió.
 
+## 07/10 — pedidos de la clienta: sin emojis, menos insistencia, nombres de piezas, fotos
+
+### n8n `Bot Atencion Cliente` (versión activa `34489583`, anterior `82245667`)
+
+- **Sin emojis ni signos de exclamación**: regla en el prompt, saludo nuevo ("Hola, bienvenido a
+  Romicars.") y, como red, `Responder en Chatwoot` borra emojis y "¡", y cambia "!" por ".".
+- **Datos del cliente**: se piden como mucho dos veces, nunca en dos mensajes seguidos; la
+  segunda explica para qué ("es para incluirte en nuestra base de datos..."). Después no
+  insiste más. Sin probar en vivo: el contacto de prueba ya tiene todos los datos.
+- **Nombres populares**: si no hay coincidencia, reintenta una vez con el otro nombre de la misma
+  pieza antes de pasar a vendedor, y no cotiza una pieza que solo se parece en el nombre.
+- **Fotos**: la descripción automática dice cuándo no está segura y transcribe códigos. Si el
+  cliente ya nombró la pieza, manda lo que dijo él; si no se reconoce, pasa a vendedor.
+- **Promociones**: al cotizar filtros, aceite, bujías, kit de tiempo, pastillas o kit de crochet
+  busca en las FAQ una promo que lo incluya y la menciona. **Hoy no hay ninguna promo cargada**
+  (las 6 FAQ son pagos, garantía, delivery, envíos, ubicación y horario).
+
+### Sinónimos de la lista de precios corregidos (378 filas, vía API)
+
+La causa principal de las confusiones: los sinónimos venían cargados por palabra suelta y muchos
+eran de otra pieza ("DISCO CROCHET" tenía "disco de freno", "MESETA" tenía "plato de clutch",
+las pilas de gasolina "batería", los mozos "rótula", todos los filtros llevaban "filtro de
+aceite, de aire, de gasolina" a la vez). Se reescribieron por regla sobre la descripción; los
+precios no cambiaron (comprobado fila por fila). Respaldo de los valores anteriores en el
+`localStorage` del navegador de la extensión, clave `vp_synonyms_backup_20261007`.
+
+Probado en vivo (Messenger, #1089): "disco de croche del Orinoco" cotiza el de crochet, "disco
+de freno" pregunta delantero o trasero, "bastón de agua del Arauca" cotiza la tubería principal.
+
+### Rails — rama `claude/bot-sin-emojis`
+
+- Mensajes de seguimiento sin emojis.
+
 ## Punto exacto donde quedamos
 
 En producción desde el 06/10 a las 7:40 pm, con el bot en las cuatro bandejas. Lo que falta:
@@ -501,7 +534,8 @@ En producción desde el 06/10 a las 7:40 pm, con el bot en las cuatro bandejas. 
 4. **Encender el seguimiento** cuando se decida (hoy `followups_enabled: false`); con 5 horas
    de silencio y el horario comercial, entre semana cae dentro de las 24 h. Que los vendedores
    **cierren con resultado**: sin eso el dashboard queda en 0 % de conversión.
-5. **FAQs que faltan**, con datos de la tienda: promociones, costo de delivery por zona,
+5. **FAQs que faltan**, con datos de la tienda: promociones (una FAQ por promo, con la palabra
+   "promoción", qué incluye, para qué carro y precio; el bot ya las ofrece), costo de delivery por zona,
    Zelle = divisa, devoluciones. Sin ellas el bot pasa esas preguntas a un vendedor.
 6. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
 7. **Tarjeta Productos Profit**: sin conectar le muestra a la clienta "Agrega PROFIT_API_URL…".
