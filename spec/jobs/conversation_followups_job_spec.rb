@@ -189,6 +189,20 @@ RSpec.describe ConversationFollowupsJob do
       expect(ConversationFollowup.last.mensaje).to eq("Ricardo, #{described_class::MESSAGES['generico']}")
     end
 
+    it 'greets with a clean first name, or with none when the profile is a username' do
+      contact.update!(name: 'FRANCISCO FONSECA')
+      travel_to(midday) do
+        quiet_conversation
+        job.perform
+      end
+      expect(ConversationFollowup.last.mensaje).to start_with('Francisco, ')
+
+      ConversationFollowup.delete_all
+      contact.update!(name: 'maryeg007')
+      travel_to(midday) { job.perform }
+      expect(ConversationFollowup.last.mensaje).to eq(described_class::MESSAGES['consulta'])
+    end
+
     context 'when the conversation is on WhatsApp' do
       let(:whatsapp_channel) { create(:channel_whatsapp, account: account, sync_templates: false, validate_provider_config: false) }
       let(:whatsapp_inbox) { create(:inbox, channel: whatsapp_channel, account: account) }
