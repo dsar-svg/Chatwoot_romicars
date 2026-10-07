@@ -212,9 +212,11 @@ class ConversationFollowupsJob < ApplicationJob
     end
   end
 
+  # Profile names arrive as "maryeg007", "FRANCISCO FONSECA" or in decorated letters: only a
+  # first word made of letters is used, folded and capitalised, and anything else gets no name.
   def first_name_of(contact)
-    name = contact&.name.to_s.split.first.to_s
-    name if name.match?(/\A\p{L}{2,}\z/)
+    name = contact&.name.to_s.unicode_normalize(:nfkc).split.first.to_s
+    name.capitalize if name.match?(/\A\p{L}{2,}\z/)
   end
 
   # `content` is only what the seller reads in the thread; WhatsApp sends the template with
@@ -347,7 +349,7 @@ class ConversationFollowupsJob < ApplicationJob
   end
 
   def saludo_for(conversation)
-    name = conversation.contact&.name.to_s.strip
-    name.present? ? "#{name}, " : ''
+    name = first_name_of(conversation.contact)
+    name ? "#{name}, " : ''
   end
 end

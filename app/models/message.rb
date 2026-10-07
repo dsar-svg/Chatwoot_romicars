@@ -326,12 +326,21 @@ class Message < ApplicationRecord
     # rails issue with order of active record callbacks being executed https://github.com/rails/rails/issues/20911
     reopen_conversation
     mark_pending_conversation_as_open_for_human_response
+    release_bot_to_seller
     set_conversation_activity
     dispatch_create_events
     send_reply
     execute_message_template_hooks
     update_contact_activity
     claim_whatsapp_handoff
+  end
+
+  # A seller who writes in a conversation the bot holds, from Chatwoot or from the WhatsApp or
+  # Instagram app on the phone, takes it over. The bot used to keep answering on top of them.
+  def release_bot_to_seller
+    return unless conversation.assignee_agent_bot_id.present? && human_response? && !private?
+
+    conversation.update!(assignee_agent_bot: nil, status: :open, assignee: sender.is_a?(User) ? sender : conversation.assignee)
   end
 
   # A customer arriving from Instagram or Facebook through the bot's wa.me link. Only the

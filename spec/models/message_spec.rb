@@ -286,6 +286,23 @@ RSpec.describe Message do
     end
   end
 
+  describe '#release_bot_to_seller' do
+    let(:conversation) { create(:conversation, status: :pending, assignee_agent_bot: create(:agent_bot)) }
+
+    it 'takes the bot off when a seller writes from the phone app' do
+      create(:message, conversation: conversation, message_type: :outgoing, sender: nil, content_attributes: { external_echo: true })
+
+      expect(conversation.reload).to have_attributes(status: 'open', assignee_agent_bot_id: nil)
+    end
+
+    it 'leaves the bot on for its own messages and for private notes' do
+      create(:message, conversation: conversation, message_type: :outgoing, sender: conversation.assignee_agent_bot)
+      create(:message, conversation: conversation, message_type: :outgoing, private: true, sender: create(:user, account: conversation.account))
+
+      expect(conversation.reload.assignee_agent_bot).to be_present
+    end
+  end
+
   describe '#waiting since' do
     let(:conversation) { create(:conversation) }
     let(:agent) { create(:user, account: conversation.account) }
