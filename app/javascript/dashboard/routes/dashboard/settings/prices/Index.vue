@@ -8,6 +8,7 @@ import { picoSearch } from '@scmmishra/pico-search';
 import AddPrice from './AddPrice.vue';
 import EditPrice from './EditPrice.vue';
 import ImportPrices from './ImportPrices.vue';
+import { PRICE_KINDS, kindOf, isExpired } from './priceKinds';
 import {
   calcCostBs as costBsFor,
   calcBolivares as bolivaresFor,
@@ -17,6 +18,7 @@ import {
 import Button from 'dashboard/components-next/button/Button.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import ComboBox from 'dashboard/components-next/combobox/ComboBox.vue';
+import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import {
   BaseTable,
   BaseTableRow,
@@ -42,9 +44,25 @@ const filterBrand = ref('');
 const filterModel = ref('');
 const page = ref(1);
 const perPage = 50;
+const kind = ref('repuesto');
 let debounceTimer = null;
 
 const records = computed(() => getters['vehiclePrices/getPrices'].value);
+const kindRecords = computed(() =>
+  records.value.filter(p => kindOf(p) === kind.value)
+);
+const kindInfo = computed(() => PRICE_KINDS[kind.value]);
+const isPartsTab = computed(() => kind.value === 'repuesto');
+
+const kindKeys = Object.keys(PRICE_KINDS);
+const kindTabs = computed(() =>
+  kindKeys.map(key => ({
+    key,
+    label: PRICE_KINDS[key].tab,
+    count: records.value.filter(p => kindOf(p) === key).length,
+  }))
+);
+const activeTabIndex = computed(() => kindKeys.indexOf(kind.value));
 const uiFlags = computed(() => getters['vehiclePrices/getUIFlags'].value);
 const rateFlags = computed(() => getters['exchangeRates/getUIFlags'].value);
 const brands = computed(() => getters['vehicleBrands/getBrands'].value);
@@ -72,7 +90,7 @@ const modelOptions = computed(() => [
 ]);
 
 const filteredRecords = computed(() => {
-  let items = records.value;
+  let items = kindRecords.value;
 
   if (filterBrand.value) {
     items = items.filter(p => p.brand?.id === Number(filterBrand.value));
@@ -83,7 +101,12 @@ const filteredRecords = computed(() => {
 
   const query = debouncedQuery.value.trim();
   if (query) {
-    items = picoSearch(items, query, ['description', 'variant', 'synonyms']);
+    items = picoSearch(items, query, [
+      'description',
+      'variant',
+      'synonyms',
+      'details',
+    ]);
   }
 
   return items;
@@ -149,7 +172,7 @@ watch(filterBrand, () => {
   page.value = 1;
 });
 
-watch(filterModel, () => {
+watch([filterModel, kind], () => {
   page.value = 1;
 });
 
@@ -243,7 +266,7 @@ const clearSelection = () => {
 };
 
 // A selection made under other filters would act on rows the user no longer sees.
-watch([debouncedQuery, filterBrand, filterModel], clearSelection);
+watch([debouncedQuery, filterBrand, filterModel, kind], clearSelection);
 
 const markSelected = async available => {
   const ids = [...selected.value];
@@ -337,7 +360,8 @@ const vehicleDetail = price => {
   if (model && variant && compact(variant) !== compact(model)) {
     return `${model} · ${variant}`;
   }
-  return model || variant || 'Todos los modelos';
+  if (model || variant) return model || variant;
+  return price.brand ? 'Todos los modelos' : 'Todas las marcas';
 };
 
 const formatBs = value => {
@@ -349,7 +373,7 @@ const deleteMessage = computed(() => `"${activePrice.value.description}"?`);
 
 const tableHeaders = computed(() => [
   'Seleccionar',
-  'Repuesto',
+  kindInfo.value.column,
   'Vehículo',
   'Costo USD',
   'Divisa',
@@ -374,16 +398,18 @@ const goToPage = p => {
       <BaseSettingsHeader
         v-model:search-query="searchQuery"
         title="Lista de Precios"
-        description="Gestiona los precios de repuestos por marca y modelo"
+        description="Gestiona los precios de repuestos, combos y promociones por marca y modelo"
         search-placeholder="Buscar por descripción..."
       >
-        <template v-if="records?.length" #count>
+        <template v-if="kindRecords.length" #count>
           <span class="text-body-main text-n-slate-11 tabular-nums">
-            {{ records.length.toLocaleString('es-VE') }} repuestos
+            {{ kindRecords.length.toLocaleString('es-VE') }}
+            {{ kindInfo.count }}
           </span>
         </template>
         <template #actions>
           <Button
+            v-if="isPartsTab"
             label="Importar CSV/Excel"
             size="sm"
             slate
@@ -393,7 +419,7 @@ const goToPage = p => {
             @click="openImportPopup"
           />
           <Button
-            label="Nuevo Precio"
+            :label="kindInfo.newLabel"
             size="sm"
             icon="i-lucide-plus"
             @click="openAddPopup"
@@ -500,6 +526,13 @@ const goToPage = p => {
         />
       </div>
 
+      <TabBar
+        class="mb-4"
+        :tabs="kindTabs"
+        :initial-active-tab="activeTabIndex"
+        @tab-changed="tab => (kind = tab.key)"
+      />
+
       <!-- Filters -->
       <div class="flex items-center gap-3 mb-4">
         <ComboBox
@@ -566,8 +599,8 @@ const goToPage = p => {
         :headers="tableHeaders"
         :items="pagedRecords"
         :no-data-message="
-          !records.length
-            ? 'No hay precios cargados'
+          !kindRecords.length
+            ? kindInfo.empty
             : searchQuery || filterBrand || filterModel
               ? 'Sin resultados'
               : ''
@@ -625,6 +658,21 @@ const goToPage = p => {
                     >
                       Agotado
                     </span>
+                    <span
+                      v-if="isExpired(price)"
+                      class="px-1.5 py-px ltr:ml-1 rtl:mr-1 rounded-full bg-n-amber-3 text-[11px] font-semibold text-n-amber-11"
+                    >
+                      Vencida
+                    </span>
+                  </span>
+                  <span
+                    v-if="price.details"
+                    class="text-xs text-n-slate-11 whitespace-normal"
+                  >
+                    {{ price.details }}
+                  </span>
+                  <span v-if="price.ends_on" class="text-xs text-n-slate-11">
+                    Hasta el {{ formatDate(price.ends_on) }}
                   </span>
                   <div
                     v-if="synonymsOf(price).length"
@@ -653,7 +701,7 @@ const goToPage = p => {
                   <span
                     class="px-2 py-0.5 rounded-md bg-n-blue-3 text-n-blue-11 text-xs font-semibold tracking-wide whitespace-nowrap"
                   >
-                    {{ price.brand?.name || '—' }}
+                    {{ price.brand?.name || 'TODAS' }}
                   </span>
                   <span class="text-xs text-n-slate-11 truncate">
                     {{ vehicleDetail(price) }}
@@ -793,7 +841,7 @@ const goToPage = p => {
     </template>
 
     <woot-modal v-model:show="showAddPopup" :on-close="hideAddPopup">
-      <AddPrice :on-close="hideAddPopup" />
+      <AddPrice :kind="kind" :on-close="hideAddPopup" />
     </woot-modal>
 
     <woot-modal v-model:show="showEditPopup" :on-close="hideEditPopup">

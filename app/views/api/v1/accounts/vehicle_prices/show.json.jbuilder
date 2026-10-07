@@ -11,9 +11,14 @@ json.payload do
   json.active @price.active
   json.available @price.available
   json.synonyms @price.synonyms
-  json.brand do
-    json.id @price.vehicle_brand.id
-    json.name @price.vehicle_brand.name
+  json.kind @price.kind
+  json.details @price.details
+  json.ends_on @price.ends_on
+  if @price.vehicle_brand
+    json.brand do
+      json.id @price.vehicle_brand.id
+      json.name @price.vehicle_brand.name
+    end
   end
   if @price.vehicle_model
     json.model do
