@@ -16,20 +16,24 @@ module WhatsappHandoff
   CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'.chars.freeze
   CODE_PATTERN = /\bRC-([#{CODE_ALPHABET.join}]{5})\b/i
 
+  TURN_KEY = 'romicars:wa_handoff_turn:%<account_id>s'
+
   class NoWhatsappInbox < StandardError; end
   class InvalidPhone < StandardError; end
 
   module_function
 
   def start(conversation, repuesto: nil, vehiculo: nil)
-    number = whatsapp_number(conversation.account)
+    attrs = conversation.custom_attributes || {}
+    # Same number as the first link, like the code: the customer may have that chat open already.
+    number = attrs['wa_numero'].presence || whatsapp_number(conversation.account)
     raise NoWhatsappInbox if number.blank?
 
-    attrs = conversation.custom_attributes || {}
     # Same code on a second call: the customer may have the first link open already.
     code = attrs['wa_code'].presence || "RC-#{Array.new(5) { CODE_ALPHABET.sample(random: SecureRandom) }.join}"
     conversation.update!(custom_attributes: attrs.merge(
       'wa_code' => code,
+      'wa_numero' => number,
       'wa_enviado_at' => Time.current.iso8601,
       'wa_repuesto' => repuesto.to_s.squish.presence,
       'wa_vehiculo' => vehiculo.to_s.squish.presence
@@ -90,9 +94,14 @@ module WhatsappHandoff
     end
   end
 
+  # The shop runs more than one WhatsApp line: each new handoff goes to the next one in turn,
+  # so the sales spread evenly without anyone choosing. The turn is a counter in Redis; losing
+  # it only restarts the rotation.
   def whatsapp_number(account)
-    # ponytail: first WhatsApp inbox of the account; pick one explicitly if the shop ever runs two numbers.
-    Channel::Whatsapp.where(account_id: account.id).order(:id).pick(:phone_number)
+    numbers = Channel::Whatsapp.where(account_id: account.id).order(:id).pluck(:phone_number).compact_blank
+    return numbers.first if numbers.size < 2
+
+    numbers[(Redis::Alfred.incr(format(TURN_KEY, account_id: account.id)) - 1) % numbers.size]
   end
 
   def prefilled_text(code, repuesto, vehiculo)
