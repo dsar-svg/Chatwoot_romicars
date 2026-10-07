@@ -66,6 +66,8 @@ class Account < ApplicationRecord
   store_accessor :settings, :price_markup_percent
   # Read by Inbox#available_agents: hand conversations to inbox members who are not online.
   store_accessor :settings, :assign_offline_agents
+  # Minutes a returning customer waits for a seller in business hours before the bot answers.
+  store_accessor :settings, :bot_wait_minutes
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async
@@ -201,6 +203,11 @@ class Account < ApplicationRecord
 
   def assign_offline_agents?
     ActiveModel::Type::Boolean.new.cast(assign_offline_agents) || false
+  end
+
+  def bot_wait_minutes
+    minutes = super.to_i
+    minutes.positive? ? [minutes, 120].min : 5
   end
 
   # Stored as text in `settings`; unset means the 13% the shop has always used.
