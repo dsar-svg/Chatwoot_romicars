@@ -64,6 +64,8 @@ class Account < ApplicationRecord
                  :followups_message_consulta, :followups_message_derivado, :followups_message_generico
   # What is added to the BCV rate for a customer paying in bolivars; set from Settings > Prices.
   store_accessor :settings, :price_markup_percent
+  # Read by Inbox#available_agents: hand conversations to inbox members who are not online.
+  store_accessor :settings, :assign_offline_agents
   include AccountCaptainAutoResolve
 
   has_many :account_users, dependent: :destroy_async
@@ -195,6 +197,10 @@ class Account < ApplicationRecord
 
     enrichment_key = format(Redis::Alfred::ACCOUNT_ONBOARDING_ENRICHMENT, account_id: id)
     Redis::Alfred.exists?(enrichment_key) ? 'enrichment' : step
+  end
+
+  def assign_offline_agents?
+    ActiveModel::Type::Boolean.new.cast(assign_offline_agents) || false
   end
 
   # Stored as text in `settings`; unset means the 13% the shop has always used.

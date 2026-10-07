@@ -47,6 +47,16 @@ RSpec.describe AutoAssignment::AssignmentService do
         expect(conv.reload.assignee).to eq(agent)
       end
 
+      it 'assigns to a member who is not online when the account asks for it' do
+        account.update!(assign_offline_agents: true)
+        allow(OnlineStatusTracker).to receive(:get_available_users).and_return({})
+        conv = create(:conversation, inbox: inbox, status: 'open')
+        conv.update!(assignee_id: nil)
+
+        expect(service.perform_bulk_assignment(limit: 1)).to eq(1)
+        expect(conv.reload.assignee).to eq(agent)
+      end
+
       it 'returns 0 when no agents are online' do
         allow(OnlineStatusTracker).to receive(:get_available_users).and_return({})
 
