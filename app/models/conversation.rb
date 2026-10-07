@@ -213,6 +213,7 @@ class Conversation < ApplicationRecord
   after_create_commit :inherit_non_lead_labels
   after_create_commit :load_attributes_created_by_db_triggers
   after_create_commit -> { Conversations::ContinuityJob.perform_later(self) }
+  after_create_commit :schedule_bot_takeover, if: -> { @seller_first }
   before_destroy :set_unread_count_deletion_data
   after_destroy_commit :notify_conversation_deletion
 
@@ -449,10 +450,23 @@ class Conversation < ApplicationRecord
 
     return handle_campaign_status if campaign.present?
 
-    return assign_bot_to_tester if contact.label_list.include?(BOT_TESTER_LABEL)
-
+    tester = contact.label_list.include?(BOT_TESTER_LABEL)
     # A supplier goes straight to a person: the bot only answers conversations assigned to it.
-    set_active_bot_conversation if inbox.active_bot? && !non_lead_contact?
+    return unless tester || (inbox.active_bot? && !non_lead_contact?)
+    return @seller_first = true if seller_first?
+
+    tester ? assign_bot_to_tester : set_active_bot_conversation
+  end
+
+  # In business hours a returning customer goes to the sellers first, who usually know them; the
+  # bot steps in only if nobody answers (Conversations::BotTakeoverJob). New customers, and
+  # anyone writing outside business hours, get the bot straight away.
+  def seller_first?
+    inbox.working_hours_enabled? && !inbox.out_of_office? && contact.conversations.exists?
+  end
+
+  def schedule_bot_takeover
+    Conversations::BotTakeoverJob.set(wait: account.bot_wait_minutes.minutes).perform_later(self)
   end
 
   def assign_bot_to_tester
