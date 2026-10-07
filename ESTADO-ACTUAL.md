@@ -1,7 +1,7 @@
-# Estado actual — 5 de octubre de 2026
+# Estado actual — 6 de octubre de 2026
 
 Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 5 de octubre (día de entrega). Qué hace el sistema, qué hace y qué no
+Actualizado al cierre de la sesión del 6 de octubre. Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -382,14 +382,56 @@ siguen **sin bot para los clientes reales**.
 - "la bomba de agua chery para el arauca" listó las dos: "Chery" es también la marca del carro, ambiguo de verdad.
 - El contacto #27 ya no existe: se unió al #23 en las pruebas del 04/10.
 
+## 06/10 — plantilla de seguimiento, caché de bandejas, tasa del BCV y porcentaje
+
+### Rails — mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #94 | **Clave de caché que vence**: el panel guarda bandejas, etiquetas y equipos en IndexedDB y solo los vuelve a pedir si cambia la clave de la cuenta. La clave vive 72 h en Redis y, vencida, la API devolvía un `0000000000` fijo: un navegador con su lista guardada bajo ese mismo valor nunca refrescaba (el panel mostraba solo "Erdu" con cuatro bandejas creadas, y Campañas no ofrecía WABA RomiCars). Ahora una clave vencida se vuelve a generar al leerla |
+| #97 | **Porcentaje sobre la tasa BCV editable** (`account.settings['price_markup_percent']`, 13 por defecto) desde **Ajustes → Precios → Cambiar porcentaje**, solo administradores. Al guardar rehace el equivalente de la última tasa y todo el catálogo (`PATCH exchange_rates/markup`). **La tasa se lee de bcv.org.ve** y se guarda con su "Fecha Valor"; `ve.dolarapi.com` queda de respaldo. Una tasa a más de 25 % de la última se descarta. El job pasó de cada 6 h a cada hora. La columna sigue llamándose `equiv_13` |
+| #98 | bcv.org.ve manda un certificado intermedio que no corresponde y desde el servidor toda lectura fallaba la verificación. El intermedio correcto (Sectigo DV R36, hasta 2036) va en `config/certs` y se suma a las raíces del sistema solo para esa consulta. Si el BCV cambia de CA vuelve a fallar y responde el respaldo: la pantalla lo dice ("fuente: respaldo") |
+
+**Decidido con el dueño**: los precios pasan a la tasa del día siguiente en cuanto el BCV la
+publica (por la tarde), no a medianoche.
+
+Probado en producción el 06/10: porcentaje 13 → 14 → 13 con el catálogo recalculado las dos
+veces; "Actualizar ahora" trajo 873,87 con fecha valor 07/10 y fuente BCV. **Sin ver todavía**:
+que el job de cada hora la traiga solo.
+
+### Plantilla `seguimiento_pedido` en Meta
+
+- **Importaciones Romicars** (WABA `112013338473590`, el número principal): creada el 04/10 y
+  aprobada como **Utility**, en español, con el texto de la guía. Sincronizada en la bandeja
+  WABA RomiCars; aparece en el editor y en Campañas.
+- **Romicars Ventas Digitales** (WABA `529004876962549`): Meta responde "no tiene permiso para
+  crear ni actualizar plantillas". Va con lo que ya faltaba de esa línea: número sin conectar y
+  portafolio sin verificar. Al enviarla Meta también avisó que la categoría debería ser
+  Marketing; en la principal pasó como Utility sin ese aviso.
+- En una **campaña**, la variable 1 es `{{contact.first_name}}` (un contacto sin nombre se
+  salta). La variable 2 es un texto igual para todos: Chatwoot no guarda en el contacto qué
+  repuesto consultó. Se combina con los filtros de marca y modelo de la audiencia. Mandarla en
+  masa a quien no consultó nada arriesga que Meta la pase a Marketing.
+
+### Estado de la cuenta al 06/10
+
+- Agentes: Dario y Moises (administradores), **ventas 01** y **Ventas 02** (agentes).
+- 539 conversaciones abiertas (504 en WhatsApp, 32 en Instagram), 531 a nombre de Dario y 8 sin
+  asignar. 939 contactos. 446 leads en 30 días, 0 cierres con resultado.
+- **Pendiente de decidir**: qué hacer con esas conversaciones abiertas que nadie atendió antes
+  de arrancar a medir (ver "Punto exacto").
+
 ## Punto exacto donde quedamos
 
 Bot probado en Facebook, WhatsApp e Instagram. Para salir a producción:
 
-1. **Vendedores** (bloqueante): hoy solo existen Dario y Moises, y Dario es el único miembro de
-   las bandejas, así que todo lo asignado le cae a él (417 conversaciones el 02/10). Crear las
-   cuentas en **Ajustes → Agentes** y agregarlos a las bandejas (sobre todo WABA RomiCars).
-   Después, verificar que el reparto les llegue y redistribuir lo que acumuló Dario.
+0. **Las conversaciones abiertas de antes del arranque** (539 el 06/10): mientras sigan abiertas
+   y a nombre de Dario, el dashboard arranca con cientos de leads sin resultado. Decidir si se
+   cierran y se sacan de las cifras, o se borran. Los contactos conviene conservarlos.
+
+1. **Vendedores**: ya existen **ventas 01** y **Ventas 02** (06/10). Falta confirmar que son
+   miembros de las bandejas (sobre todo WABA RomiCars), que el reparto les llega y
+   redistribuir lo que acumuló Dario (531 abiertas).
 2. **Conectar el bot a WhatsApp e Instagram** cuando la clienta lo decida. Ya está probado en
    las dos con `prueba-bot` (04/10). Al conectarlo a WhatsApp (inbox 4) solo toma las
    conversaciones **nuevas**: las ~375 abiertas ya tienen vendedor y el bot no contesta ahí.
@@ -414,8 +456,8 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-9. **Plantilla Utility** en Meta (la crea el dueño): `seguimiento_pedido`, español. Texto y
-   ejemplos en [GUIA-BOT.md](GUIA-BOT.md#6-plantilla-seguimiento_pedido).
+9. **Plantilla `seguimiento_pedido`**: lista en el número principal (06/10). Falta en la segunda
+   línea, cuando ese número esté conectado.
 
 ## Pendientes
 
