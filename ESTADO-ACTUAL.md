@@ -1,7 +1,9 @@
-# Estado actual — 6 de octubre de 2026
+# Estado actual — 7 de octubre de 2026
 
-Dónde quedó el trabajo, para retomarlo desde otra máquina sin el historial del chat.
-Actualizado al cierre de la sesión del 6 de octubre (noche): **la tienda arrancó a trabajar desde aquí**. Qué hace el sistema, qué hace y qué no
+Dónde quedó el trabajo, para retomarlo desde otra máquina o con otra cuenta de Claude, sin el
+historial del chat. Actualizado al cierre de la sesión del 7 de octubre. **Para retomar, ir
+directo a [Punto exacto donde quedamos](#punto-exacto-donde-quedamos)**: dice qué falta, en qué
+orden y cómo probar. La tienda trabaja con el sistema desde el 06/10. Qué hace el sistema, qué hace y qué no
 hace el bot, para vendedores y para la entrega: **[GUIA-BOT.md](GUIA-BOT.md)** (también se
 entregó en Word).
 
@@ -487,7 +489,24 @@ que el job de cada hora la traiga solo.
 - WhatsApp Web no escribe en el cuadro de mensaje justo después de abrir un chat por URL: hay
   que hacer clic en el cuadro y comprobar con una captura que el mensaje salió.
 
-## 07/10 — pedidos de la clienta: sin emojis, menos insistencia, nombres de piezas, fotos
+## 07/10 — quién atiende primero, el bot se calla con el vendedor, pedidos de la clienta
+
+### Rails — mergeado y desplegado
+
+| PR | Qué |
+|---|---|
+| #106 | **Vendedor primero con clientes que vuelven**: en horario comercial, si el contacto ya tenía conversaciones, la nueva queda abierta para los vendedores y `Conversations::BotTakeoverJob` le pasa al bot a los N minutos si nadie contestó (reenvía al bot los últimos mensajes del cliente). Cliente nuevo o fuera de horario: atiende el bot de una. El contacto con `prueba-bot` también espera |
+| #107 | **El bot se calla cuando escribe un vendedor**, desde el panel o desde el teléfono (eco de WhatsApp `smb_message_echoes`, `is_echo` de Instagram/Facebook): `Message#release_bot_to_seller` quita al bot, abre la conversación y marca `additional_attributes.seller_took_over_at`. Desde ahí cualquier respuesta tardía del bot se guarda como nota privada (`hold_bot_reply_after_seller`). Seguimiento: nombre limpio ("Lenin", no "Arq. Lenin Piña 🏙️") |
+| #108 | **Espera configurable**: Ajustes → Flujo de conversación → "Espera del bot con clientes recurrentes" (`account.settings.bot_wait_minutes`, por defecto 20, máximo 120; hoy 20). **Desconectar el bot de una bandeja le pasa sus conversaciones a los vendedores** (`AgentBotInbox` → `Conversations::ReleaseBotJob` → `bot_handoff!`). Antes seguían asignadas al bot y este seguía contestando. `BotTakeoverJob` ya no usa el bot de otra bandeja |
+| #109 | Mensajes de seguimiento sin emojis |
+
+### Hecho en producción el 07/10
+
+- El dueño **desconectó el bot de las dos bandejas de WhatsApp** (4 y 5). Hoy el bot está solo en
+  Romi Cars (2, Facebook) y somosromicars (3, Instagram). Las 16 conversaciones de WhatsApp que
+  el bot todavía tenía se asignaron a mano a Ventas 1 / ventas 2 y se abrieron.
+- Contacto #164 (la línea principal de la tienda, +584244205394) con etiqueta `interno`.
+- `followups_enabled: true` (el seguimiento está **encendido**).
 
 ### n8n `Bot Atencion Cliente` (versión activa `34489583`, anterior `82245667`)
 
@@ -532,34 +551,85 @@ con `kind` (`repuesto`, `combo`, `promocion`), más `details` (qué incluye o co
 `ends_on` (promos con vencimiento). La marca solo es obligatoria en repuestos: un combo o
 promo sin marca vale para todas. Importar y exportar siguen siendo solo repuestos.
 
-**Después de desplegar, en n8n** (antes no: la columna `kind` no existe y la búsqueda fallaría):
-- `buscar_precio_repuesto`: agregar `AND vp.kind = 'repuesto'` en `candidatos`.
-- Tool nueva `buscar_combos_promociones` (Postgres) sobre `kind IN ('combo','promocion')`,
-  activas, sin vencer, de su marca/modelo o sin marca.
-- Prompt: la sección PROMOCIONES Y COMBOS y "Promos al cotizar" usan esa tool en vez de
-  `buscar_faq`.
+**Después de desplegar, en n8n** (antes no: la columna `kind` no existe y la búsqueda de
+repuestos fallaría). Comprobar primero que la migración corrió: en Lista de Precios aparecen las
+pestañas, o `GET /api/v1/accounts/1/vehicle_prices` trae `kind` en cada fila.
+
+1. `Tool: buscar_precio_repuesto`, en el CTE `candidatos`: agregar `AND vp.kind = 'repuesto'`
+   después de `WHERE vp.active = true`. Sin esto, un combo con marca aparece como repuesto.
+2. Tool nueva `buscar_combos_promociones`: nodo Postgres Tool (misma credencial que las otras
+   tools SQL), conectado como `ai_tool` al `Agente Orquestador`. Parámetros `$fromAI`: `marca` y
+   `modelo` (vacíos si no se saben). Consulta de partida:
+
+   ```sql
+   SELECT CASE vp.kind WHEN 'combo' THEN 'combo' ELSE 'promoción' END AS tipo,
+          vp.description AS nombre, vp.details AS incluye_o_condiciones,
+          coalesce(vb.name, 'todas las marcas') AS marca, coalesce(vm.name, 'todos los modelos') AS modelo,
+          to_char(vp.ends_on, 'DD/MM/YYYY') AS valida_hasta,
+          CASE WHEN NOT vp.available THEN 'AGOTADO'
+               WHEN vp.bolivares IS NULL AND vp.divisa IS NULL THEN 'sin precio fijo: ver condiciones'
+               ELSE concat_ws(' o ', vp.bolivares || '$ a tasa BCV', vp.divisa || '$ en divisas') END AS precio_texto
+   FROM vehicle_prices vp
+   LEFT JOIN vehicle_brands vb ON vb.id = vp.vehicle_brand_id
+   LEFT JOIN vehicle_models vm ON vm.id = vp.vehicle_model_id
+   WHERE vp.account_id = $3 AND vp.kind IN ('combo', 'promocion') AND vp.active
+     AND (vp.ends_on IS NULL OR vp.ends_on >= current_date)
+     AND ($1 = '' OR vb.id IS NULL OR vb.name ILIKE $1)
+     AND ($2 = '' OR vm.id IS NULL OR vm.name ILIKE $2)
+   ORDER BY vp.kind, vp.description
+   LIMIT 15;
+   ```
+
+   `$3` = `$('Normalizar datos').item.json.account_id`. Si no vuelve nada, que la descripción
+   diga: no inventar, nota y `asignar_agente` (mismo criterio que `SIN_RESPUESTA` de las FAQ).
+3. Prompt (`Agente Orquestador` → `/options/systemMessage`): en la sección PROMOCIONES Y COMBOS y
+   en "Promos al cotizar", cambiar `buscar_faq` por `buscar_combos_promociones`. La regla de
+   `SIN_RESPUESTA` para promos al cotizar deja de hacer falta.
+4. Probar (ver "Cómo probar el bot" abajo): cargar un combo de prueba con marca CHERY / modelo
+   ORINOCO, preguntar "tienen combo de filtros para el orinoco?", y cotizar "filtro de aceite
+   del orinoco" para ver que lo menciona. Borrar el combo de prueba al terminar.
 
 ## Punto exacto donde quedamos
 
-En producción desde el 06/10 a las 7:40 pm, con el bot en las cuatro bandejas. Lo que falta:
+Al cierre del 07/10: bot activo en n8n versión `3ef0a0d5`, conectado **solo a Facebook (2) e
+Instagram (3)**; WhatsApp (4 y 5) lo atienden los vendedores. Todo lo de Rails hasta #109 está
+mergeado y desplegado.
 
-1. **Miembros en Instagram y Facebook** (bloqueante): somosromicars y Romi Cars no tienen
-   vendedores, así que lo que el bot pasa a vendedor ahí queda sin asignar. Hay 2 abiertas así.
-2. **Segunda línea**: falta la plantilla `seguimiento_pedido` en la WABA "Romicars Ventas
-   Digitales" (el 04/10 Meta respondía que no tenía permiso; reintentar ahora que está conectada).
-3. **Marcar los agotados**: el bot ya contesta en todas las bandejas y los 2.139 repuestos están
-   `available = true`, así que el bot dice "sí lo tenemos" a todo. Lo más rápido: Importar →
-   Descargar plantilla, poner NO en DISPONIBLE y subirla.
-4. **Encender el seguimiento** cuando se decida (hoy `followups_enabled: false`); con 5 horas
-   de silencio y el horario comercial, entre semana cae dentro de las 24 h. Que los vendedores
-   **cierren con resultado**: sin eso el dashboard queda en 0 % de conversión.
-5. **FAQs que faltan**, con datos de la tienda: promociones (una FAQ por promo, con la palabra
-   "promoción", qué incluye, para qué carro y precio; el bot ya las ofrece), costo de delivery por zona,
-   Zelle = divisa, devoluciones. Sin ellas el bot pasa esas preguntas a un vendedor.
-6. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
-7. **Tarjeta Productos Profit**: sin conectar le muestra a la clienta "Agrega PROFIT_API_URL…".
+### Lo siguiente, en orden
+
+1. **Mergear y desplegar `claude/combos-promociones`** (pestañas Combos y Promociones, migración
+   nueva). Después, **conectar el bot en n8n** con los 4 pasos de la sección "Combos y
+   promociones" del 07/10. Pedírselo a la tienda: que cargue sus combos y promos ahí (por ejemplo
+   el combo de filtros del Orinoco, que los vendedores cotizan a 14 $ BCV con aceite, aire y
+   gasolina).
+2. **Reconectar el bot a WhatsApp (bandejas 4 y 5)** cuando el dueño decida (Ajustes → Entradas →
+   bandeja → Bot). Al reconectar, probar en vivo con un número que no sea de la tienda:
+   - cliente nuevo: contesta el bot de una;
+   - cliente que vuelve, en horario: el bot espera 20 min; si un vendedor contesta antes, el bot
+     no entra;
+   - un vendedor escribe **desde el teléfono** en una conversación del bot: el bot se calla
+     (`seller_took_over_at` en `additional_attributes`, la conversación pasa a abierta);
+   - desconectar el bot de una bandeja: sus conversaciones pasan a los vendedores.
+   Ninguna de las cuatro se probó todavía en WhatsApp después del despliegue (el contacto de
+   prueba solo existe en Messenger).
+3. **Probar la re-pregunta de datos** (pedido de la clienta, sin probar): con un contacto sin
+   nombre ni ciudad, no contestar la pregunta y ver que el bot la repite solo una vez más, no en
+   el mensaje siguiente, explicando para qué, y que después no insiste.
+4. **Miembros en Instagram y Facebook**: somosromicars y Romi Cars no tienen vendedores, así que lo
+   que el bot pasa a vendedor ahí queda sin asignar.
+5. **Marcar los agotados** en Lista de Precios (casi todo sigue `available = true`; el filtro
+   #1408 sigue agotado). Importar → Descargar plantilla, NO en DISPONIBLE, subirla.
+6. **Segunda línea**: falta la plantilla `seguimiento_pedido` en la WABA "Romicars Ventas
+   Digitales".
+7. **Seguimiento encendido** (`followups_enabled: true`, 5 h de silencio): revisar las primeras
+   que salgan. Que los vendedores **cierren con resultado**: sin eso el dashboard queda en 0 %.
+8. **FAQs que faltan**: costo de delivery por zona, Zelle = divisa, devoluciones; corregir la
+   errata "Frenos Super BonDED" en la FAQ de ubicación y "vuernes" en la de horario. Las
+   promociones ya no van en FAQ: van en la pestaña Promociones.
+9. **Excel de contactos por confirmar**: desmarcar los que no sean proveedores.
+10. **Tarjeta Productos Profit**: sin conectar le muestra a la clienta "Agrega PROFIT_API_URL…".
    Decidir si se oculta mientras no esté conectada.
-8. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
+11. **Jobs muertos de Sidekiq** (886, casi todos `AutomationRules::TriggerPendingExecutionsJob`
    con `StatementInvalid`). Falta el error exacto:
 
 ```bash
@@ -569,7 +639,25 @@ docker exec asta_chatwoot-rails-1 bundle exec rails runner 'd=Sidekiq::DeadSet.n
    Sospecha: tabla `automation_rule_pending_executions` sin crear por un `schema.rb` viejo que
    marcó la migración como corrida.
 
-9. **Respuestas a estados de WhatsApp**: ver cómo llega la primera y decidir qué hace el bot.
+12. **Respuestas a estados de WhatsApp**: ver cómo llega la primera y decidir qué hace el bot.
+
+### Cómo probar el bot (para quien retome)
+
+- **Herramientas**: la extensión de Chrome tiene las sesiones abiertas de Chatwoot y de Messenger.
+  En una pestaña de Chatwoot, `window.axios` llama a la API como el usuario logueado
+  (`/api/v1/accounts/1/...`). La pestaña de Chatwoot se congela a veces: navegar a una página de
+  Ajustes y correr el script enseguida. n8n por el MCP `0abc1769` (workflow `8nLOTjgmTTK52CsO`):
+  editar con `update_workflow`, bajar con `get_workflow_details`, comparar con lo esperado y
+  recién ahí `publish_workflow` con el `versionId` nuevo.
+- **Contacto de prueba**: #23 (`prueba-bot`), escribiendo desde Messenger a la página Romi Cars.
+  Nunca escribirle a clientes reales desde el panel.
+- **La espera de 20 min también aplica al contacto de prueba** (ya tiene conversaciones). Para no
+  esperar: mandar un primer mensaje, asignar el bot a la conversación nueva
+  (`POST conversations/:id/assignments` con `{assignee_id: 1, assignee_type: 'AgentBot'}`) y
+  mandar la pregunta real. Al terminar, cerrar la conversación (`toggle_status` → `resolved`):
+  la memoria del bot es por conversación.
+- El vehículo del contacto #23 queda guardado entre pruebas (hoy HAIMA 7); vaciarlo
+  (`custom_attributes.marca_vehiculo` / `modelo_vehiculo`) si la prueba necesita un carro nuevo.
 
 ## Pendientes
 
