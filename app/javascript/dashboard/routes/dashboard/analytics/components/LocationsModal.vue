@@ -10,6 +10,7 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 const props = defineProps({
   show: { type: Boolean, default: false },
   locations: { type: Array, default: () => [] },
+  params: { type: Object, default: () => ({}) },
 });
 
 const emit = defineEmits(['close']);
@@ -36,7 +37,7 @@ async function showCity(selected) {
   contacts.value = [];
   loadingContacts.value = true;
   try {
-    const { data } = await api.getCityContacts(selected.labels);
+    const { data } = await api.getCityContacts(selected.labels, props.params);
     contacts.value = data.contacts || [];
   } catch (e) {
     contacts.value = [];

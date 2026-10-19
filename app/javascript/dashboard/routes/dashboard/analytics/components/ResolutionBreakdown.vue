@@ -1,6 +1,11 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import api from 'dashboard/api/romicarsAnalytics';
+
+const props = defineProps({
+  params: { type: Object, default: () => ({}) },
+  periodLabel: { type: String, default: 'Últimos 30 días' },
+});
 
 const loading = ref(true);
 const data = ref(null);
@@ -8,7 +13,7 @@ const data = ref(null);
 async function loadData() {
   loading.value = true;
   try {
-    const response = await api.getResolution();
+    const response = await api.getResolution(props.params);
     data.value = response.data;
   } catch (e) {
     // ignore
@@ -18,6 +23,7 @@ async function loadData() {
 }
 
 onMounted(loadData);
+watch(() => props.params, loadData);
 
 const totalResolved = computed(() => data.value?.total_resolved || 0);
 const ganadoCount = computed(() => data.value?.ganado?.count || 0);
@@ -67,7 +73,7 @@ function barWidth(count) {
           Resolución de Conversaciones
         </h3>
         <p class="text-xs text-n-slate-10 mt-0.5">
-          Últimos 30 días · {{ totalResolved }} total
+          {{ periodLabel }} · {{ totalResolved }} total
         </p>
       </div>
     </div>

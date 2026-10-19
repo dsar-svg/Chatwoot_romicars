@@ -5,6 +5,7 @@ defineProps({
     default: () => ({ total_leads: 0, conversion: 0, active_chats: 0 }),
   },
   loading: { type: Boolean, default: false },
+  periodLabel: { type: String, default: 'Últimos 30 días' },
 });
 
 const cards = [
@@ -73,7 +74,7 @@ const cards = [
         class="text-[13px]"
         :class="card.featured ? 'text-white/80' : 'text-n-slate-10'"
       >
-        Últimos 30 días
+        {{ card.key === 'active_chats' ? 'Ahora' : periodLabel }}
       </p>
     </div>
   </div>

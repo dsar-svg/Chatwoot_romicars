@@ -11,6 +11,7 @@ const props = defineProps({
     }),
   },
   loading: { type: Boolean, default: false },
+  periodLabel: { type: String, default: 'Últimos 30 días' },
 });
 
 const channelIcon = {
@@ -59,7 +60,7 @@ function vehicleLabel(product) {
       <span class="i-lucide-bar-chart-2 size-4 text-n-blue-11" />
       <h2 class="text-sm font-semibold text-n-slate-12">Demanda e Interés</h2>
       <span class="ml-auto text-[10px] text-n-slate-9"
-        >{{ demand.total_inquiries || 0 }} consultas · 30 días</span
+        >{{ demand.total_inquiries || 0 }} consultas · {{ periodLabel }}</span
       >
     </div>
 
