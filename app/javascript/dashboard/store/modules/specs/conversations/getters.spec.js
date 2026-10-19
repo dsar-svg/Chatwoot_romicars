@@ -128,6 +128,52 @@ describe('#getters', () => {
       ]);
     });
   });
+  describe('RomiCars tabs', () => {
+    const conversationList = [
+      {
+        id: 1,
+        status: 1,
+        meta: { assignee: { id: 1 }, assignee_type: 'AgentBot' },
+        labels: [],
+      },
+      {
+        id: 2,
+        status: 1,
+        meta: { assignee: { id: 1 }, assignee_type: 'User' },
+        labels: ['seguimiento-pendiente'],
+      },
+      { id: 3, status: 1, meta: {}, labels: [] },
+    ];
+    const state = { allConversations: conversationList };
+
+    it('getMineChats leaves out a bot that shares the user id', () => {
+      const rootGetters = { getCurrentUser: { id: 1 } };
+      const ids = getters
+        .getMineChats(
+          state,
+          null,
+          null,
+          rootGetters
+        )({ status: 1 })
+        .map(({ id }) => id);
+      expect(ids).toEqual([2]);
+    });
+
+    it('getBotChats returns what no seller owns', () => {
+      const ids = getters
+        .getBotChats(state)({ status: 1 })
+        .map(({ id }) => id);
+      expect(ids).toEqual([1, 3]);
+    });
+
+    it('getFollowupChats returns the follow-up label', () => {
+      const ids = getters
+        .getFollowupChats(state)({ status: 1 })
+        .map(({ id }) => id);
+      expect(ids).toEqual([2]);
+    });
+  });
+
   describe('#getUnAssignedChats', () => {
     it('order returns only chats assigned to user', () => {
       const conversationList = [

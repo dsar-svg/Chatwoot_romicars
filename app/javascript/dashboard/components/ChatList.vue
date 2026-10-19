@@ -98,6 +98,8 @@ const chatLists = useMapGetter('getFilteredConversations');
 const mineChatsList = useMapGetter('getMineChats');
 const allChatList = useMapGetter('getAllStatusChats');
 const unAssignedChatsList = useMapGetter('getUnAssignedChats');
+const botChatsList = useMapGetter('getBotChats');
+const followupChatsList = useMapGetter('getFollowupChats');
 const participatingChatsList = useMapGetter('getParticipatingChats');
 const chatListLoading = useMapGetter('getChatListLoadingStatus');
 const activeInbox = useMapGetter('getSelectedInbox');
@@ -193,7 +195,8 @@ const assigneeTabItems = computed(() => {
 const showAssigneeInConversationCard = computed(() => {
   return (
     hasAppliedFiltersOrActiveFolders.value ||
-    activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.ALL
+    activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.ALL ||
+    activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.FOLLOWUP
   );
 });
 
@@ -304,11 +307,23 @@ const pageTitle = computed(() => {
 function filterByAssigneeTab(conversations) {
   if (activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.ME) {
     return conversations.filter(
-      c => c.meta?.assignee?.id === currentUser.value?.id
+      c =>
+        c.meta?.assignee_type !== 'AgentBot' &&
+        c.meta?.assignee?.id === currentUser.value?.id
     );
   }
   if (activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.UNASSIGNED) {
     return conversations.filter(c => !c.meta?.assignee);
+  }
+  if (activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.BOT) {
+    return conversations.filter(
+      c => !c.meta?.assignee || c.meta?.assignee_type === 'AgentBot'
+    );
+  }
+  if (activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.FOLLOWUP) {
+    return conversations.filter(c =>
+      (c.labels || []).includes('seguimiento-pendiente')
+    );
   }
   return [...conversations];
 }
@@ -337,6 +352,10 @@ const conversationList = computed(() => {
       localConversationList = [...mineChatsList.value(filters)];
     } else if (activeAssigneeTab.value === 'unassigned') {
       localConversationList = [...unAssignedChatsList.value(filters)];
+    } else if (activeAssigneeTab.value === 'bot') {
+      localConversationList = [...botChatsList.value(filters)];
+    } else if (activeAssigneeTab.value === 'followup') {
+      localConversationList = [...followupChatsList.value(filters)];
     } else {
       localConversationList = [...allChatList.value(filters)];
     }

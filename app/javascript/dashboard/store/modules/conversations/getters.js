@@ -8,6 +8,9 @@ import {
 } from '../../../helper/permissionsHelper';
 import camelcaseKeys from 'camelcase-keys';
 
+// ConversationFollowupsJob::ASSISTED_LABEL: the "Por seguimiento" tab.
+const FOLLOWUP_LABEL = 'seguimiento-pendiente';
+
 export const getSelectedChatConversation = ({
   allConversations,
   selectedChatId,
@@ -78,8 +81,12 @@ const getters = {
     const currentUserID = rootGetters.getCurrentUser?.id;
 
     return _state.allConversations.filter(conversation => {
-      const { assignee } = conversation.meta;
-      const isAssignedToMe = assignee && assignee.id === currentUserID;
+      const { assignee, assignee_type: assigneeType } = conversation.meta;
+      // A bot and a user can share an id: bot 1 held conversations showed up as user 1's.
+      const isAssignedToMe =
+        assignee &&
+        assigneeType !== 'AgentBot' &&
+        assignee.id === currentUserID;
       const shouldFilter = applyPageFilters(conversation, activeFilters);
       const isChatMine = isAssignedToMe && shouldFilter;
 
@@ -103,6 +110,21 @@ const getters = {
       const shouldFilter = applyPageFilters(conversation, activeFilters);
       return isUnAssigned && shouldFilter;
     });
+  },
+  // No seller owns it: the bot has it, or it is waiting for someone to take it.
+  getBotChats: _state => activeFilters => {
+    return _state.allConversations.filter(conversation => {
+      const { assignee, assignee_type: assigneeType } = conversation.meta;
+      const withoutSeller = !assignee || assigneeType === 'AgentBot';
+      return withoutSeller && applyPageFilters(conversation, activeFilters);
+    });
+  },
+  getFollowupChats: _state => activeFilters => {
+    return _state.allConversations.filter(
+      conversation =>
+        (conversation.labels || []).includes(FOLLOWUP_LABEL) &&
+        applyPageFilters(conversation, activeFilters)
+    );
   },
   getParticipatingChats: (_state, _, __, rootGetters) => activeFilters => {
     const currentUserId = rootGetters.getCurrentUser?.id;

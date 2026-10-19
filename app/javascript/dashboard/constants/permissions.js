@@ -29,21 +29,23 @@ export const REPORTS_PERMISSIONS = 'report_manage';
 
 export const PORTAL_PERMISSIONS = 'knowledge_base_manage';
 
+// RomiCars tabs: Mías, En bot, Por seguimiento. "Sin asignar" and "Todos" were dropped at
+// the shop's request.
 export const ASSIGNEE_TYPE_TAB_PERMISSIONS = {
   me: {
     count: 'mineCount',
     permissions: [...ROLES, ...CONVERSATION_PERMISSIONS],
   },
-  unassigned: {
-    count: 'unAssignedCount',
+  bot: {
+    count: 'botCount',
     permissions: [
       ...ROLES,
       MANAGE_ALL_CONVERSATION_PERMISSIONS,
       CONVERSATION_UNASSIGNED_PERMISSIONS,
     ],
   },
-  all: {
-    count: 'allCount',
+  followup: {
+    count: 'followupCount',
     permissions: [
       ...ROLES,
       MANAGE_ALL_CONVERSATION_PERMISSIONS,

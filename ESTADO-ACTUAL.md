@@ -589,6 +589,26 @@ pestañas, o `GET /api/v1/accounts/1/vehicle_prices` trae `kind` en cada fila.
    ORINOCO, preguntar "tienen combo de filtros para el orinoco?", y cotizar "filtro de aceite
    del orinoco" para ver que lo menciona. Borrar el combo de prueba al terminar.
 
+## 19/10 — pestañas de conversaciones y mapa por estado (pedido de la clienta)
+
+Rama `claude/conversations-dashboard-adjustments-bd05e6` (sin mergear ni desplegar).
+
+- **Pestañas**: Mías · En bot · Por seguimiento, en el panel y en la app móvil. Se quitaron
+  "Sin asignar" y "Todos" a pedido de la clienta. `assignee_type` nuevos en la API: `bot`
+  (`Conversation.without_seller`: ningún vendedor asignado, la tenga el bot o esté esperando
+  vendedor) y `followup` (`Conversation.in_followup`: etiqueta `seguimiento-pendiente`). Los
+  contadores salen como `bot_count` y `followup_count`. `unassigned` y `all` siguen en la API.
+- **El bot que vuelve deja de figurar del vendedor**: una conversación resuelta que el cliente
+  reabre en una bandeja con bot pasaba a `pending` con el vendedor todavía asignado, y el bot
+  contestaba desde su "Mías". Ahora se le quita el vendedor y se asigna el bot
+  (`Message#reopen_resolved_for_bot`). Si un vendedor había escrito en el hilo
+  (`seller_took_over_at`), queda abierta con él y el bot no entra.
+- **"Mías" con el bot**: el panel comparaba solo el id del asignado, y el bot 1 aparecía como
+  del usuario 1. Ahora mira también `assignee_type`.
+- **Mapa**: al tocarlo (o "Ver por estado") abre un modal con los estados y sus ciudades; una
+  ciudad lista sus contactos (`GET romicars_analytics/city_contacts?labels[]=`) y lleva a su
+  última conversación. Las ciudades que no se reconocen van en "Sin estado reconocido".
+
 ## Punto exacto donde quedamos
 
 Al cierre del 07/10: bot activo en n8n versión `3ef0a0d5`, conectado **solo a Facebook (2) e

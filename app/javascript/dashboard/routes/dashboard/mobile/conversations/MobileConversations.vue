@@ -29,14 +29,14 @@ const assigneeTabs = computed(() => {
       count: stats.mineCount,
     },
     {
-      key: ASSIGNEE_TYPE.UNASSIGNED,
-      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.UNASSIGNED'),
-      count: stats.unAssignedCount,
+      key: ASSIGNEE_TYPE.BOT,
+      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.BOT'),
+      count: stats.botCount,
     },
     {
-      key: ASSIGNEE_TYPE.ALL,
-      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.ALL'),
-      count: stats.allCount,
+      key: ASSIGNEE_TYPE.FOLLOWUP,
+      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.FOLLOWUP'),
+      count: stats.followupCount,
     },
   ];
 });
@@ -69,8 +69,8 @@ const filters = page => ({
 
 const listGetter = {
   [ASSIGNEE_TYPE.ME]: 'getMineChats',
-  [ASSIGNEE_TYPE.UNASSIGNED]: 'getUnAssignedChats',
-  [ASSIGNEE_TYPE.ALL]: 'getAllStatusChats',
+  [ASSIGNEE_TYPE.BOT]: 'getBotChats',
+  [ASSIGNEE_TYPE.FOLLOWUP]: 'getFollowupChats',
 };
 
 const conversations = computed(() => {

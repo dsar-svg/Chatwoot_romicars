@@ -287,6 +287,25 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     }
   end
 
+  # The contacts behind one city of the map. `labels` are the raw strings contact_locations
+  # grouped by ("Valencia", "valencia, carabobo"), so the list adds up to what the map shows.
+  def city_contacts
+    account = Current.account
+    labels = Array(params[:labels]).compact_blank.first(50)
+    return render(json: { contacts: [] }) if labels.empty?
+
+    contacts = lead_contacts(account).where("#{CONTACT_CITY} IN (:labels)", labels: labels)
+                                     .order(Arel.sql('contacts.last_activity_at DESC NULLS LAST')).limit(200)
+    last_conversation = account.conversations.where(contact_id: contacts.map(&:id)).group(:contact_id).maximum(:display_id)
+
+    render json: {
+      contacts: contacts.map do |contact|
+        { id: contact.id, name: contact.name, phone_number: contact.phone_number,
+          conversation_id: last_conversation[contact.id] }
+      end
+    }
+  end
+
   def ai_insights
     account = Current.account
 

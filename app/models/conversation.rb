@@ -154,6 +154,15 @@ class Conversation < ApplicationRecord
   scope :unassigned, -> { where(assignee_id: nil, assignee_agent_bot_id: nil) }
   scope :assigned, -> { where.not(assignee_id: nil).or(where.not(assignee_agent_bot_id: nil)) }
   scope :assigned_to, ->(agent) { where(assignee_id: agent.id) }
+  # The "En bot" tab: no seller owns it. Also catches what the bot handed over and nobody took
+  # yet; with that tab replacing "Sin asignar" it would otherwise show up nowhere.
+  scope :without_seller, -> { where(assignee_id: nil) }
+  # The "Por seguimiento" tab: threads where the follow-up left a note for the seller.
+  scope :in_followup, -> { where(id: followup_taggings) }
+
+  def self.followup_taggings
+    non_lead_taggings('Conversation', ConversationFollowupsJob::ASSISTED_LABEL)
+  end
   scope :sort_on_unread, lambda { |_direction|
     order(unread_messages_count_arel.desc).sort_on_last_activity_at('desc')
   }

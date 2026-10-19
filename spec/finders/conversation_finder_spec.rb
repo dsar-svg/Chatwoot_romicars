@@ -91,6 +91,35 @@ describe ConversationFinder do
       end
     end
 
+    context 'with assignee_type bot' do
+      let(:params) { { assignee_type: 'bot' } }
+      let!(:agent_bot_conversation) do
+        create(:conversation, account: account, inbox: inbox, assignee_agent_bot: create(:agent_bot, account: account))
+      end
+
+      it 'returns the conversations no seller owns, held by the bot or not' do
+        result = conversation_finder.perform
+        expect(result[:conversations].length).to be 2
+        expect(result[:conversations]).to include(agent_bot_conversation)
+        expect(result[:count][:bot_count]).to be 2
+      end
+    end
+
+    context 'with assignee_type followup' do
+      let(:params) { { assignee_type: 'followup' } }
+      let!(:followup_conversation) do
+        create(:conversation, account: account, inbox: inbox, assignee: user_2).tap do |conversation|
+          conversation.add_labels([ConversationFollowupsJob::ASSISTED_LABEL])
+        end
+      end
+
+      it 'returns the conversations labelled for follow-up' do
+        result = conversation_finder.perform
+        expect(result[:conversations].map(&:id)).to eq([followup_conversation.id])
+        expect(result[:count][:followup_count]).to be 1
+      end
+    end
+
     context 'with status all' do
       let(:params) { { status: 'all' } }
 
@@ -179,7 +208,9 @@ describe ConversationFinder do
                                        mine_count: 2,
                                        assigned_count: 4,
                                        unassigned_count: 1,
-                                       all_count: 5
+                                       all_count: 5,
+                                       bot_count: 2,
+                                       followup_count: 0
                                      })
       end
     end
@@ -274,7 +305,9 @@ describe ConversationFinder do
                                        mine_count: 2,
                                        assigned_count: 3,
                                        unassigned_count: 1,
-                                       all_count: 4
+                                       all_count: 4,
+                                       bot_count: 1,
+                                       followup_count: 0
                                      })
       end
 
