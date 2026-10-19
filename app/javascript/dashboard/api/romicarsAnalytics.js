@@ -22,6 +22,10 @@ class RomicarsDashboardAPI extends ApiClient {
     return axios.get(`${this.url}/contact_locations`);
   }
 
+  getCityContacts(labels) {
+    return axios.get(`${this.url}/city_contacts`, { params: { labels } });
+  }
+
   // `refresh` skips the server cache and asks the model again.
   getAIInsights({ refresh = false } = {}) {
     return axios.get(`${this.url}/ai_insights`, {

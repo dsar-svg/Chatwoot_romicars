@@ -275,6 +275,32 @@ RSpec.describe Message do
       expect(conversation.open?).to be false
       expect(conversation.pending?).to be true
     end
+
+    context 'when a seller had the conversation and the inbox bot is active' do
+      let(:agent_bot) { create(:agent_bot, account: conversation.account) }
+      let(:seller) { create(:user, account: conversation.account) }
+
+      before do
+        create(:agent_bot_inbox, inbox: conversation.inbox, agent_bot: agent_bot)
+        conversation.update!(assignee: seller, status: :resolved)
+      end
+
+      it 'hands the conversation to the bot instead of leaving the seller assigned' do
+        message.save!
+        conversation.reload
+        expect(conversation).to be_pending
+        expect(conversation.assignee).to be_nil
+        expect(conversation.assignee_agent_bot).to eq(agent_bot)
+      end
+
+      it 'keeps it with the seller when the seller wrote in it' do
+        conversation.update!(additional_attributes: { Message::SELLER_TOOK_OVER => 1.day.ago.iso8601 })
+        message.save!
+        conversation.reload
+        expect(conversation).to be_open
+        expect(conversation.assignee).to eq(seller)
+      end
+    end
   end
 
   describe '#mark_pending_conversation_as_open_for_human_response' do

@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useStoreGetters } from 'dashboard/composables/store';
 import wootConstants from 'dashboard/constants/globals';
+import { getUserRole } from 'dashboard/helper/permissionsHelper';
 import MobileHeader from '../components/MobileHeader.vue';
 import MobileConversationItem from '../components/MobileConversationItem.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -20,6 +21,14 @@ const inboxId = ref('');
 
 const inboxes = computed(() => getters['inboxes/getInboxes'].value);
 
+const isAdmin = computed(
+  () =>
+    getUserRole(
+      getters.getCurrentUser.value,
+      getters.getCurrentAccountId.value
+    ) === 'administrator'
+);
+
 const assigneeTabs = computed(() => {
   const stats = getters['conversationStats/getStats'].value;
   return [
@@ -29,16 +38,22 @@ const assigneeTabs = computed(() => {
       count: stats.mineCount,
     },
     {
-      key: ASSIGNEE_TYPE.UNASSIGNED,
-      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.UNASSIGNED'),
-      count: stats.unAssignedCount,
+      key: ASSIGNEE_TYPE.BOT,
+      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.BOT'),
+      count: stats.botCount,
+    },
+    {
+      key: ASSIGNEE_TYPE.FOLLOWUP,
+      label: t('MOBILE.CONVERSATIONS.ASSIGNEE.FOLLOWUP'),
+      count: stats.followupCount,
     },
     {
       key: ASSIGNEE_TYPE.ALL,
       label: t('MOBILE.CONVERSATIONS.ASSIGNEE.ALL'),
       count: stats.allCount,
+      adminOnly: true,
     },
-  ];
+  ].filter(tab => !tab.adminOnly || isAdmin.value);
 });
 
 const statusOptions = computed(() =>
@@ -69,7 +84,8 @@ const filters = page => ({
 
 const listGetter = {
   [ASSIGNEE_TYPE.ME]: 'getMineChats',
-  [ASSIGNEE_TYPE.UNASSIGNED]: 'getUnAssignedChats',
+  [ASSIGNEE_TYPE.BOT]: 'getBotChats',
+  [ASSIGNEE_TYPE.FOLLOWUP]: 'getFollowupChats',
   [ASSIGNEE_TYPE.ALL]: 'getAllStatusChats',
 };
 

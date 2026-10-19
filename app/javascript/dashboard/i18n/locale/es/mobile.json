@@ -14,7 +14,9 @@
       "ASSIGNEE": {
         "ME": "Mías",
         "UNASSIGNED": "Sin asignar",
-        "ALL": "Todas"
+        "ALL": "Todas",
+        "BOT": "En bot",
+        "FOLLOWUP": "Por seguimiento"
       },
       "INBOX": {
         "LABEL": "Canal",

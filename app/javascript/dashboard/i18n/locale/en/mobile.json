@@ -14,7 +14,9 @@
       "ASSIGNEE": {
         "ME": "Mine",
         "UNASSIGNED": "Unassigned",
-        "ALL": "All"
+        "ALL": "All",
+        "BOT": "Bot",
+        "FOLLOWUP": "Follow-up"
       },
       "INBOX": {
         "LABEL": "Channel",

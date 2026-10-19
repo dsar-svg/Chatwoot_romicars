@@ -136,15 +136,19 @@ const normalize = value =>
     .replace(/[^a-z]+/g, ' ')
     .trim();
 
-export function locatePlace(raw) {
+function placeKey(raw) {
   const text = normalize(raw);
   if (!text) return null;
-  if (VENEZUELA_PLACES[text]) return VENEZUELA_PLACES[text];
+  if (VENEZUELA_PLACES[text]) return text;
 
   // "Valencia, Carabobo", "Edo Zulia", "municipio Maracaibo" all carry the place inside a
   // longer string. Substring on word boundaries rather than `includes`, so "cua" does not
   // match "Guacara".
-  const key = KEYS.find(k => new RegExp(`\\b${k}\\b`).test(text));
+  return KEYS.find(k => new RegExp(`\\b${k}\\b`).test(text)) || null;
+}
+
+export function locatePlace(raw) {
+  const key = placeKey(raw);
   return key ? VENEZUELA_PLACES[key] : null;
 }
 
@@ -170,4 +174,142 @@ export function toHeatPoints(locations = []) {
   });
 
   return [...points.values()].sort((a, b) => b.count - a.count);
+}
+
+// Every key of VENEZUELA_PLACES under its state, for the map's list by state.
+export const STATE_PLACES = {
+  'Distrito Capital': ['caracas', 'distrito capital'],
+  'La Guaira': ['la guaira', 'vargas', 'catia la mar'],
+  Miranda: [
+    'los teques',
+    'miranda',
+    'guarenas',
+    'guatire',
+    'charallave',
+    'cua',
+    'ocumare del tuy',
+    'san antonio de los altos',
+    'higuerote',
+  ],
+  Zulia: [
+    'maracaibo',
+    'zulia',
+    'cabimas',
+    'ciudad ojeda',
+    'lagunillas',
+    'machiques',
+    'santa barbara del zulia',
+    'san carlos del zulia',
+  ],
+  Carabobo: ['valencia', 'carabobo', 'guacara', 'puerto cabello', 'moron'],
+  Aragua: [
+    'maracay',
+    'aragua',
+    'turmero',
+    'cagua',
+    'la victoria',
+    'villa de cura',
+  ],
+  Lara: ['barquisimeto', 'lara', 'cabudare', 'carora', 'el tocuyo'],
+  Yaracuy: ['san felipe', 'yaracuy', 'yaritagua'],
+  Falcón: ['coro', 'falcon', 'punto fijo'],
+  Mérida: ['merida', 'ejido', 'el vigia'],
+  Táchira: [
+    'san cristobal',
+    'tachira',
+    'san antonio del tachira',
+    'rubio',
+    'la fria',
+  ],
+  Trujillo: ['trujillo', 'valera'],
+  Barinas: ['barinas'],
+  Portuguesa: ['guanare', 'portuguesa', 'acarigua', 'araure'],
+  Cojedes: ['san carlos', 'cojedes', 'tinaquillo'],
+  Guárico: [
+    'san juan de los morros',
+    'guarico',
+    'calabozo',
+    'valle de la pascua',
+  ],
+  Apure: ['san fernando de apure', 'apure'],
+  Anzoátegui: [
+    'barcelona',
+    'anzoategui',
+    'puerto la cruz',
+    'lecheria',
+    'el tigre',
+    'anaco',
+    'puerto piritu',
+  ],
+  Sucre: ['cumana', 'sucre', 'carupano'],
+  Monagas: ['maturin', 'monagas'],
+  'Nueva Esparta': [
+    'porlamar',
+    'nueva esparta',
+    'margarita',
+    'pampatar',
+    'la asuncion',
+    'juangriego',
+  ],
+  Bolívar: [
+    'ciudad bolivar',
+    'bolivar',
+    'ciudad guayana',
+    'puerto ordaz',
+    'san felix',
+    'upata',
+    'santa elena de uairen',
+  ],
+  'Delta Amacuro': ['tucupita', 'delta amacuro'],
+  Amazonas: ['puerto ayacucho', 'amazonas'],
+};
+
+export const UNKNOWN_STATE = 'Sin estado reconocido';
+
+const STATE_OF = Object.fromEntries(
+  Object.entries(STATE_PLACES).flatMap(([state, keys]) =>
+    keys.map(key => [key, state])
+  )
+);
+
+const byCount = (a, b) => b.count - a.count;
+
+// The rows of contact_locations as states, each with its cities. A city is named after the
+// spelling most contacts used and keeps every raw label, so its contacts can be fetched.
+// Rows no place matches go under UNKNOWN_STATE, one entry per label, so nothing is dropped.
+export function groupByState(locations = []) {
+  const states = new Map();
+
+  locations.forEach(({ label, count }) => {
+    const key = placeKey(label);
+    const state = key ? STATE_OF[key] : UNKNOWN_STATE;
+    const amount = Number(count) || 0;
+
+    const group = states.get(state) || { state, count: 0, cities: new Map() };
+    const city = group.cities.get(key || label) || {
+      name: label,
+      top: 0,
+      count: 0,
+      labels: [],
+    };
+    if (amount > city.top) Object.assign(city, { name: label, top: amount });
+    city.count += amount;
+    city.labels.push(label);
+    group.count += amount;
+    group.cities.set(key || label, city);
+    states.set(state, group);
+  });
+
+  // Unknown goes last whatever its size: it is a leftover, not a region.
+  const rank = ({ state }) => Number(state === UNKNOWN_STATE);
+
+  return [...states.values()]
+    .map(group => ({
+      state: group.state,
+      count: group.count,
+      cities: [...group.cities.values()]
+        .map(({ name, count, labels }) => ({ name, count, labels }))
+        .sort(byCount),
+    }))
+    .sort((a, b) => rank(a) - rank(b) || byCount(a, b));
 }

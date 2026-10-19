@@ -18,7 +18,9 @@
     "ASSIGNEE_TYPE_TABS": {
       "me": "Mine",
       "unassigned": "Unassigned",
-      "all": "All"
+      "all": "All",
+      "bot": "Bot",
+      "followup": "Follow-up"
     },
     "CHAT_STATUS_FILTER_ITEMS": {
       "open": {

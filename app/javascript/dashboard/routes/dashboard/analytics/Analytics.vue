@@ -14,6 +14,7 @@ import VenezuelaMap from './components/VenezuelaMap.vue';
 import ResolutionBreakdown from './components/ResolutionBreakdown.vue';
 import WinLossAnalysis from './components/WinLossAnalysis.vue';
 import MetricDetailModal from './components/MetricDetailModal.vue';
+import LocationsModal from './components/LocationsModal.vue';
 
 const loading = ref({
   overview: true,
@@ -44,6 +45,7 @@ const profit = ref({
 });
 
 const contactLocations = ref({ locations: [], without_city: 0 });
+const showLocations = ref(false);
 
 const lastUpdated = ref(null);
 
@@ -267,6 +269,7 @@ onUnmounted(() => {
             :locations="contactLocations.locations"
             :without-city="contactLocations.without_city"
             :loading="loading.locations"
+            @open="showLocations = true"
           />
         </div>
       </div>
@@ -312,5 +315,11 @@ onUnmounted(() => {
     :total="modalTotal"
     :loading="modalLoading"
     @close="handleCloseModal"
+  />
+
+  <LocationsModal
+    :show="showLocations"
+    :locations="contactLocations.locations"
+    @close="showLocations = false"
   />
 </template>

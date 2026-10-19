@@ -56,6 +56,20 @@ RSpec.describe 'RomiCars Analytics leads', type: :request do
     expect(keys.map { |key| Redis::Alfred.get(key) }).to all(be_nil)
   end
 
+  it 'lists the contacts of a city of the map, under any of its spellings' do
+    customer.update!(additional_attributes: { city: 'Valencia' })
+    other_spelling = create(:contact, account: account, additional_attributes: { city: 'valencia, carabobo' })
+    elsewhere = create(:contact, account: account, additional_attributes: { city: 'Maracaibo' })
+    conversation = lead(contact: customer)
+    [other_spelling, elsewhere].each { |contact| lead(contact: contact) }
+
+    contacts = get_json('city_contacts?labels[]=Valencia&labels[]=valencia,%20carabobo')['contacts']
+
+    expect(contacts.pluck('id')).to contain_exactly(customer.id, other_spelling.id)
+    expect(contacts.find { |row| row['id'] == customer.id }['conversation_id']).to eq(conversation.display_id)
+    expect(get_json('city_contacts')['contacts']).to eq([])
+  end
+
   it 'leaves out conversations from before the launch, not their customers' do
     lead(contact: customer, status: :resolved).add_labels(['previo-arranque'])
     expect(get_json('overview')['kpis']['total_leads']).to eq(0)

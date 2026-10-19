@@ -468,13 +468,22 @@ class Message < ApplicationRecord
   def reopen_resolved_conversation
     # mark resolved bot conversation as pending to be reopened by bot processor service
     if conversation.inbox.active_bot?
-      conversation.pending!
+      reopen_resolved_for_bot
     elsif conversation.inbox.api?
       Current.executed_by = sender if reopened_by_contact?
       conversation.open!
     else
       conversation.open!
     end
+  end
+
+  # A seller who wrote in the thread keeps it, and the bot stays quiet as it does while open.
+  # Otherwise the bot answers, so it owns the conversation: leaving the last seller assigned kept
+  # it in their "Mías" while the bot was the one replying.
+  def reopen_resolved_for_bot
+    return conversation.open! if conversation.additional_attributes&.key?(SELLER_TOOK_OVER)
+
+    conversation.update!(status: :pending, assignee: nil, assignee_agent_bot: conversation.inbox.agent_bot)
   end
 
   def reopened_by_contact?

@@ -1,4 +1,11 @@
-import { locatePlace, toHeatPoints } from '../venezuelaCities';
+import {
+  locatePlace,
+  toHeatPoints,
+  groupByState,
+  STATE_PLACES,
+  UNKNOWN_STATE,
+  VENEZUELA_PLACES,
+} from '../venezuelaCities';
 
 describe('locatePlace', () => {
   it('finds a city written plainly', () => {
@@ -56,5 +63,36 @@ describe('toHeatPoints', () => {
   it('drops rows it cannot place instead of guessing', () => {
     expect(toHeatPoints([{ label: 'Miami', count: 5 }])).toEqual([]);
     expect(toHeatPoints()).toEqual([]);
+  });
+});
+
+describe('groupByState', () => {
+  it('puts every place of the table under a state', () => {
+    const listed = Object.values(STATE_PLACES).flat();
+    expect([...listed].sort()).toEqual(Object.keys(VENEZUELA_PLACES).sort());
+  });
+
+  it('groups cities by state and merges spellings of the same city', () => {
+    const states = groupByState([
+      { label: 'Valencia', count: 3 },
+      { label: 'valencia, carabobo', count: 1 },
+      { label: 'Guacara', count: 2 },
+      { label: 'Maracaibo', count: 1 },
+      { label: 'Narnia', count: 9 },
+    ]);
+
+    expect(states.map(({ state, count }) => [state, count])).toEqual([
+      ['Carabobo', 6],
+      ['Zulia', 1],
+      [UNKNOWN_STATE, 9],
+    ]);
+    expect(states[0].cities).toEqual([
+      {
+        name: 'Valencia',
+        count: 4,
+        labels: ['Valencia', 'valencia, carabobo'],
+      },
+      { name: 'Guacara', count: 2, labels: ['Guacara'] },
+    ]);
   });
 });

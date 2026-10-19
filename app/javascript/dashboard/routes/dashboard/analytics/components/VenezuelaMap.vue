@@ -14,6 +14,8 @@ const props = defineProps({
   loading: { type: Boolean, default: false },
 });
 
+const emit = defineEmits(['open']);
+
 const hovered = ref(null);
 
 const points = computed(() => {
@@ -55,11 +57,21 @@ const unmatched = computed(() => {
       <span class="ml-auto text-xs text-n-slate-9">
         {{ plotted }} contactos ubicados
       </span>
+      <button
+        class="text-xs font-medium text-n-blue-11 hover:underline"
+        @click="emit('open')"
+      >
+        Ver por estado
+      </button>
     </div>
 
     <div v-if="loading" class="h-64 bg-n-alpha-1 rounded-lg animate-pulse" />
 
-    <div v-else class="relative overflow-hidden rounded-lg bg-n-blue-2">
+    <div
+      v-else
+      class="relative overflow-hidden rounded-lg bg-n-blue-2 cursor-pointer"
+      @click="emit('open')"
+    >
       <svg
         :viewBox="`0 0 ${MAP_W} ${MAP_H}`"
         class="w-full h-auto max-h-[340px]"

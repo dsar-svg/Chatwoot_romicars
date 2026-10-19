@@ -4,6 +4,8 @@ export default {
     ME: 'me',
     UNASSIGNED: 'unassigned',
     ALL: 'all',
+    BOT: 'bot',
+    FOLLOWUP: 'followup',
   },
   STATUS_TYPE: {
     OPEN: 'open',
@@ -11,6 +13,8 @@ export default {
     PENDING: 'pending',
     SNOOZED: 'snoozed',
     ALL: 'all',
+    BOT: 'bot',
+    FOLLOWUP: 'followup',
   },
   CONVERSATION_TYPE: {
     MENTION: 'mention',
