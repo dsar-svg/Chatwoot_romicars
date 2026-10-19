@@ -593,8 +593,8 @@ pestañas, o `GET /api/v1/accounts/1/vehicle_prices` trae `kind` en cada fila.
 
 Rama `claude/conversations-dashboard-adjustments-bd05e6` (sin mergear ni desplegar).
 
-- **Pestañas**: Mías · En bot · Por seguimiento, en el panel y en la app móvil. Se quitaron
-  "Sin asignar" y "Todos" a pedido de la clienta. `assignee_type` nuevos en la API: `bot`
+- **Pestañas**: Mías · En bot · Por seguimiento, y Todos solo para administradores, en el panel
+  y en la app móvil. Se quitó "Sin asignar" a pedido de la clienta. `assignee_type` nuevos en la API: `bot`
   (`Conversation.without_seller`: ningún vendedor asignado, la tenga el bot o esté esperando
   vendedor) y `followup` (`Conversation.in_followup`: etiqueta `seguimiento-pendiente`). Los
   contadores salen como `bot_count` y `followup_count`. `unassigned` y `all` siguen en la API.
