@@ -608,6 +608,13 @@ Rama `claude/conversations-dashboard-adjustments-bd05e6` (sin mergear ni despleg
 - **Mapa**: al tocarlo (o "Ver por estado") abre un modal con los estados y sus ciudades; una
   ciudad lista sus contactos (`GET romicars_analytics/city_contacts?labels[]=`) y lleva a su
   última conversación. Las ciudades que no se reconocen van en "Sin estado reconocido".
+- **Filtros del dashboard** (pestaña Operación): período (hoy, 7 días, 30 días, este mes, mes
+  pasado, personalizado), canal y vendedor. La API recibe `since` / `until` (instantes ISO; la
+  página manda el inicio y fin de los días locales), `inbox_ids[]` y `agent_id`, y los aplica
+  `lead_conversations` / `period` del controlador. Sin parámetros, todo sigue en los últimos 30
+  días. Las tarjetas de "ahora" (pendientes, en bot, alta urgencia…) son estado actual: siguen
+  el canal y el vendedor, no el período. **Insights IA no usa los filtros** (decidido: cada rango
+  sería otra llamada a OpenAI). El mapa ahora también sigue el período (antes era histórico).
 
 ## Punto exacto donde quedamos
 

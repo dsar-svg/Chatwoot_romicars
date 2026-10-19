@@ -1,29 +1,32 @@
 /* global axios */
 import ApiClient from './ApiClient';
 
+// `params` on the Operación calls: since / until (ISO times), inbox_ids[] and agent_id.
 class RomicarsDashboardAPI extends ApiClient {
   constructor() {
     super('romicars_analytics', { accountScoped: true, apiVersion: 'v2' });
   }
 
-  getOverview() {
-    return axios.get(`${this.url}/overview`);
+  getOverview(params = {}) {
+    return axios.get(`${this.url}/overview`, { params });
   }
 
-  getAgents() {
-    return axios.get(`${this.url}/agents`);
+  getAgents(params = {}) {
+    return axios.get(`${this.url}/agents`, { params });
   }
 
-  getDemand() {
-    return axios.get(`${this.url}/demand`);
+  getDemand(params = {}) {
+    return axios.get(`${this.url}/demand`, { params });
   }
 
-  getContactLocations() {
-    return axios.get(`${this.url}/contact_locations`);
+  getContactLocations(params = {}) {
+    return axios.get(`${this.url}/contact_locations`, { params });
   }
 
-  getCityContacts(labels) {
-    return axios.get(`${this.url}/city_contacts`, { params: { labels } });
+  getCityContacts(labels, params = {}) {
+    return axios.get(`${this.url}/city_contacts`, {
+      params: { ...params, labels },
+    });
   }
 
   // `refresh` skips the server cache and asks the model again.
@@ -37,8 +40,8 @@ class RomicarsDashboardAPI extends ApiClient {
     return axios.get(`${this.url}/profit`);
   }
 
-  getResolution() {
-    return axios.get(`${this.url}/resolution`);
+  getResolution(params = {}) {
+    return axios.get(`${this.url}/resolution`, { params });
   }
 
   getRequestedProducts() {
@@ -51,8 +54,10 @@ class RomicarsDashboardAPI extends ApiClient {
     });
   }
 
-  getMiniMetricsDetail(type) {
-    return axios.get(`${this.url}/mini_metrics_detail`, { params: { type } });
+  getMiniMetricsDetail(type, params = {}) {
+    return axios.get(`${this.url}/mini_metrics_detail`, {
+      params: { ...params, type },
+    });
   }
 }
 

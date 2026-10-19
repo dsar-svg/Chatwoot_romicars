@@ -161,14 +161,12 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   def overview
     account  = Current.account
-    now      = Time.current
-    since_30 = 30.days.ago
-    today    = now.beginning_of_day
+    today    = Time.current.beginning_of_day
 
     # One lead per person, not per conversation: the Instagram thread that moved to WhatsApp
     # and the one a customer reopens two days later are the same lead, and the contacts a
     # handoff merges already share one id. Suppliers and the rider are out (Conversation.leads).
-    convs_30 = lead_conversations(account).where(created_at: since_30..now)
+    convs_30 = lead_conversations(account).where(created_at: period)
 
     render json: {
       kpis: {
@@ -220,11 +218,11 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def agents
-    account  = Current.account
-    since_30 = 30.days.ago
+    account = Current.account
+    agents  = params[:agent_id].present? ? sellers(account).where(id: params[:agent_id]) : sellers(account)
 
-    data = sellers(account).map do |agent|
-      convs    = lead_conversations(account).where(assignee_id: agent.id, created_at: since_30..Time.current)
+    data = agents.map do |agent|
+      convs    = lead_conversations(account).where(assignee_id: agent.id, created_at: period)
       assigned = convs.count
       res      = convs.where(status: :resolved).count
       # A sale, not any close: counting resolved as conversion credited a seller for every
@@ -240,7 +238,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
         resolved:            res,
         won:                 won,
         conversion:          assigned.positive? ? (won.to_f / assigned * 100).round(1) : 0,
-        avg_response_minutes: avg_first_response(account, agent.id, since_30)
+        avg_response_minutes: avg_first_response(account, agent.id, period)
       }
     end
 
@@ -249,10 +247,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def demand
-    account  = Current.account
-    since_30 = 30.days.ago
+    account = Current.account
 
-    inquiries = lead_inquiries(account).where(created_at: since_30..Time.current)
+    inquiries = lead_inquiries(account).where(created_at: period)
 
     # Aggregated and sorted in SQL by ProductInquiry. Rows written by the n8n flow can
     # arrive without a repuesto or canal; those scopes drop them so the dashboard stops
@@ -274,8 +271,7 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # much of the picture is missing instead of implying the shop only sells in four towns.
   def contact_locations
     account = Current.account
-    counts = lead_contacts(account).where(id: lead_conversations(account).select(:contact_id))
-                                   .group(CONTACT_CITY)
+    counts = located_contacts(account).group(CONTACT_CITY)
                                    .count
 
     located = counts.except(nil)
@@ -294,8 +290,8 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     labels = Array(params[:labels]).compact_blank.first(50)
     return render(json: { contacts: [] }) if labels.empty?
 
-    contacts = lead_contacts(account).where("#{CONTACT_CITY} IN (:labels)", labels: labels)
-                                     .order(Arel.sql('contacts.last_activity_at DESC NULLS LAST')).limit(200)
+    contacts = located_contacts(account).where("#{CONTACT_CITY} IN (:labels)", labels: labels)
+                                        .order(Arel.sql('contacts.last_activity_at DESC NULLS LAST')).limit(200)
     last_conversation = account.conversations.where(contact_id: contacts.map(&:id)).group(:contact_id).maximum(:display_id)
 
     render json: {
@@ -339,14 +335,13 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   end
 
   def resolution
-    account  = Current.account
-    since_30 = 30.days.ago
+    account = Current.account
 
     # This endpoint reports itself as "30 días" but used to query all history, so the
     # percentages never matched the daily/by_agent series below them.
     resolved = lead_conversations(account)
                       .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
-                      .where(resolved_at: since_30..)
+                      .where(resolved_at: period)
 
     # One grouped query instead of ~10 separate COUNT round trips.
     counts_by_type = resolved.group(:resolution_type).count
@@ -358,7 +353,6 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     total_sales_amount = sales.sum(:sale_amount).to_f
 
     render json: {
-      period: '30 días',
       total_resolved: total_resolved,
       ganado: {
         count: counts_by_type.fetch('ganado', 0),
@@ -389,31 +383,30 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
       # it cannot act on, and this one measures how many leads go quiet.
       abandonado: {
         count: lead_conversations(account).where(status: :resolved, resolution_type: 'abandonado')
-                      .where(resolved_at: since_30..).count
+                      .where(resolved_at: period).count
       },
       # Also outside: the lead moved to a WhatsApp conversation and is counted there.
       derivado: {
         count: lead_conversations(account).where(status: :resolved, resolution_type: 'derivado')
-                      .where(resolved_at: since_30..).count
+                      .where(resolved_at: period).count
       },
       # Sales that picked up a conversation from the last two weeks (Conversations::ContinuityJob):
       # leads that looked lost the first time and came back to buy.
       recuperados: {
         count: resolved.where(resolution_type: 'ganado').where("conversations.custom_attributes ->> 'continua_de' IS NOT NULL").count
       },
-      daily: daily_resolution_stats(account, since_30),
-      by_agent: agent_resolution_stats(account, since_30)
+      daily: daily_resolution_stats(account, period),
+      by_agent: agent_resolution_stats(account, period)
     }
   end
 
   def requested_products
-    account  = Current.account
-    since_30 = 30.days.ago
+    account = Current.account
 
     scope = lead_conversations(account)
                    .where(status: :resolved, resolution_reason: Conversation::RESOLUTION_REASON_REQUIRING_PRODUCT)
                    .where.not(requested_product: [nil, ''])
-                   .where(resolved_at: since_30..)
+                   .where(resolved_at: period)
 
     # Totals come from SQL over the whole window. They used to be derived from a
     # `limit(100)` slice, so both counters silently capped at 100 once the shop had a
@@ -443,7 +436,6 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
     end
 
     render json: {
-      period: '30 días',
       total_requested: total_requested,
       unique_products: counts_by_product.size,
       products: products
@@ -474,7 +466,36 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # customer wrote: a WhatsApp broadcast opens one per recipient. Bot testers out too: their
   # made-up requests were most of the demand panel.
   def lead_conversations(account)
-    account.conversations.leads.without_bot_testers.without_pre_launch.customer_wrote
+    dashboard_filters(account.conversations.leads.without_bot_testers.without_pre_launch.customer_wrote)
+  end
+
+  # Channel and seller picked on the Operación tab. The Insights IA tab never sends them: its
+  # analysis stays on the whole shop, and on a fixed 30 days (it is cached and paid per call).
+  def dashboard_filters(conversations)
+    conversations = conversations.where(inbox_id: Array(params[:inbox_ids])) if params[:inbox_ids].present?
+    conversations = conversations.where(assignee_id: params[:agent_id]) if params[:agent_id].present?
+    conversations
+  end
+
+  # The range picked on the Operación tab, the last 30 days when there is none. The page sends
+  # the start and end of the local days, so the server does not need the shop's time zone.
+  def period
+    @period ||= (parse_time(params[:since]) || 30.days.ago)..(parse_time(params[:until]) || Time.current)
+  end
+
+  def parse_time(value)
+    Time.zone.iso8601(value.to_s) if value.present?
+  rescue ArgumentError
+    nil
+  end
+
+  def filtering_conversations?
+    params[:inbox_ids].present? || params[:agent_id].present?
+  end
+
+  # The map follows the range: contacts who wrote in a lead conversation started within it.
+  def located_contacts(account)
+    lead_contacts(account).where(id: lead_conversations(account).where(created_at: period).select(:contact_id))
   end
 
   # The one "conversión" of the dashboard: customers who bought over leads, both counted per
@@ -499,7 +520,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
   # Inquiries the bot logged without a conversation stay in; NOT IN alone would drop them.
   def lead_inquiries(account)
     inquiries = account.product_inquiries
-    inquiries.where(conversation_id: nil).or(inquiries.where(conversation_id: lead_conversations(account).select(:id)))
+    of_leads = inquiries.where(conversation_id: lead_conversations(account).select(:id))
+    # Without a conversation there is no channel or seller to match a filter.
+    filtering_conversations? ? of_leads : inquiries.where(conversation_id: nil).or(of_leads)
   end
 
   def percentage_of(part, total)
@@ -510,9 +533,9 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   # Averaged in SQL. The Ruby version loaded every conversation of every agent into
   # memory just to subtract two timestamps.
-  def avg_first_response(account, agent_id, since)
+  def avg_first_response(account, agent_id, range)
     average = lead_conversations(account)
-                     .where(assignee_id: agent_id, created_at: since..Time.current)
+                     .where(assignee_id: agent_id, created_at: range)
                      .where.not(first_reply_created_at: nil)
                      .average(FIRST_RESPONSE_MINUTES)
 
@@ -872,20 +895,20 @@ class Api::V2::Accounts::RomicarsAnalyticsController < Api::V1::Accounts::BaseCo
 
   # Both series excluded `consulta`, so the "Consulta" column in the daily and per-agent
   # tables of the resolution report was permanently zero.
-  def daily_resolution_stats(account, since)
+  def daily_resolution_stats(account, range)
     lead_conversations(account)
            .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
-           .where(resolved_at: since..)
+           .where(resolved_at: range)
            .group(Arel.sql('DATE(resolved_at)'))
            .group(:resolution_type)
            .count
            .map { |(date, type), count| { date: date.to_s, type: type, count: count } }
   end
 
-  def agent_resolution_stats(account, since)
+  def agent_resolution_stats(account, range)
     lead_conversations(account)
            .where(status: :resolved, resolution_type: Conversation::DECLARED_RESOLUTION_TYPES)
-           .where(resolved_at: since..)
+           .where(resolved_at: range)
            .where.not(assignee_id: nil)
            .joins('LEFT JOIN users ON users.id = conversations.assignee_id')
            .group('users.name')

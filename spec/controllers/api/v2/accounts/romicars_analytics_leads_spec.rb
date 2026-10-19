@@ -56,6 +56,24 @@ RSpec.describe 'RomiCars Analytics leads', type: :request do
     expect(keys.map { |key| Redis::Alfred.get(key) }).to all(be_nil)
   end
 
+  it 'filters the operation figures by date range, channel and seller' do
+    seller = create(:user, account: account)
+    other_inbox = create(:inbox, account: account)
+    lead(contact: customer, created_at: 3.days.ago, assignee: seller)
+    lead(created_at: 3.days.ago, inbox: other_inbox)
+    lead(created_at: 60.days.ago)
+
+    leads = ->(query) { get_json("overview?#{query}")['kpis']['total_leads'] }
+    since = CGI.escape(70.days.ago.iso8601)
+
+    expect(leads.call('')).to eq(2)
+    expect(leads.call("since=#{since}")).to eq(3)
+    expect(leads.call("since=#{since}&until=#{CGI.escape(30.days.ago.iso8601)}")).to eq(1)
+    expect(leads.call("inbox_ids[]=#{other_inbox.id}")).to eq(1)
+    expect(leads.call("agent_id=#{seller.id}")).to eq(1)
+    expect(get_json("agents?agent_id=#{seller.id}").pluck('id')).to eq([seller.id])
+  end
+
   it 'lists the contacts of a city of the map, under any of its spellings' do
     customer.update!(additional_attributes: { city: 'Valencia' })
     other_spelling = create(:contact, account: account, additional_attributes: { city: 'valencia, carabobo' })

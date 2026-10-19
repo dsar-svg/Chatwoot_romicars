@@ -2,6 +2,7 @@
 defineProps({
   agents: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
+  periodLabel: { type: String, default: 'Últimos 30 días' },
 });
 
 function badgeClass(conversion) {
@@ -43,7 +44,7 @@ function formatMinutes(mins) {
       <h2 class="text-sm font-semibold text-n-slate-12">
         Rendimiento por Agente
       </h2>
-      <span class="ml-auto text-[10px] text-n-slate-9">Últimos 30 días</span>
+      <span class="ml-auto text-[10px] text-n-slate-9">{{ periodLabel }}</span>
     </div>
 
     <!-- Loading -->

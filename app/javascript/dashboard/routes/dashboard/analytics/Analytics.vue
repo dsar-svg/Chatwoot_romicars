@@ -1,5 +1,6 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { useMapGetter } from 'dashboard/composables/store';
 import api from 'dashboard/api/romicarsAnalytics';
 import { useAlert } from 'dashboard/composables';
 import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
@@ -15,6 +16,8 @@ import ResolutionBreakdown from './components/ResolutionBreakdown.vue';
 import WinLossAnalysis from './components/WinLossAnalysis.vue';
 import MetricDetailModal from './components/MetricDetailModal.vue';
 import LocationsModal from './components/LocationsModal.vue';
+import DashboardFilters from './components/DashboardFilters.vue';
+import { periodRange } from './period';
 
 const loading = ref({
   overview: true,
@@ -58,6 +61,37 @@ function handleTabChange(tab) {
   activeTab.value = TABS.findIndex(({ label }) => label === tab.label);
 }
 
+// Filters of the Operación tab. Insights IA ignores them on purpose (see the controller).
+const filters = ref({
+  preset: '30d',
+  from: '',
+  to: '',
+  channel: '',
+  agentId: '',
+});
+const inboxes = useMapGetter('inboxes/getInboxes');
+
+const range = computed(() => {
+  const { preset, from, to } = filters.value;
+  return periodRange(preset, { from, to });
+});
+const periodLabel = computed(() => range.value?.label || '');
+
+const filterParams = computed(() => {
+  const { channel, agentId } = filters.value;
+  const params = {};
+  const { since, until } = range.value || {};
+  if (since) params.since = since.toISOString();
+  if (until) params.until = until.toISOString();
+  if (channel) {
+    params.inbox_ids = inboxes.value
+      .filter(inbox => inbox.channel_type === channel)
+      .map(inbox => inbox.id);
+  }
+  if (agentId) params.agent_id = agentId;
+  return params;
+});
+
 // Modal state
 const showModal = ref(false);
 const modalType = ref('');
@@ -68,7 +102,7 @@ const modalLoading = ref(false);
 
 async function loadOverview() {
   try {
-    const { data } = await api.getOverview();
+    const { data } = await api.getOverview(filterParams.value);
     overview.value = data;
   } finally {
     loading.value.overview = false;
@@ -77,7 +111,7 @@ async function loadOverview() {
 
 async function loadAgents() {
   try {
-    const { data } = await api.getAgents();
+    const { data } = await api.getAgents(filterParams.value);
     agents.value = data;
   } finally {
     loading.value.agents = false;
@@ -86,7 +120,7 @@ async function loadAgents() {
 
 async function loadDemand() {
   try {
-    const { data } = await api.getDemand();
+    const { data } = await api.getDemand(filterParams.value);
     demand.value = data;
   } finally {
     loading.value.demand = false;
@@ -126,7 +160,7 @@ async function regenerateInsights() {
 
 async function loadContactLocations() {
   try {
-    const { data } = await api.getContactLocations();
+    const { data } = await api.getContactLocations(filterParams.value);
     contactLocations.value = data;
   } finally {
     loading.value.locations = false;
@@ -182,7 +216,7 @@ async function handleCardClick(type) {
   modalLoading.value = true;
 
   try {
-    const { data } = await api.getMiniMetricsDetail(type);
+    const { data } = await api.getMiniMetricsDetail(type, filterParams.value);
     modalItems.value = data.items || [];
     modalTotal.value = data.total || 0;
   } catch (e) {
@@ -196,6 +230,27 @@ async function handleCardClick(type) {
 function handleCloseModal() {
   showModal.value = false;
 }
+
+// Only the Operación sections: a filter change must not ask OpenAI again.
+async function refreshOperation() {
+  ['overview', 'agents', 'demand', 'locations'].forEach(key => {
+    loading.value[key] = true;
+  });
+  const results = await Promise.allSettled([
+    loadOverview(),
+    loadAgents(),
+    loadDemand(),
+    loadContactLocations(),
+  ]);
+  if (results.some(r => r.status === 'rejected')) {
+    useAlert('Algunas secciones del dashboard no se pudieron cargar');
+  }
+}
+
+// A custom range still being typed has no range yet: keep what is on screen.
+watch(filterParams, () => {
+  if (filters.value.preset !== 'custom' || range.value) refreshOperation();
+});
 
 let refreshInterval = null;
 
@@ -229,17 +284,24 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <TabBar
-        :tabs="TABS"
-        :initial-active-tab="activeTab"
-        @tab-changed="handleTabChange"
-      />
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <TabBar
+          :tabs="TABS"
+          :initial-active-tab="activeTab"
+          @tab-changed="handleTabChange"
+        />
+        <DashboardFilters v-show="activeTab === 0" v-model="filters" />
+      </div>
 
       <!-- v-show, not v-if: ResolutionBreakdown loads its own data on mount and would
            refetch on every tab switch. -->
       <div v-show="activeTab === 0" class="flex flex-col gap-6">
         <!-- KPI Cards -->
-        <KPICards :kpis="overview.kpis" :loading="loading.overview" />
+        <KPICards
+          :kpis="overview.kpis"
+          :loading="loading.overview"
+          :period-label="periodLabel"
+        />
 
         <!-- Mini metrics -->
         <LeadMetrics
@@ -250,12 +312,23 @@ onUnmounted(() => {
 
         <!-- Agent + Demand -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <AgentPerformance :agents="agents" :loading="loading.agents" />
-          <ProductDemand :demand="demand" :loading="loading.demand" />
+          <AgentPerformance
+            :agents="agents"
+            :loading="loading.agents"
+            :period-label="periodLabel"
+          />
+          <ProductDemand
+            :demand="demand"
+            :loading="loading.demand"
+            :period-label="periodLabel"
+          />
         </div>
 
         <!-- Resolution Breakdown -->
-        <ResolutionBreakdown />
+        <ResolutionBreakdown
+          :params="filterParams"
+          :period-label="periodLabel"
+        />
 
         <!-- Profit Products + Venezuela Map -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -320,6 +393,7 @@ onUnmounted(() => {
   <LocationsModal
     :show="showLocations"
     :locations="contactLocations.locations"
+    :params="filterParams"
     @close="showLocations = false"
   />
 </template>
